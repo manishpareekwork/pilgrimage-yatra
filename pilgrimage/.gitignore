@@ -1,0 +1,11 @@
+node_modules/
+.dart_tool/
+build/
+.zip
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.log
+*.lock
+pubspec.lock
