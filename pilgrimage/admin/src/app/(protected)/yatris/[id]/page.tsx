@@ -7,11 +7,16 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-export default async function YatriDetail({
-  params,
-}: {
-  params: { id: string };
-}) {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+type PageProps = {
+  params: Promise<{ id: string }> | { id: string };
+};
+
+export default async function YatriDetail({ params }: PageProps) {
+  const resolvedParams = params instanceof Promise ? await params : params;
+
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect("/login");
@@ -21,7 +26,7 @@ export default async function YatriDetail({
     .select(
       "id,name_hi,father_name_hi,address_hi,phone,whatsapp,travel_mode,train_class,health_bp,health_diabetes,health_other,emergency_contact_name,emergency_contact_phone,photo_url,form_image_url,status,ocr_confidence,created_at,raw_json"
     )
-    .eq("id", params.id)
+    .eq("id", resolvedParams.id)
     .single();
 
   if (error || !registration) {
