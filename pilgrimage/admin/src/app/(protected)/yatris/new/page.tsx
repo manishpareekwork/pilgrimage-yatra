@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getActionSupabase, getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 
