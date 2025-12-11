@@ -9,12 +9,9 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const runtime = "nodejs";
 
-export default async function YatriDetail({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function YatriDetail({ params }: any) {
 
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
@@ -25,7 +22,7 @@ export default async function YatriDetail({
     .select(
       "id,name_hi,father_name_hi,address_hi,phone,whatsapp,travel_mode,train_class,health_bp,health_diabetes,health_other,emergency_contact_name,emergency_contact_phone,photo_url,form_image_url,status,ocr_confidence,created_at,raw_json"
     )
-    .eq("id", params.id)
+    .eq("id", params?.id)
     .single();
 
   if (error || !registration) {
