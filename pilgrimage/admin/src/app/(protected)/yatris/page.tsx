@@ -2,16 +2,11 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-type SearchParams = {
-  status?: string;
-  search?: string;
-};
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export default async function YatrisPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function YatrisPage({ searchParams }: any) {
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect("/login");
