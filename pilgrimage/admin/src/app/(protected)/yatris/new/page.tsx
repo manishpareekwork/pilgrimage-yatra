@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getActionSupabase, getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function createRegistration(formData: FormData) {
   "use server";
   const supabase = await getActionSupabase();

@@ -7,22 +7,25 @@ const getCookieAdapter = async () => {
   return {
     get: (name: string) => store.get(name),
     getAll: () => store.getAll(),
-    set: (name: string, value: string, options?: Parameters<typeof store.set>[2]) =>
-      store.set(name, value, options),
-    delete: (name: string, options?: Parameters<typeof store.delete>[1]) => store.delete(name, options),
+    set: (name: string, value: string, options?: any) => store.set(name, value, options as any),
+    delete: (name: string) => store.delete(name),
   };
 };
 
 export const getServerSupabase = async () => {
   const cookieAdapter = await getCookieAdapter();
-  return createServerComponentClient({
-    cookies: () => cookieAdapter,
-  });
+  return createServerComponentClient(
+    {
+      cookies: async () => cookieAdapter,
+    } as any
+  );
 };
 
 export const getActionSupabase = async () => {
   const cookieAdapter = await getCookieAdapter();
-  return createServerActionClient({
-    cookies: () => cookieAdapter,
-  });
+  return createServerActionClient(
+    {
+      cookies: async () => cookieAdapter,
+    } as any
+  );
 };
