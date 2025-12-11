@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "TURBOPACK_ROOT=$(pwd) next dev",
+    "dev:webpack": "NEXT_FORCE_WEBPACK=1 next dev",
     "build": "next build",
     "start": "next start",
     "tailwind:init": "tailwindcss init -p"

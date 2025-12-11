@@ -1,36 +1,27 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pilgrimage Admin (Next.js)
 
-## Getting Started
+Next.js 16 App Router admin console for Yatri registrations with Supabase Auth + RLS-aware CRUD.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Env
+Create `.env.local` with:
+```
+NEXT_PUBLIC_SUPABASE_URL=<supabase url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+NEXT_PUBLIC_ORCHESTRATOR_URL=https://pilgrimage-yatra.onrender.com
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
+- `npm run dev` — Next dev (Turbopack) with `TURBOPACK_ROOT` pinned to this folder.
+- `npm run dev:webpack` — fallback to webpack (`NEXT_FORCE_WEBPACK=1`) if styles stop updating.
+- `npm run build && npm start` — production.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Tip: if styles feel stale, delete `.next/` then re-run `npm run dev:webpack`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Routes
+- `/login` email/password auth.
+- `/dashboard` status tiles.
+- `/yatris`, `/yatris/[id]`, `/yatris/new` Yatri CRUD.
+- `/users` admin-only profile list.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Styling
+Inline styles are used on key pages to avoid dev-server CSS cache issues. Gradually migrate back to Tailwind once dev root stabilizes.

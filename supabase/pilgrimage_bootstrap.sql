@@ -6,8 +6,16 @@
 
 begin;
 
+-- ---------- Reset (optional destructive) ----------
+-- Drops existing view/tables so the script can recreate them cleanly in Supabase SQL Editor.
+-- WARNING: This will remove existing data in these tables.
+drop view if exists public.v_registrations_with_profiles;
+drop table if exists public.yatra_reviews;
+drop table if exists public.yatra_registrations;
+drop table if exists public.profiles;
+
 -- ---------- Extensions ----------
-create extension if not exists pgcrypto;   -- gen_random_uuid()
+create extension if not exists pgcrypto;    -- gen_random_uuid()
 create extension if not exists "uuid-ossp"; -- uuid_generate_v4() if you prefer
 
 -- ---------- Enums (idempotent via DO blocks) ----------
@@ -42,12 +50,17 @@ create table if not exists public.yatra_registrations (
   owner uuid references auth.users(id),
   created_by uuid references auth.users(id),
   name_hi text not null,
+  father_name_hi text,
   address_hi text,
   phone text,
   whatsapp text,
   travel_mode travel_mode,
+  train_class text,
   health_bp boolean default false,
   health_diabetes boolean default false,
+  health_other text,
+  emergency_contact_name text,
+  emergency_contact_phone text,
   photo_url text,
   form_image_url text,
   status reg_status not null default 'submitted',
@@ -55,6 +68,13 @@ create table if not exists public.yatra_registrations (
   raw_json jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.yatra_registrations
+  add column if not exists father_name_hi text,
+  add column if not exists train_class text,
+  add column if not exists health_other text,
+  add column if not exists emergency_contact_name text,
+  add column if not exists emergency_contact_phone text;
 
 -- reviews (human-in-the-loop audit)
 create table if not exists public.yatra_reviews (
@@ -149,7 +169,8 @@ create policy "reviews write staff" on public.yatra_reviews
 for insert with check ((auth.jwt() ->> 'role') in ('reviewer','admin'));
 
 -- ---------- Views ----------
-create or replace view public.v_registrations_with_profiles as
+drop view if exists public.v_registrations_with_profiles;
+create view public.v_registrations_with_profiles as
 select
   r.*,
   p.role as owner_role,
@@ -163,12 +184,17 @@ create or replace function public.fn_create_registration(
   p_owner uuid,
   p_created_by uuid,
   p_name_hi text,
+  p_father_name_hi text,
   p_address_hi text,
   p_phone text,
   p_whatsapp text,
   p_travel_mode travel_mode,
+  p_train_class text,
   p_health_bp boolean,
   p_health_diabetes boolean,
+  p_health_other text,
+  p_emergency_contact_name text,
+  p_emergency_contact_phone text,
   p_photo_url text,
   p_form_image_url text
 ) returns uuid
@@ -178,12 +204,13 @@ declare
   new_id uuid;
 begin
   insert into public.yatra_registrations (
-    owner, created_by, name_hi, address_hi, phone, whatsapp,
-    travel_mode, health_bp, health_diabetes, photo_url, form_image_url
+    owner, created_by, name_hi, father_name_hi, address_hi, phone, whatsapp,
+    travel_mode, train_class, health_bp, health_diabetes, health_other,
+    emergency_contact_name, emergency_contact_phone, photo_url, form_image_url
   ) values (
-    p_owner, p_created_by, p_name_hi, p_address_hi, p_phone, p_whatsapp,
-    p_travel_mode, coalesce(p_health_bp,false), coalesce(p_health_diabetes,false),
-    p_photo_url, p_form_image_url
+    p_owner, p_created_by, p_name_hi, p_father_name_hi, p_address_hi, p_phone, p_whatsapp,
+    p_travel_mode, p_train_class, coalesce(p_health_bp,false), coalesce(p_health_diabetes,false),
+    p_health_other, p_emergency_contact_name, p_emergency_contact_phone, p_photo_url, p_form_image_url
   )
   returning id into new_id;
   return new_id;
@@ -199,12 +226,17 @@ as $$
 begin
   update public.yatra_registrations set
     name_hi       = coalesce((p_patch->>'name_hi'), name_hi),
+    father_name_hi = coalesce((p_patch->>'father_name_hi'), father_name_hi),
     address_hi    = coalesce((p_patch->>'address_hi'), address_hi),
     phone         = coalesce((p_patch->>'phone'), phone),
     whatsapp      = coalesce((p_patch->>'whatsapp'), whatsapp),
     travel_mode   = coalesce((p_patch->>'travel_mode')::travel_mode, travel_mode),
+    train_class   = coalesce((p_patch->>'train_class'), train_class),
     health_bp     = coalesce((p_patch->>'health_bp')::boolean, health_bp),
     health_diabetes = coalesce((p_patch->>'health_diabetes')::boolean, health_diabetes),
+    health_other  = coalesce((p_patch->>'health_other'), health_other),
+    emergency_contact_name = coalesce((p_patch->>'emergency_contact_name'), emergency_contact_name),
+    emergency_contact_phone = coalesce((p_patch->>'emergency_contact_phone'), emergency_contact_phone),
     photo_url     = coalesce((p_patch->>'photo_url'), photo_url),
     form_image_url= coalesce((p_patch->>'form_image_url'), form_image_url),
     status        = coalesce((p_patch->>'status')::reg_status, status),
@@ -307,7 +339,10 @@ commit;
 
 -- =====================================================================
 -- Quick CRUD examples (for reference; not required in migration):
--- select public.fn_create_registration(<owner>, <created_by>, 'नाम', 'पता', '+91...', '+91...', 'train', false, false, null, null);
+-- select public.fn_create_registration(
+--   <owner>, <created_by>, 'नाम', 'पिता', 'पता', '+91...', '+91...', 'train', 'III AC',
+--   false, false, 'other notes', 'guardian', '+91...', null, null
+-- );
 -- select public.fn_update_registration(<reg_id>, '{"status":"needs_review"}');
 -- select public.fn_create_review(<reg_id>, 'approve', '{"fixed":{"phone":"..."} }', <actor>);
 -- =====================================================================
