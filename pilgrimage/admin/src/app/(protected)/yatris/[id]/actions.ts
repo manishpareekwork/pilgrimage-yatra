@@ -1,7 +1,8 @@
 "use server";
 
 import { getActionSupabase } from "@/lib/supabaseServer";
-import { revalidatePath, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 const boolVal = (value: FormDataEntryValue | null) =>
   value === "on" || value === "true" || value === "1";
