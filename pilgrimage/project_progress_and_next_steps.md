@@ -1,6 +1,6 @@
 # Pilgrimage / Yatra Project — Progress & Next Steps Log
 
-_Last updated: 2025‑02‑14_
+_Last updated: 2025‑12‑11_
 
 This document tracks all progress, configuration milestones, and next planned actions across the three major components:
 1. **Cloud (GCP + Supabase Integration)**  
@@ -119,3 +119,4 @@ This document tracks all progress, configuration milestones, and next planned ac
 | **2025‑11‑11** | Initial progress log created — cloud + admin scaffolds verified, Supabase schema live. |
 | **2025‑11‑18** | Added Express-based middleware scaffold under `pilgrimage/cloud` with `/healthz` + `/sign-url` placeholder; document updated to reflect new structure. |
 | **2025‑02‑14** | Documented Render base URL (`https://pilgrimage-yatra.onrender.com`), refreshed admin/mobile readmes, and noted inline-style fallback for admin UI while build cache issues are investigated. |
+| **2025‑12‑11** | Admin app builds successfully on Vercel (Next 15.5.7) after regenerating lockfile, loosening PageProps typings, and pinning runtime to nodejs on Supabase pages. Vercel install command set to force fresh registry fetch. |
