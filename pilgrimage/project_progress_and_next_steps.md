@@ -1,6 +1,6 @@
 # Pilgrimage / Yatra Project — Progress & Next Steps Log
 
-_Last updated: 2026-01-01_
+_Last updated: 2026-01-02_
 
 Note: This document is the current source of truth; older versions are obsolete.
 
@@ -30,7 +30,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Task | Status | Notes |
 |------|---------|-------|
 | Project Creation | ✅ | `pilgrimage-yatra` in Mumbai region. |
-| Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode + reservation_by enums, full PDF registration columns, helper RPCs, RLS (migration `20251229_registration_alignment.sql`). |
+| Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode + reservation_by enums, full PDF registration columns, helper RPCs, RLS (migration `20251229_registration_alignment.sql`); added safe re-runnable `pilgrimage_bootstrap_safe.sql`. |
 | Buckets | ✅ | `forms` and `photos` created (private) with staff read policy. |
 | First Admin User | ⚙️ Pending | Create Auth user → run `select public.admin_set_user_role('<uuid>'::uuid, 'admin');` |
 | Review/Volunteer Roles | ⚙️ Pending | To assign once reviewers onboarded. |
@@ -44,7 +44,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Next.js Scaffold | ✅ | App Router + Tailwind v4, strict TS. |
 | Supabase Auth Integration | ✅ | Email/password login (`/login`), middleware redirects unauthenticated users. |
 | Dashboard | ✅ | Status tiles (inline styled) with banner header. |
-| Yatris CRUD | ✅ | `/yatris` list with filters; `/yatris/[id]` detail + full PDF-aligned quick edit + uploads + approve/reject RPC; `/yatris/new` full PDF form (declaration required) using create+patch RPCs. |
+| Yatris CRUD | ✅ | `/yatris` list with filters + column search, multi-format export, inline photo upload; `/yatris/[id]` detail + full PDF-aligned quick edit + uploads + approve/reject RPC; `/yatris/new` full PDF form (declaration required) using create+patch RPCs. |
 | Users | ✅ | `/users` admin-only profile table. |
 | Styling | ⚙️ Mixed | Some views use inline styling to bypass dev CSS issues; align via shared styles next. |
 
@@ -70,12 +70,13 @@ This document tracks all progress, configuration milestones, and next planned ac
 ### 2. Cloud API Middleware (Render: https://pilgrimage-yatra.onrender.com)
 - [x] Scaffold Node.js + TypeScript Express service (`/healthz`, `/registrations`, `/process-form` mock).
 - [x] Replace fake signed URL with Supabase Storage signed URL call + auth checks.
+- [x] Add CORS middleware for browser clients (config via `ALLOWED_ORIGINS`).
 - [ ] Implement real `/process-form` with OCR integration (Doc AI/Tesseract) and RLS-safe writes.
 - [ ] Redeploy to Render with secrets.
 
 ### 3. Admin UI Next Pass
 - [ ] Wire approve/reject to `/process-form`/RPC with optimistic feedback.
-- [ ] Add pagination to `/yatris` table and surface form image/photo thumbnails.
+- [x] Add signed download URLs for private bucket photo thumbnails in the Yatris grid.
 - [ ] Unify styling (remove inline fallbacks) once dev server root is stable.
 - [ ] Add create-user flow via Cloud API (service key).
 
@@ -119,6 +120,9 @@ This document tracks all progress, configuration milestones, and next planned ac
 ## 📝 Update Log
 | Date | Update |
 |------|---------|
+| 2026-01-02 | Added safe Supabase bootstrap script (non-destructive) and signed download URLs for private photo thumbnails in Yatris grid. |
+| 2026-01-02 | Yatris grid refinement: table spacing, column search, multi-format export (CSV/Excel/PDF), inline photo upload; orchestrator CORS enabled for browser clients. |
+| 2026-01-02 | Yatris grid UI tightened (filters layout, padded table, ellipsis row actions); fixed `/yatris/[id]` load by selecting all columns; resolved create-user cookies async warning; stabilized build (Tailwind PostCSS plugin resolution + `NODE_ENV=production` in build script). |
 | 2026-01-01 | Dashboard hero + status cards refined: pill-based CTA, compact status tiles, and improved spacing/controls. |
 | 2026-01-01 | Yatris listing upgraded to admin grid: server-side search/filter/sort/pagination, column customization + saved views, CSV export, responsive table/card view. |
 | 2026-01-01 | Refined `/yatris/new` form layout: calmer spacing, updated input sizing, streamlined medical notes, and polished declaration/actions styling. |

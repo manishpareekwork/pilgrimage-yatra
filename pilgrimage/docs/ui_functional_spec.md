@@ -1,6 +1,6 @@
 # UI & Functional Specification — Pilgrimage Yatra (Admin Web + Mobile)
 
-Date: 2025-12-29
+Date: 2026-01-02
 
 Note: This document is the current source of truth; older versions are obsolete.
 
@@ -48,13 +48,13 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Admin — Yatris List (`/yatris`)
 - Status: Implemented (verified).
-- UI Layout: Filter/search bar (status select, search input, Apply button), “+ New” button; table columns: Name, Phone, Status, Created, View link; empty-state row if no data.
-- Functional: Server query to `yatra_registrations` selecting id, name_hi, phone, status, created_at; optional status filter and ilike search on name_hi/phone; links to detail/new. Query params are awaited before use to satisfy Next.js async `searchParams`. Shows empty-state CTA when no rows; error banner on failure.
-- Data: `yatra_registrations`.
-- Validation: Search sanitizes `%`/`,` removal; status must be enum values if provided.
-- Errors: Renders error banner with Supabase message.
-- Acceptance: Filters work; rows link to detail; unauthenticated redirected to login.
-- Aesthetic: Light card container, responsive table; “+ New” button clearly visible.
+- UI Layout: Page header with Views/Columns controls and “+ New Registration”; filter toolbar with search, status multi-select popover, travel mode, date range, missing uploads, clear filters, and export menu; applied filter chips; table with sticky header and selectable rows; row actions exposed via an ellipsis menu; mobile card list view mirrors actions.
+- Functional: Server-side search, filter, sort, and pagination over `yatra_registrations`; localStorage persistence for column visibility/order and saved views; CSV export for selected rows or filtered result set (capped). Query params are awaited before use to satisfy Next.js async `searchParams`. Empty-state CTA when no rows; error banner on failure.
+- Data: `yatra_registrations` (uploads status derived from `photo_url`/`form_image_url`).
+- Validation: Status/travel/missing values constrained to known options; date range uses `created_at`.
+- Errors: Error banner with Supabase message; export cap message when applicable.
+- Acceptance: Filters/sort/pagination work server-side; columns and views persist; export succeeds; rows link to detail; unauthenticated redirected to login.
+- Aesthetic: Consistent card container with padded controls, responsive table/card layout, and compact actions menu.
  - Layout smoke test: Uses shared AppShell (centered container) verified 2025-12-23.
 
 ### Admin — Yatri Detail (`/yatris/[id]`)
@@ -133,5 +133,6 @@ Note: This document is the current source of truth; older versions are obsolete.
 - Metrics on mobile home are placeholders.
 
 ## Change Log
+- 2026-01-02: Yatris list upgraded to full admin grid (filters, saved views, column controls, CSV export, responsive table/card view, row action menu).
 - 2025-12-29: Registration UI aligned with PDF fields across admin/mobile (medical toggles, reservation_by, emergency companion, declaration required); mobile admin detail now read-only full view.
 - 2025-12-21: Initial UI + functional spec documented for Admin Web and Mobile apps.

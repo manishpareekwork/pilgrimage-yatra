@@ -4,8 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { PageHeader, Select, TextInput } from "@/components/ui";
+import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
-import type { YatriRow, YatrisFilters, YatrisListParams } from "./query";
+import {
+  COLUMN_FILTER_KEYS,
+  COLUMN_FILTER_PREFIX,
+  type ColumnFilterKey,
+  type ColumnFilters,
+  type YatriRow,
+  type YatrisFilters,
+  type YatrisListParams,
+} from "./query";
 
 const COLUMN_STORAGE_KEY = "yatris_grid_columns_v1";
 const VIEW_STORAGE_KEY = "yatris_grid_views_v1";
@@ -29,6 +38,8 @@ type SavedView = {
   params: Partial<YatrisFilters>;
   columns?: ColumnConfig;
 };
+
+type ExportFormat = "csv" | "excel" | "pdf";
 
 type YatrisGridProps = {
   rows: YatriRow[];
@@ -78,6 +89,51 @@ const DEFAULT_VIEWS: SavedView[] = [
   { name: "Missing Uploads", params: { missing: "any" } },
 ];
 
+const areColumnFiltersEqual = (a: ColumnFilters = {}, b: ColumnFilters = {}) => {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => a[key as keyof ColumnFilters] === b[key as keyof ColumnFilters]);
+};
+
+const FILTERABLE_COLUMNS = new Set<string>(["status", "travel", "age_years"]);
+
+const SortIcon = ({ direction }: { direction: "asc" | "desc" }) => (
+  <svg
+    viewBox="0 0 12 12"
+    className="h-3 w-3"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d={direction === "asc" ? "M3.5 7.5L6 5l2.5 2.5" : "M3.5 4.5L6 7l2.5-2.5"}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.6"
+    />
+  </svg>
+);
+
+const FilterIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 12 12"
+    className={className ?? "h-3 w-3"}
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path
+      d="M2 3h8L7 7v3L5 11V7L2 3z"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.4"
+    />
+  </svg>
+);
+
 const formatDateTime = (value?: string | null) => {
   if (!value) return "--";
   const date = new Date(value);
@@ -117,13 +173,13 @@ const statusLabel = (status?: string | null) => {
 const statusClass = (status?: string | null) => {
   switch (status) {
     case "approved":
-      return "bg-emerald-500/20 text-emerald-300";
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
     case "rejected":
-      return "bg-rose-500/20 text-rose-300";
+      return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200";
     case "needs_review":
-      return "bg-amber-500/20 text-amber-300";
+      return "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200";
     default:
-      return "bg-slate-500/20 text-slate-200";
+      return "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200";
   }
 };
 
@@ -139,6 +195,10 @@ const buildSearchParams = (params: YatrisListParams) => {
   if (params.missing) search.set("missing", params.missing);
   if (params.sort) search.set("sort", params.sort);
   if (params.dir) search.set("dir", params.dir);
+  COLUMN_FILTER_KEYS.forEach((key) => {
+    const value = params.columnFilters?.[key];
+    if (value) search.set(`${COLUMN_FILTER_PREFIX}${key}`, value);
+  });
   search.set("page", String(params.page));
   search.set("pageSize", String(params.pageSize));
   return search.toString();
@@ -162,6 +222,172 @@ const csvEscape = (value: string) => {
   return value;
 };
 
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const escapePdfText = (value: string) =>
+  value
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[\r\n]+/g, " ");
+
+const downloadBlob = (blob: Blob, filename: string) => {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+const buildPdf = (headers: string[], rows: string[][]) => {
+  const pageWidth = 792;
+  const pageHeight = 612;
+  const margin = 36;
+  const fontSize = 8;
+  const lineHeight = 11;
+  const minWidth = 4;
+  const maxWidth = 18;
+  const separator = " | ";
+  const separatorWidth = separator.length;
+  const encoder = new TextEncoder();
+
+  const charWidth = fontSize * 0.6;
+  const maxCharsPerLine = Math.max(
+    60,
+    Math.floor((pageWidth - margin * 2) / charWidth)
+  );
+
+  const maxLengths = headers.map((header) => header.length);
+  rows.slice(0, 50).forEach((row) => {
+    row.forEach((cell, index) => {
+      maxLengths[index] = Math.max(maxLengths[index] ?? 0, cell.length);
+    });
+  });
+
+  const widths = maxLengths.map((length) =>
+    Math.min(maxWidth, Math.max(minWidth, length))
+  );
+
+  const totalWidth = () =>
+    widths.reduce((sum, width) => sum + width, 0) +
+    separatorWidth * Math.max(0, headers.length - 1);
+
+  let currentWidth = totalWidth();
+  while (currentWidth > maxCharsPerLine) {
+    let adjusted = false;
+    for (let index = 0; index < widths.length; index += 1) {
+      if (currentWidth <= maxCharsPerLine) break;
+      if (widths[index] > minWidth) {
+        widths[index] -= 1;
+        currentWidth -= 1;
+        adjusted = true;
+      }
+    }
+    if (!adjusted) break;
+  }
+
+  const pad = (value: string, width: number) => {
+    const trimmed = value.length > width ? value.slice(0, width) : value;
+    return trimmed.padEnd(width, " ");
+  };
+
+  const splitCell = (value: string, width: number) => {
+    if (!value) return [""];
+    const segments: string[] = [];
+    for (let index = 0; index < value.length; index += width) {
+      segments.push(value.slice(index, index + width));
+    }
+    return segments.length ? segments : [""];
+  };
+
+  const headerLine = headers
+    .map((header, index) => pad(header, widths[index]))
+    .join(separator);
+  const dividerLine = widths.map((width) => "-".repeat(width)).join("-+-");
+
+  const bodyLines = rows.flatMap((row) => {
+    const cells = row.map((cell, index) => splitCell(cell, widths[index]));
+    const lineCount = Math.max(...cells.map((lines) => lines.length), 1);
+    const lines: string[] = [];
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+      const line = cells
+        .map((lines, index) => pad(lines[lineIndex] ?? "", widths[index]))
+        .join(separator);
+      lines.push(line);
+    }
+    return lines;
+  });
+
+  const maxLines = Math.max(1, Math.floor((pageHeight - margin * 2) / lineHeight));
+  const headerLines = [headerLine, dividerLine];
+  const linesPerPage = Math.max(1, maxLines - headerLines.length);
+  const pages: string[][] = [];
+
+  if (bodyLines.length === 0) {
+    pages.push([...headerLines, "No data"]);
+  } else {
+    for (let index = 0; index < bodyLines.length; index += linesPerPage) {
+      pages.push([...headerLines, ...bodyLines.slice(index, index + linesPerPage)]);
+    }
+  }
+
+  const pageContents = pages.map((lines) => {
+    const contentLines = [
+      "BT",
+      `/F1 ${fontSize} Tf`,
+      `${margin} ${pageHeight - margin} Td`,
+    ];
+    lines.forEach((line, idx) => {
+      contentLines.push(`(${escapePdfText(line)}) Tj`);
+      if (idx < lines.length - 1) contentLines.push(`0 -${lineHeight} Td`);
+    });
+    contentLines.push("ET");
+    const content = contentLines.join("\n");
+    const length = encoder.encode(content).length;
+    return `<< /Length ${length} >>\nstream\n${content}\nendstream`;
+  });
+
+  const kids = pageContents.map((_, index) => `${4 + index * 2} 0 R`).join(" ");
+
+  const objects: string[] = [];
+  objects.push(`<< /Type /Catalog /Pages 2 0 R >>`);
+  objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${pageContents.length} >>`);
+  objects.push(`<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>`);
+
+  pageContents.forEach((content, index) => {
+    const pageObjNum = 4 + index * 2;
+    const contentObjNum = pageObjNum + 1;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentObjNum} 0 R >>`
+    );
+    objects.push(content);
+  });
+
+  let pdf = "%PDF-1.3\n";
+  const offsets: number[] = [];
+
+  objects.forEach((obj, index) => {
+    offsets.push(encoder.encode(pdf).length);
+    pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+  });
+
+  const xrefStart = encoder.encode(pdf).length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  offsets.forEach((offset) => {
+    pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`;
+  });
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+
+  return new Blob([pdf], { type: "application/pdf" });
+};
+
 export function YatrisGrid({
   rows,
   totalCount,
@@ -173,9 +399,14 @@ export function YatrisGrid({
   exportAction,
 }: YatrisGridProps) {
   const router = useRouter();
+  const supabase = useMemo(() => getBrowserSupabase(), []);
+  const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const [isPending, startTransition] = useTransition();
   const [searchValue, setSearchValue] = useState(filters.q);
-  const [localFilters, setLocalFilters] = useState<YatrisFilters>({ ...filters });
+  const [localFilters, setLocalFilters] = useState<YatrisFilters>({
+    ...filters,
+    columnFilters: filters.columnFilters ?? {},
+  });
   const [localPageSize, setLocalPageSize] = useState(pageSize);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [columnConfig, setColumnConfig] = useState<ColumnConfig>(DEFAULT_COLUMNS);
@@ -183,6 +414,10 @@ export function YatrisGrid({
   const [includeFullAadhaar, setIncludeFullAadhaar] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<Record<string, { path: string; url: string }>>({});
   const [dragColumn, setDragColumn] = useState<string | null>(null);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
   const viewsRef = useRef<HTMLDetailsElement>(null);
@@ -230,13 +465,49 @@ export function YatrisGrid({
 
   useEffect(() => {
     setSearchValue(filters.q);
-    setLocalFilters({ ...filters });
+    setLocalFilters({ ...filters, columnFilters: filters.columnFilters ?? {} });
     setLocalPageSize(pageSize);
   }, [filters, pageSize]);
 
   useEffect(() => {
     setSelectedIds(new Set());
   }, [rows]);
+
+  useEffect(() => {
+    if (!orchestratorUrl) return;
+    let isActive = true;
+    const rowsNeedingPreview = rows.filter((row) => {
+      if (!row.photo_url) return false;
+      if (row.photo_url.startsWith("http")) return false;
+      if (!row.photo_url.startsWith("photos/")) return false;
+      const cached = photoPreviewUrls[row.id];
+      return !cached || cached.path !== row.photo_url;
+    });
+    if (!rowsNeedingPreview.length) return;
+
+    const fetchPreviews = async () => {
+      await Promise.all(
+        rowsNeedingPreview.map(async (row) => {
+          if (!row.photo_url) return;
+          try {
+            const signedUrl = await signUrl("download", "photos", row.photo_url);
+            if (!isActive) return;
+            setPhotoPreviewUrls((prev) => ({
+              ...prev,
+              [row.id]: { path: row.photo_url as string, url: signedUrl },
+            }));
+          } catch {
+            // ignore preview failures
+          }
+        })
+      );
+    };
+    void fetchPreviews();
+
+    return () => {
+      isActive = false;
+    };
+  }, [rows, orchestratorUrl, photoPreviewUrls]);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? window.localStorage.getItem(COLUMN_STORAGE_KEY) : null;
@@ -289,6 +560,16 @@ export function YatrisGrid({
     return () => clearTimeout(timer);
   }, [searchValue]);
 
+  useEffect(() => {
+    const nextFilters = localFilters.columnFilters ?? {};
+    const currentFilters = filters.columnFilters ?? {};
+    if (areColumnFiltersEqual(nextFilters, currentFilters)) return;
+    const timer = setTimeout(() => {
+      updateParams({ columnFilters: nextFilters, page: 1 });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [localFilters.columnFilters, filters.columnFilters]);
+
   const statusOptions = [
     { value: "submitted", label: "Submitted" },
     { value: "needs_review", label: "Needs review" },
@@ -296,13 +577,13 @@ export function YatrisGrid({
     { value: "rejected", label: "Rejected" },
   ];
 
-  const renderRowActions = (row: YatriRow) => {
+  const renderRowActions = (row: YatriRow, align: "center" | "end" = "end") => {
     const canReviewRow =
       canReview && (row.status === "needs_review" || row.status === "submitted" || !row.status);
     const isOpen = openRowMenuId === row.id;
     return (
       <div
-        className="relative flex items-center justify-end"
+        className={`relative flex w-full items-center ${align === "center" ? "justify-center" : "justify-end"}`}
         data-row-menu
         onClick={(event) => event.stopPropagation()}
       >
@@ -316,9 +597,9 @@ export function YatrisGrid({
             closeAllDetails();
             setOpenRowMenuId((prev) => (prev === row.id ? null : row.id));
           }}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
         >
-          <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+          <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" aria-hidden="true">
             <circle cx="10" cy="4" r="1.6" fill="currentColor" />
             <circle cx="10" cy="10" r="1.6" fill="currentColor" />
             <circle cx="10" cy="16" r="1.6" fill="currentColor" />
@@ -443,33 +724,110 @@ export function YatrisGrid({
     );
   };
 
+  const signUrl = async (action: "upload" | "download", bucket: "photos", object: string) => {
+    if (!orchestratorUrl) {
+      throw new Error("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
+    }
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    if (!token) throw new Error("Not authenticated");
+    const res = await fetch(`${orchestratorUrl}/sign-url`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bucket,
+        object,
+        action,
+        expiresIn: 600,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error?.message || "Failed to get signed URL");
+    }
+    const json = await res.json();
+    return json.signedUrl as string;
+  };
+
+  const handlePhotoUpload = async (row: YatriRow, file: File) => {
+    if (!orchestratorUrl) {
+      setUploadMessage("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
+      return;
+    }
+    setUploadMessage(null);
+    setUploadingPhotoId(row.id);
+    try {
+      const object = `photos/registrations/${row.id}/photo.jpg`;
+      const uploadUrl = await signUrl("upload", "photos", object);
+      const put = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!put.ok) throw new Error("Upload failed");
+
+      const { error } = await supabase.rpc("fn_update_registration", {
+        p_id: row.id,
+        p_patch: { photo_url: object },
+      });
+      if (error) throw error;
+
+      const { data: session } = await supabase.auth.getSession();
+      const actor = session.session?.user.id;
+      if (actor) {
+        await supabase.rpc("fn_create_review", {
+          p_registration_id: row.id,
+          p_action: "edit",
+          p_diff: { event: "photo_upload", prev: row.photo_url, next: object },
+          p_actor: actor,
+        });
+      }
+
+      router.refresh();
+    } catch (err) {
+      setUploadMessage(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingPhotoId(null);
+    }
+  };
+
+  const onPhotoInputChange = (row: YatriRow) => async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await handlePhotoUpload(row, file);
+    event.target.value = "";
+  };
+
   const columns: Record<string, ColumnDef> = useMemo(() => {
     return {
       created_at: {
         id: "created_at",
         label: "Created",
         sortable: true,
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{formatDateTime(row.created_at)}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{formatDateTime(row.created_at)}</span>,
         exportValue: (row) => formatDateTime(row.created_at),
       },
       updated_at: {
         id: "updated_at",
         label: "Updated",
         sortable: false,
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{formatDateTime(row.updated_at)}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{formatDateTime(row.updated_at)}</span>,
         exportValue: (row) => formatDateTime(row.updated_at),
       },
       name_hi: {
         id: "name_hi",
         label: "Name",
         sortable: true,
-        cell: (row) => <span className="font-semibold text-[color:var(--ink)]">{row.name_hi || "--"}</span>,
+        cell: (row) => <span className="text-[12px] font-semibold text-[color:var(--ink)]">{row.name_hi || "--"}</span>,
         exportValue: (row) => row.name_hi ?? "",
       },
       phone: {
         id: "phone",
         label: "Phone",
-        cell: (row) => <span className="text-sm text-[color:var(--ink)]">{row.phone || "--"}</span>,
+        cell: (row) => <span className="text-[12px] text-[color:var(--ink)]">{row.phone || "--"}</span>,
         exportValue: (row) => row.phone ?? "",
       },
       status: {
@@ -477,7 +835,7 @@ export function YatrisGrid({
         label: "Status",
         sortable: true,
         cell: (row) => (
-          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(row.status)}`}>
             {statusLabel(row.status)}
           </span>
         ),
@@ -487,7 +845,7 @@ export function YatrisGrid({
         id: "travel",
         label: "Travel",
         cell: (row) => (
-          <div className="text-xs text-[color:var(--muted)]">
+          <div className="text-[11px] text-[color:var(--muted)] text-center leading-tight">
             <div className="font-medium text-[color:var(--ink)]">{row.travel_mode || "--"}</div>
             <div>{row.train_class || ""}</div>
           </div>
@@ -496,51 +854,133 @@ export function YatrisGrid({
       },
       uploads: {
         id: "uploads",
-        label: "Uploads",
-        cell: (row) => (
-          <div className="flex items-center gap-2 text-xs">
-            <span className={row.photo_url ? "text-emerald-300" : "text-slate-400"}>Photo</span>
-            <span className={row.form_image_url ? "text-emerald-300" : "text-slate-400"}>Form</span>
-          </div>
-        ),
+        label: "Photo",
+        cell: (row) => {
+          const isUploading = uploadingPhotoId === row.id;
+          const rawPhotoPath = row.photo_url ?? "";
+          const cachedPreview = photoPreviewUrls[row.id];
+          const signedUrl = cachedPreview?.path === rawPhotoPath ? cachedPreview.url : "";
+          const directUrl = rawPhotoPath.startsWith("http") ? rawPhotoPath : "";
+          const previewUrl = signedUrl || directUrl;
+          const isLoadingPreview = Boolean(rawPhotoPath) && !previewUrl && Boolean(orchestratorUrl);
+          const isDisabled = isUploading;
+          if (row.photo_url) {
+            return (
+              <div className="flex items-center justify-center gap-2">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
+                    className="h-8 w-8 rounded-md border border-[color:var(--border)] object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                    {isLoadingPreview ? (
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--muted)] border-t-transparent" />
+                    ) : (
+                      <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
+                        <rect
+                          x="1.5"
+                          y="2"
+                          width="9"
+                          height="8"
+                          rx="1.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                        />
+                        <circle cx="4.2" cy="5" r="1" fill="currentColor" />
+                        <path
+                          d="M2.5 9l2.3-2 2 1.4 2.2-2"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                )}
+                <span className="text-[11px] text-[color:var(--ink)]">Photo</span>
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center justify-center gap-2">
+              <label
+                className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  className="sr-only"
+                  disabled={isDisabled}
+                  onChange={onPhotoInputChange(row)}
+                />
+                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                  {isUploading ? (
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--muted)] border-t-transparent" />
+                  ) : (
+                    <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
+                      <path
+                        d="M6 2.5v7M2.5 6h7"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.4"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-[11px] text-[color:var(--muted)]">
+                  {isUploading ? "Uploading..." : "Add photo"}
+                </span>
+              </label>
+            </div>
+          );
+        },
         exportValue: (row) =>
           `Photo: ${row.photo_url ? "Yes" : "No"}; Form: ${row.form_image_url ? "Yes" : "No"}`,
       },
       receipt_no: {
         id: "receipt_no",
         label: "Receipt",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{row.receipt_no || "--"}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{row.receipt_no || "--"}</span>,
         exportValue: (row) => row.receipt_no ?? "",
       },
       aadhaar_no: {
         id: "aadhaar_no",
         label: "Aadhaar",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{maskAadhaar(row.aadhaar_no, false)}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{maskAadhaar(row.aadhaar_no, false)}</span>,
         exportValue: (row, opts) => maskAadhaar(row.aadhaar_no, opts.includeFullAadhaar),
       },
       age_years: {
         id: "age_years",
         label: "Age",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{row.age_years ?? "--"}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{row.age_years ?? "--"}</span>,
         exportValue: (row) => (row.age_years ?? "").toString(),
       },
       dob: {
         id: "dob",
-        label: "DOB",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{formatDate(row.dob)}</span>,
+        label: "Dob",
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{formatDate(row.dob)}</span>,
         exportValue: (row) => formatDate(row.dob),
       },
       reservation_by: {
         id: "reservation_by",
         label: "Reservation",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{row.reservation_by || "--"}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{row.reservation_by || "--"}</span>,
         exportValue: (row) => row.reservation_by ?? "",
       },
       emergency_contact: {
         id: "emergency_contact",
         label: "Emergency",
         cell: (row) => (
-          <div className="text-xs text-[color:var(--muted)]">
+          <div className="text-[11px] text-[color:var(--muted)] text-center leading-tight">
             <div className="font-medium text-[color:var(--ink)]">{row.emergency_contact_name || "--"}</div>
             <div>{row.emergency_contact_phone || ""}</div>
           </div>
@@ -551,17 +991,17 @@ export function YatrisGrid({
       health_flags: {
         id: "health_flags",
         label: "Health",
-        cell: (row) => <span className="text-xs text-[color:var(--muted)]">{healthSummary(row)}</span>,
+        cell: (row) => <span className="text-[11px] text-[color:var(--muted)]">{healthSummary(row)}</span>,
         exportValue: (row) => healthSummary(row),
       },
       actions: {
         id: "actions",
         label: "Actions",
         exportable: false,
-        cell: (row) => renderRowActions(row),
+        cell: (row) => renderRowActions(row, "center"),
       },
     };
-  }, [renderRowActions]);
+  }, [renderRowActions, uploadingPhotoId, photoPreviewUrls, orchestratorUrl, onPhotoInputChange]);
 
   const orderedColumns = useMemo(() => {
     const all = columnConfig.order.map((id) => columns[id]).filter(Boolean);
@@ -573,6 +1013,19 @@ export function YatrisGrid({
   const visibleColumns = orderedColumns.filter(
     (column) => !columnConfig.hidden.includes(column.id)
   );
+
+  const updateColumnFilter = (columnId: ColumnFilterKey, value: string) => {
+    const trimmed = value.trim();
+    setLocalFilters((prev) => {
+      const nextColumnFilters = { ...(prev.columnFilters ?? {}) };
+      if (trimmed) {
+        nextColumnFilters[columnId] = trimmed;
+      } else {
+        delete nextColumnFilters[columnId];
+      }
+      return { ...prev, columnFilters: nextColumnFilters };
+    });
+  };
 
   const toggleStatus = (value: string) => {
     const next = localFilters.status.includes(value)
@@ -594,6 +1047,7 @@ export function YatrisGrid({
       missing: "",
       sort: "created_at",
       dir: "desc",
+      columnFilters: {},
     });
     updateParams({
       q: "",
@@ -604,6 +1058,7 @@ export function YatrisGrid({
       missing: "",
       sort: "created_at",
       dir: "desc",
+      columnFilters: {},
       page: 1,
     });
   };
@@ -642,6 +1097,7 @@ export function YatrisGrid({
       missing: view.params.missing ?? "",
       sort: view.params.sort ?? "created_at",
       dir: view.params.dir ?? "desc",
+      columnFilters: view.params.columnFilters ?? {},
       page: 1,
       pageSize: localPageSize,
     };
@@ -664,6 +1120,7 @@ export function YatrisGrid({
         missing: localFilters.missing,
         sort: localFilters.sort,
         dir: localFilters.dir,
+        columnFilters: localFilters.columnFilters ?? {},
       },
       columns: columnConfig,
     };
@@ -698,30 +1155,46 @@ export function YatrisGrid({
     setSelectedIds(next);
   };
 
-  const exportRows = (data: YatriRow[]) => {
-    const exportColumns = visibleColumns.filter((column) => column.exportable !== false);
+  const exportRows = (data: YatriRow[], format: ExportFormat) => {
+    const exportColumns = orderedColumns.filter((column) => column.exportable !== false);
     const headers = exportColumns.map((column) => column.label);
-    const lines = data.map((row) =>
-      exportColumns
-        .map((column) => {
-          const raw = column.exportValue ? column.exportValue(row, { includeFullAadhaar }) : "";
-          return csvEscape(raw ?? "");
-        })
-        .join(",")
+    const rowsData = data.map((row) =>
+      exportColumns.map((column) => {
+        const raw = column.exportValue ? column.exportValue(row, { includeFullAadhaar }) : "";
+        return String(raw ?? "");
+      })
     );
-    const csv = [headers.join(","), ...lines].join("\n");
+    const fileBase = `yatris-${new Date().toISOString().slice(0, 10)}`;
+
+    if (format === "excel") {
+      const thead = `<thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>`;
+      const tbody = `<tbody>${rowsData
+        .map(
+          (row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`
+        )
+        .join("")}</tbody>`;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /></head><body><table>${thead}${tbody}</table></body></html>`;
+      const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      downloadBlob(blob, `${fileBase}.xls`);
+      return;
+    }
+
+    if (format === "pdf") {
+      const blob = buildPdf(headers, rowsData);
+      downloadBlob(blob, `${fileBase}.pdf`);
+      return;
+    }
+
+    const lines = rowsData.map((row) => row.map((cell) => csvEscape(cell)).join(","));
+    const csv = [headers.map(csvEscape).join(","), ...lines].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `yatris-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
+    downloadBlob(blob, `${fileBase}.csv`);
   };
 
   const exportSelected = () => {
     const selectedRows = rows.filter((row) => selectedIds.has(row.id));
     if (!selectedRows.length) return;
-    exportRows(selectedRows);
+    exportRows(selectedRows, exportFormat);
   };
 
   const exportFiltered = async () => {
@@ -738,6 +1211,7 @@ export function YatrisGrid({
           missing: localFilters.missing,
           sort: localFilters.sort,
           dir: localFilters.dir,
+          columnFilters: localFilters.columnFilters ?? {},
         },
       });
       if (result.rows.length === 0) {
@@ -747,7 +1221,7 @@ export function YatrisGrid({
       if (result.overLimit) {
         setExportMessage("Export capped at 2000 rows. Narrow filters to export more.");
       }
-      exportRows(result.rows);
+      exportRows(result.rows, exportFormat);
     } finally {
       setExporting(false);
     }
@@ -768,13 +1242,12 @@ export function YatrisGrid({
   }, [views, recentView]);
 
   return (
-    <div className="yatris-grid space-y-6">
+    <div className="yatris-grid flex flex-col gap-6">
       <PageHeader
-        className="relative z-30 overflow-visible"
+        className="relative z-30 overflow-visible yatris-hero"
         title="Yatris"
-        subtitle="Manage registrations with powerful filters, saved views, and exports."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="header-actions flex flex-wrap items-center gap-2">
             <details
               ref={viewsRef}
               className="relative z-40"
@@ -784,17 +1257,17 @@ export function YatrisGrid({
                 }
               }}
             >
-              <summary className="btn-secondary inline-flex min-h-[44px] items-center justify-between cursor-pointer list-none">
+              <summary className="btn-secondary inline-flex min-h-[32px] items-center justify-between cursor-pointer list-none">
                 Views
               </summary>
-              <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                <div className="space-y-2">
+              <div className="yatris-popover absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-lg">
+                <div className="yatris-popover-list space-y-2.5">
                   {allViews.map((view) => (
                     <button
                       key={view.name}
                       type="button"
                       onClick={() => applyView(view)}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
+                      className="flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-left text-[13px] text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
                     >
                       {view.name}
                       <span className="text-xs text-[color:var(--muted)]">Apply</span>
@@ -803,7 +1276,7 @@ export function YatrisGrid({
                   <button
                     type="button"
                     onClick={saveCurrentView}
-                    className="w-full rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--muted)] hover:border-[color:var(--accent)]"
+                    className="w-full rounded-lg border border-[color:var(--border)] px-3.5 py-2.5 text-[13px] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
                   >
                     Save current view
                   </button>
@@ -820,12 +1293,12 @@ export function YatrisGrid({
                 }
               }}
             >
-              <summary className="btn-secondary inline-flex min-h-[44px] items-center justify-between cursor-pointer list-none">
+              <summary className="btn-secondary inline-flex min-h-[32px] items-center justify-between cursor-pointer list-none">
                 Columns
               </summary>
-              <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                <div className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Visible columns</div>
-                <div className="mt-2 space-y-1">
+              <div className="yatris-popover absolute right-0 z-50 mt-2 w-80 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-lg">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Visible columns</div>
+                <div className="mt-3 space-y-2">
                   {columnConfig.order.map((id) => {
                     const column = columns[id];
                     if (!column) return null;
@@ -833,7 +1306,7 @@ export function YatrisGrid({
                     return (
                       <div
                         key={id}
-                        className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-[color:var(--ink)]"
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
                         draggable={!isLocked}
                         onDragStart={() => setDragColumn(id)}
                         onDragOver={(event) => event.preventDefault()}
@@ -856,17 +1329,17 @@ export function YatrisGrid({
               </div>
             </details>
 
-            <Link href="/yatris/new" className="btn-primary inline-flex min-h-[44px] items-center">
+            <Link href="/yatris/new" className="btn-primary inline-flex min-h-[32px] items-center">
               + New Registration
             </Link>
           </div>
         }
       />
 
-      <div className="card relative z-20 p-6 space-y-4 overflow-visible">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-            <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
+      <div className="card relative z-20 p-6 space-y-4 overflow-visible filters-compact">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-72 lg:w-80">
               <TextInput
                 placeholder="Search name, phone, receipt"
                 value={searchValue}
@@ -875,14 +1348,14 @@ export function YatrisGrid({
             </div>
             <details
               ref={statusRef}
-              className="relative z-30"
+              className="relative z-30 w-full sm:w-44"
               onToggle={() => {
                 if (statusRef.current?.open) {
                   openExclusive(statusRef);
                 }
               }}
             >
-              <summary className="btn-secondary inline-flex min-h-[44px] w-full items-center justify-between cursor-pointer list-none">
+              <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
                 Status
               </summary>
               <div className="absolute left-0 z-50 mt-2 w-56 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
@@ -900,7 +1373,7 @@ export function YatrisGrid({
                 </div>
               </div>
             </details>
-            <div>
+            <div className="w-full sm:w-40">
               <Select
                 value={localFilters.travel_mode}
                 onChange={(event) => {
@@ -914,32 +1387,7 @@ export function YatrisGrid({
                 <option value="air">Air</option>
               </Select>
             </div>
-            <div className="sm:col-span-2 lg:col-span-2 xl:col-span-2">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                <TextInput
-                  type="date"
-                  value={toDateInput(localFilters.date_from)}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setLocalFilters({ ...localFilters, date_from: value });
-                    updateParams({ date_from: value, page: 1 });
-                  }}
-                  className="text-sm"
-                />
-                <span className="text-xs text-[color:var(--muted)]">to</span>
-                <TextInput
-                  type="date"
-                  value={toDateInput(localFilters.date_to)}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setLocalFilters({ ...localFilters, date_to: value });
-                    updateParams({ date_to: value, page: 1 });
-                  }}
-                  className="text-sm"
-                />
-              </div>
-            </div>
-            <div>
+            <div className="w-full sm:w-40">
               <Select
                 value={localFilters.missing}
                 onChange={(event) => {
@@ -954,49 +1402,92 @@ export function YatrisGrid({
                 <option value="any">Missing any</option>
               </Select>
             </div>
-            <button type="button" className="btn-secondary min-h-[44px] w-full" onClick={clearFilters}>
-              Clear filters
-            </button>
+            <div className="w-full sm:w-72 lg:w-80">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                <TextInput
+                  type="date"
+                  value={toDateInput(localFilters.date_from)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setLocalFilters({ ...localFilters, date_from: value });
+                    updateParams({ date_from: value, page: 1 });
+                  }}
+                  className="filters-date-input"
+                />
+                <span className="text-xs text-[color:var(--muted)]">to</span>
+                <TextInput
+                  type="date"
+                  value={toDateInput(localFilters.date_to)}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setLocalFilters({ ...localFilters, date_to: value });
+                    updateParams({ date_to: value, page: 1 });
+                  }}
+                  className="filters-date-input"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[color:var(--muted)] lg:justify-end">
-            <span>{isPending ? "Updating..." : `Showing ${rangeStart}-${rangeEnd} of ${totalCount}`}</span>
-            <details
-              ref={exportRef}
-              className="relative z-30"
-              onToggle={() => {
-                if (exportRef.current?.open) {
-                  openExclusive(exportRef);
-                }
-              }}
-            >
-              <summary className="btn-secondary inline-flex min-h-[44px] items-center justify-between cursor-pointer list-none">
-                Export
-              </summary>
-              <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                <div className="space-y-3 text-sm text-[color:var(--ink)]">
-                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
-                    <input
-                      type="checkbox"
-                      checked={includeFullAadhaar}
-                      onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
-                    />
-                    Include full Aadhaar
-                  </label>
-                  <button type="button" className="btn-secondary w-full" onClick={exportFiltered} disabled={exporting}>
-                    Export filtered (max 2000)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary w-full"
-                    onClick={exportSelected}
-                    disabled={selectedIds.size === 0}
-                  >
-                    Export selected
-                  </button>
-                </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--muted)]">
+            <span>
+              {isPending ? "Updating..." : `Showing ${rangeStart}-${rangeEnd} of ${totalCount}`}
+              {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-secondary min-h-[36px] w-full sm:w-auto" onClick={clearFilters}>
+                Clear filters
+              </button>
+              <div className="w-[140px]">
+                <Select
+                  value={exportFormat}
+                  onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                  className="export-format-select text-[11px]"
+                  aria-label="Export format"
+                >
+                  <option value="csv">CSV</option>
+                  <option value="excel">Excel</option>
+                  <option value="pdf">PDF</option>
+                </Select>
               </div>
-            </details>
+              <details
+                ref={exportRef}
+                className="relative z-30 w-full sm:w-auto"
+                onToggle={() => {
+                  if (exportRef.current?.open) {
+                    openExclusive(exportRef);
+                  }
+                }}
+              >
+                <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
+                  Export
+                </summary>
+                <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
+                  <div className="space-y-3 text-sm text-[color:var(--ink)]">
+                    <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+                      <input
+                        type="checkbox"
+                        checked={includeFullAadhaar}
+                        onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
+                      />
+                      Include full Aadhaar
+                    </label>
+                    <button type="button" className="btn-secondary w-full" onClick={exportFiltered} disabled={exporting}>
+                      Export filtered (max 2000)
+                    </button>
+                  </div>
+                </div>
+              </details>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                  onClick={exportSelected}
+                >
+                  Export selected
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1067,22 +1558,15 @@ export function YatrisGrid({
         </div>
       </div>
 
-      {selectedIds.size > 0 && (
-        <div className="card px-4 py-3 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-[color:var(--ink)]">
-              {selectedIds.size} selected on this page
-            </div>
-            <button type="button" className="btn-secondary" onClick={exportSelected}>
-              Export selected
-            </button>
-          </div>
-        </div>
-      )}
-
       {exportMessage && (
         <div className="card px-4 py-3 text-sm text-amber-200 border border-amber-500/40 bg-amber-950/30">
           {exportMessage}
+        </div>
+      )}
+
+      {uploadMessage && (
+        <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
+          {uploadMessage}
         </div>
       )}
 
@@ -1105,60 +1589,111 @@ export function YatrisGrid({
       )}
 
       {!error && rows.length > 0 && (
-        <div className="space-y-4">
-          <div className="card rounded-none overflow-visible p-3">
+        <div className="space-y-4 p-2">
+          <div className="card rounded-none overflow-visible p-2">
             <div className="hidden overflow-x-auto overflow-y-visible p-2 md:block">
-              <table className="min-w-full text-sm">
-                <thead className="sticky top-0 bg-[color:var(--surface-muted)] text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                  <tr className="text-left">
-                    <th className="px-5 py-3">
+              <table className="min-w-full bg-[color:var(--surface)] text-[12px] text-center">
+                <thead className="sticky top-0 bg-[color:var(--surface-muted)] text-[11px] font-semibold text-[color:var(--muted)] border-b border-[color:var(--border)]">
+                  <tr className="text-center">
+                    <th className="h-[45px] px-6 py-0 align-middle text-center">
                       <input type="checkbox" checked={allSelected} onChange={toggleAll} />
                     </th>
-                    {visibleColumns.map((column) => (
-                      <th
-                        key={column.id}
-                        className="px-5 py-3 font-semibold"
-                      >
-                        {column.sortable ? (
-                          <button
-                            type="button"
-                            className="flex items-center gap-2"
-                            onClick={() => {
-                              const nextSort = column.id === "name_hi" ? "name" : column.id;
-                              const nextDir =
-                                filters.sort === nextSort && filters.dir === "asc" ? "desc" : "asc";
-                              setLocalFilters((prev) => ({
-                                ...prev,
-                                sort: nextSort as YatrisListParams["sort"],
-                                dir: nextDir,
-                              }));
-                              updateParams({ sort: nextSort as YatrisListParams["sort"], dir: nextDir, page: 1 });
-                            }}
-                          >
-                            {column.label}
-                            {filters.sort === (column.id === "name_hi" ? "name" : column.id) && (
-                              <span className="text-[color:var(--ink)]">{filters.dir === "asc" ? "^" : "v"}</span>
-                            )}
-                          </button>
-                        ) : (
-                          column.label
-                        )}
-                      </th>
-                    ))}
+                    {visibleColumns.map((column) => {
+                      const sortKey = column.id === "name_hi" ? "name" : column.id;
+                      const isSorted = column.sortable && filters.sort === sortKey;
+                      const sortDirection = filters.dir === "asc" ? "asc" : "desc";
+                      const isFilterable = FILTERABLE_COLUMNS.has(column.id);
+                      const showDivider = isSorted && isFilterable;
+                      const headerContent = (
+                        <span className="inline-flex items-center justify-center gap-1.5">
+                          <span>{column.label}</span>
+                          {isSorted && (
+                            <span className="text-[color:var(--ink)]">
+                              <SortIcon direction={sortDirection} />
+                            </span>
+                          )}
+                          {showDivider && <span className="h-3 w-px bg-[color:var(--border)]" aria-hidden="true" />}
+                          {isFilterable && (
+                            <span className="text-[color:var(--muted)] opacity-70" aria-hidden="true">
+                              <FilterIcon className="h-3 w-3" />
+                            </span>
+                          )}
+                        </span>
+                      );
+
+                      return (
+                        <th
+                          key={column.id}
+                          className="h-[45px] px-4 py-0 align-middle text-center border-l border-[color:var(--border)]/60"
+                        >
+                          {column.sortable ? (
+                            <button
+                              type="button"
+                              className="inline-flex w-full items-center justify-center gap-1 text-center"
+                              onClick={() => {
+                                const nextDir =
+                                  filters.sort === sortKey && filters.dir === "asc" ? "desc" : "asc";
+                                setLocalFilters((prev) => ({
+                                  ...prev,
+                                  sort: sortKey as YatrisListParams["sort"],
+                                  dir: nextDir,
+                                }));
+                                updateParams({ sort: sortKey as YatrisListParams["sort"], dir: nextDir, page: 1 });
+                              }}
+                            >
+                              {headerContent}
+                            </button>
+                          ) : (
+                            <div className="inline-flex w-full items-center justify-center gap-1 text-center">
+                              {headerContent}
+                            </div>
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                  <tr className="text-center bg-[color:var(--surface)]">
+                    <th className="px-6 py-2 align-middle text-center border-t border-[color:var(--border)]">
+                      <span className="sr-only">Select</span>
+                    </th>
+                    {visibleColumns.map((column) => {
+                      const isDisabled = column.id === "actions";
+                      return (
+                        <th
+                          key={`${column.id}-filter`}
+                          className="px-3 py-2 align-middle text-center border-l border-t border-[color:var(--border)]/60"
+                        >
+                          <input
+                            type="text"
+                            value={isDisabled ? "" : localFilters.columnFilters?.[column.id as ColumnFilterKey] ?? ""}
+                            onChange={
+                              isDisabled
+                                ? undefined
+                                : (event) => updateColumnFilter(column.id as ColumnFilterKey, event.target.value)
+                            }
+                            placeholder={isDisabled ? "" : "Search"}
+                            disabled={isDisabled}
+                            className={`w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-2 py-1 text-[11px] text-center text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] ${
+                              isDisabled ? "cursor-not-allowed opacity-50" : ""
+                            }`}
+                          />
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[color:var(--border)]">
+                <tbody className="divide-y divide-[color:var(--border)] bg-[color:var(--surface)]">
                   {rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="cursor-pointer hover:bg-[color:var(--surface-muted)]/50"
+                      className="cursor-pointer odd:bg-[color:var(--surface-muted)]/35 even:bg-[color:var(--surface)] hover:bg-[color:var(--surface-muted)]/60"
                       onClick={(event) => {
                         const target = event.target as HTMLElement;
                         if (target.closest("button") || target.closest("a") || target.closest("input")) return;
                         router.push(`/yatris/${row.id}`);
                       }}
                     >
-                      <td className="px-5 py-3">
+                      <td className="px-6 py-2.5 align-middle text-center">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(row.id)}
@@ -1166,7 +1701,10 @@ export function YatrisGrid({
                         />
                       </td>
                       {visibleColumns.map((column) => (
-                        <td key={column.id} className="px-5 py-3">
+                        <td
+                          key={column.id}
+                          className="px-4 py-2.5 align-middle text-center border-l border-[color:var(--border)]/60"
+                        >
                           {column.cell(row)}
                         </td>
                       ))}
@@ -1204,14 +1742,14 @@ export function YatrisGrid({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
+          <div className="pagination-compact flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div className="flex items-center gap-2 text-[11px] text-[color:var(--muted)]">
               Page {page} of {pageCount}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary pagination-prev"
                 onClick={() => updateParams({ page: Math.max(1, page - 1) })}
                 disabled={page <= 1}
               >
@@ -1219,25 +1757,28 @@ export function YatrisGrid({
               </button>
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary pagination-next"
                 onClick={() => updateParams({ page: Math.min(pageCount, page + 1) })}
                 disabled={page >= pageCount}
               >
                 Next
               </button>
-              <Select
-                value={String(localPageSize)}
-                onChange={(event) => {
-                  const nextSize = Number.parseInt(event.target.value, 10);
-                  setLocalPageSize(nextSize);
-                  updateParams({ pageSize: nextSize, page: 1 });
-                }}
-              >
-                <option value="10">10 / page</option>
-                <option value="25">25 / page</option>
-                <option value="50">50 / page</option>
-                <option value="100">100 / page</option>
-              </Select>
+              <div className="w-[120px]">
+                <Select
+                  value={String(localPageSize)}
+                  onChange={(event) => {
+                    const nextSize = Number.parseInt(event.target.value, 10);
+                    setLocalPageSize(nextSize);
+                    updateParams({ pageSize: nextSize, page: 1 });
+                  }}
+                  className="text-[11px]"
+                >
+                  <option value="10">10 / page</option>
+                  <option value="25">25 / page</option>
+                  <option value="50">50 / page</option>
+                  <option value="100">100 / page</option>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
