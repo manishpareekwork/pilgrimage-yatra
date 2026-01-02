@@ -8,6 +8,7 @@ import {
   CheckboxRow,
   Field,
   FormSection,
+  ChakraSpinner,
   PageHeader,
   Select,
   TextArea,
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { TRAIN_CLASS_OPTIONS } from "@/lib/trainClasses";
+import { listDistricts, listStates, type AddressOption } from "@/lib/addressLookup";
 
 const initialState: ActionState = { error: null, id: null, fieldErrors: null };
 
@@ -24,6 +26,10 @@ const minimalFieldNames = new Set([
   "guardian_relation",
   "father_name_hi",
   "address_hi",
+  "address_state",
+  "address_district",
+  "address_city",
+  "address_pin",
   "phone",
   "whatsapp",
   "dob",
@@ -85,6 +91,13 @@ export function NewRegistrationForm({
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadAttempted, setUploadAttempted] = useState(false);
+  const [stateOptions, setStateOptions] = useState<AddressOption[]>([]);
+  const [districtOptions, setDistrictOptions] = useState<AddressOption[]>([]);
+  const [addressState, setAddressState] = useState("");
+  const [addressDistrict, setAddressDistrict] = useState("");
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const showDevTools =
+    process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
 
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as
@@ -148,7 +161,7 @@ export function NewRegistrationForm({
     file: File | null,
     previewUrl: string | null
   ) => {
-    const isDisabled = isPending || uploadingFiles || !hasOrchestrator;
+    const isDisabled = isPending || uploadingFiles;
     const placeholderText = uploadingFiles ? "Uploading" : file ? "Selected" : `Add ${label}`;
     const accept =
       kind === "photo" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf";
@@ -159,16 +172,32 @@ export function NewRegistrationForm({
           <img src={previewUrl} alt={`${label} preview`} className="upload-thumb-image" />
         ) : (
           <div className="upload-thumb-placeholder" aria-label={`${label} placeholder`}>
-            <svg viewBox="0 0 20 20" className="upload-thumb-plus" aria-hidden="true">
-              <path
-                d="M10 4v12M4 10h12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span>{placeholderText}</span>
+            {uploadingFiles ? (
+              <>
+                <ChakraSpinner className="h-5 w-5" title="Uploading" />
+                <span>{placeholderText}</span>
+              </>
+            ) : (
+              <>
+                <div className="relative flex items-center justify-center">
+                  <ChakraSpinner
+                    className="h-5 w-5 text-[color:var(--muted)]"
+                    animate={false}
+                    title="Add upload"
+                  />
+                  <svg viewBox="0 0 20 20" className="upload-thumb-plus absolute" aria-hidden="true">
+                    <path
+                      d="M10 4v12M4 10h12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <span>{placeholderText}</span>
+              </>
+            )}
           </div>
         )}
         <input
@@ -181,6 +210,47 @@ export function NewRegistrationForm({
       </label>
     );
   };
+
+  useEffect(() => {
+    let isActive = true;
+    const loadStates = async () => {
+      try {
+        const options = await listStates(supabase);
+        if (!isActive) return;
+        setStateOptions(options);
+      } catch (err) {
+        if (!isActive) return;
+        setLookupError(err instanceof Error ? err.message : "Unable to load states.");
+      }
+    };
+    void loadStates();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!addressState) {
+      setDistrictOptions([]);
+      if (addressDistrict) setAddressDistrict("");
+      return;
+    }
+    let isActive = true;
+    const loadDistricts = async () => {
+      try {
+        const options = await listDistricts(supabase, addressState);
+        if (!isActive) return;
+        setDistrictOptions(options);
+      } catch (err) {
+        if (!isActive) return;
+        setLookupError(err instanceof Error ? err.message : "Unable to load districts.");
+      }
+    };
+    void loadDistricts();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase, addressState, addressDistrict]);
 
   useEffect(() => {
     return () => {
@@ -203,6 +273,12 @@ export function NewRegistrationForm({
     setInputValue("guardian_relation", "father");
     setInputValue("father_name_hi", "दीपक");
     setInputValue("address_hi", "राम लीला मैदान, दिल्ली");
+    setInputValue("address_state", "Delhi");
+    setInputValue("address_district", "New Delhi");
+    setInputValue("address_city", "New Delhi");
+    setInputValue("address_pin", "110001");
+    setAddressState("Delhi");
+    setAddressDistrict("New Delhi");
     setInputValue("aadhaar_no", "1234 5678 9012");
     setInputValue("phone", uniquePhone);
     setInputValue("whatsapp", uniquePhone);
@@ -325,6 +401,11 @@ export function NewRegistrationForm({
     }
   }, [otherActive]);
 
+  const hasCustomState = Boolean(addressState && !stateOptions.some((option) => option.id === addressState));
+  const hasCustomDistrict = Boolean(
+    addressDistrict && !districtOptions.some((option) => option.id === addressDistrict)
+  );
+
   useEffect(() => {
     if (!minimalMode) setOptionalOpen(false);
   }, [minimalMode]);
@@ -339,21 +420,17 @@ export function NewRegistrationForm({
 
   return (
     <form ref={formRef} action={formAction} className="new-registration-form space-y-8">
-      <PageHeader
-        title="New Registration"
-        subtitle="Complete required details and save to continue."
-        actions={
-          <label className="flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-2 text-xs font-semibold text-[color:var(--muted)]">
-            <input
-              type="checkbox"
-              checked={minimalMode}
-              onChange={(event) => setMinimalMode(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-700/60 bg-slate-950/40 text-orange-400 focus:ring-orange-400"
-            />
-            Minimal mode
-          </label>
-        }
-      />
+      <div className="relative">
+        <PageHeader
+          title="New Registration"
+          subtitle="Complete required details and save to continue."
+          className="new-registration-hero"
+        />
+        <div className="detail-thumbs">
+          {renderUploadSlot("photo", "Photo", photoFile, photoPreview)}
+          {renderUploadSlot("form", "Form", formFile, formPreview)}
+        </div>
+      </div>
 
       {state?.error && (
         <div className="rounded-2xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
@@ -366,41 +443,54 @@ export function NewRegistrationForm({
         </div>
       )}
 
-      <FormSection title="Test helpers">
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={fillSampleData}
-            disabled={isPending}
-            className="rounded-xl border border-slate-700/60 px-3 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-60"
-          >
-            Fill Sample Data
-          </button>
-        </div>
-      </FormSection>
-
-      <FormSection title="Uploads" description="Optional photo and form image uploads.">
-        <div className="flex flex-wrap items-center gap-4">
-          {renderUploadSlot("photo", "Photo", photoFile, photoPreview)}
-          {renderUploadSlot("form", "Form", formFile, formPreview)}
-        </div>
-        {!hasOrchestrator && (
-          <div className="text-xs text-amber-600">Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.</div>
-        )}
-        {uploadingFiles && (
-          <div className="text-xs text-[color:var(--muted)]">Uploading selected files...</div>
-        )}
-        {uploadError && (
-          <div className="text-xs text-rose-500">
-            {uploadError}
-            {state?.id && (
-              <Link href={`/yatris/${state.id}`} className="ml-2 text-[color:var(--accent)]">
-                Open record
-              </Link>
-            )}
+      {showDevTools && (
+        <details className="card p-4">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+            Advanced tools
+          </summary>
+          <div className="mt-4 space-y-4">
+            <label className="flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-2 text-xs font-semibold text-[color:var(--muted)]">
+              <input
+                type="checkbox"
+                checked={minimalMode}
+                onChange={(event) => setMinimalMode(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-700/60 bg-slate-950/40 text-orange-400 focus:ring-orange-400"
+              />
+              Minimal mode
+            </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={fillSampleData}
+                disabled={isPending}
+                className="rounded-xl border border-slate-700/60 px-3 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-60"
+              >
+                Fill Sample Data
+              </button>
+            </div>
           </div>
-        )}
-      </FormSection>
+        </details>
+      )}
+
+      {!hasOrchestrator && (
+        <div className="text-xs text-amber-600">Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.</div>
+      )}
+      {uploadingFiles && (
+        <div className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+          <ChakraSpinner className="h-3.5 w-3.5" title="Uploading" />
+          <span>Uploading selected files...</span>
+        </div>
+      )}
+      {uploadError && (
+        <div className="text-xs text-rose-500">
+          {uploadError}
+          {state?.id && (
+            <Link href={`/yatris/${state.id}`} className="ml-2 text-[color:var(--accent)]">
+              Open record
+            </Link>
+          )}
+        </div>
+      )}
 
       <FormSection title="Applicant">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -525,6 +615,56 @@ export function NewRegistrationForm({
               error={hasFieldError("address_hi")}
             />
           </Field>
+          <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="State" htmlFor="address_state">
+              <Select
+                id="address_state"
+                name="address_state"
+                value={addressState}
+                onChange={(event) => {
+                  setAddressState(event.target.value);
+                  setAddressDistrict("");
+                }}
+              >
+                <option value="">Select</option>
+                {hasCustomState && <option value={addressState}>{addressState}</option>}
+                {stateOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="District" htmlFor="address_district">
+              <Select
+                id="address_district"
+                name="address_district"
+                value={addressDistrict}
+                onChange={(event) => setAddressDistrict(event.target.value)}
+                disabled={!addressState}
+              >
+                <option value="">Select</option>
+                {hasCustomDistrict && <option value={addressDistrict}>{addressDistrict}</option>}
+                {districtOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="City / Village" htmlFor="address_city">
+              <TextInput id="address_city" name="address_city" placeholder="City or village" />
+            </Field>
+            <Field label="PIN code" htmlFor="address_pin">
+              <TextInput
+                id="address_pin"
+                name="address_pin"
+                placeholder="PIN code"
+                inputMode="numeric"
+              />
+            </Field>
+          </div>
+          {lookupError && <div className="col-span-full text-xs text-rose-500">{lookupError}</div>}
         </div>
       </FormSection>
 

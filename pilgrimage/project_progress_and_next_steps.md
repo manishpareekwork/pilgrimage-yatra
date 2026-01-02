@@ -32,6 +32,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Project Creation | ✅ | `pilgrimage-yatra` in Mumbai region. |
 | Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode + reservation_by enums, full PDF registration columns, helper RPCs, RLS (migration `20251229_registration_alignment.sql`); added safe re-runnable `pilgrimage_bootstrap_safe.sql`. |
 | Buckets | ✅ | `forms` and `photos` created (private) with staff read policy. |
+| Address Lookup Tables | ✅ | `address_states` + `address_districts` with RPCs; seed pipeline in `supabase/scripts/build_address_lookup.py` + `seed_address_lookup.sql` (pincode table removed). |
 | First Admin User | ⚙️ Pending | Create Auth user → run `select public.admin_set_user_role('<uuid>'::uuid, 'admin');` |
 | Review/Volunteer Roles | ⚙️ Pending | To assign once reviewers onboarded. |
 | Testing Data | ⚙️ Pending | Insert sample registration for UI testing. |
@@ -66,6 +67,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ### 1. Supabase Ops
 - [ ] Create admin/reviewer/volunteer auth users and set roles via `admin_set_user_role`.
 - [ ] Seed 3–5 test registrations for UI flows.
+- [ ] Run address lookup seed for states/districts once DB connection is confirmed.
 
 ### 2. Cloud API Middleware (Render: https://pilgrimage-yatra.onrender.com)
 - [x] Scaffold Node.js + TypeScript Express service (`/healthz`, `/registrations`, `/process-form` mock).
@@ -123,6 +125,11 @@ This document tracks all progress, configuration milestones, and next planned ac
 | 2026-01-02 | Added safe Supabase bootstrap script (non-destructive) and signed download URLs for private photo thumbnails in Yatris grid. |
 | 2026-01-02 | Yatris grid refinement: table spacing, column search, multi-format export (CSV/Excel/PDF), inline photo upload; orchestrator CORS enabled for browser clients. |
 | 2026-01-02 | Yatris grid UI tightened (filters layout, padded table, ellipsis row actions); fixed `/yatris/[id]` load by selecting all columns; resolved create-user cookies async warning; stabilized build (Tailwind PostCSS plugin resolution + `NODE_ENV=production` in build script). |
+| 2026-01-02 | Address lookup pipeline added: scripts to generate `address_states.csv` + `address_districts.csv` from raw PIN dataset and seed Supabase tables. |
+| 2026-01-02 | Generated address CSVs from the raw PIN dataset; pending Supabase DB connection string to run `seed_address_lookup.sql`. |
+| 2026-01-02 | PIN lookup disabled in admin forms; PIN entry is manual/optional and no longer auto-fills from pincode table. |
+| 2026-01-02 | Address inputs simplified: City/Village combined into one field, Tehsil removed from admin forms. |
+| 2026-01-02 | Dropped `address_pincodes` + `fn_lookup_pincode`, removed address_village/address_tehsil columns via migration; updated bootstraps and seed docs. |
 | 2026-01-01 | Dashboard hero + status cards refined: pill-based CTA, compact status tiles, and improved spacing/controls. |
 | 2026-01-01 | Yatris listing upgraded to admin grid: server-side search/filter/sort/pagination, column customization + saved views, CSV export, responsive table/card view. |
 | 2026-01-01 | Refined `/yatris/new` form layout: calmer spacing, updated input sizing, streamlined medical notes, and polished declaration/actions styling. |

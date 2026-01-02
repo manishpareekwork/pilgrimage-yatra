@@ -4,7 +4,7 @@ const cn = (...classes: Array<string | undefined | false | null>) =>
   classes.filter(Boolean).join(" ");
 
 const inputBaseClass =
-  "w-full min-h-[44px] rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3.5 py-2.5 text-[15px] leading-[1.35] text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
+  "w-full min-h-[44px] rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3.5 py-2.5 text-[14px] leading-[1.35] text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
 const inputErrorClass =
   "border-red-500/70 focus:ring-red-400 focus:border-red-500/70";
 
@@ -30,7 +30,7 @@ export function PageHeader({
               {kicker}
             </p>
           )}
-          <h1 className="text-2xl font-semibold text-[color:var(--ink)]">{title}</h1>
+          <h1 className="text-xl font-semibold text-[color:var(--ink)]">{title}</h1>
           {subtitle && (
             <p className="text-sm text-[color:var(--muted)]">{subtitle}</p>
           )}
@@ -60,7 +60,7 @@ export function FormSection({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <div className="text-base font-semibold text-[color:var(--ink)]">{title}</div>
+          <div className="text-sm font-semibold text-[color:var(--ink)]">{title}</div>
           {description && (
             <p className="text-xs text-[color:var(--muted)]">{description}</p>
           )}
@@ -93,7 +93,7 @@ export function Field({
     <div className={cn("form-field", className)}>
       <label
         htmlFor={htmlFor}
-        className="mb-2 block text-[15px] font-medium text-[color:var(--ink)]"
+        className="mb-2 block text-sm font-medium text-[color:var(--ink)]"
       >
         {label}
         {required && <span className="text-red-400"> *</span>}
@@ -148,6 +148,48 @@ export function Select({
       {...props}
       className={cn(inputBaseClass, error && inputErrorClass, className)}
     />
+  );
+}
+
+export function ChakraSpinner({
+  className,
+  animate = true,
+  title = "Loading",
+}: {
+  className?: string;
+  animate?: boolean;
+  title?: string;
+}) {
+  const blades = Array.from({ length: 12 }, (_, index) => {
+    const angle = (index * 360) / 12;
+    return (
+      <rect
+        key={index}
+        x="11.2"
+        y="1.6"
+        width="1.6"
+        height="4.4"
+        rx="0.8"
+        transform={`rotate(${angle} 12 12)`}
+      />
+    );
+  });
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={cn(
+        "h-4 w-4 text-[color:var(--accent)]",
+        animate && "animate-spin",
+        className
+      )}
+      role="img"
+      aria-label={title}
+    >
+      {blades.map((blade) => React.cloneElement(blade, { fill: "currentColor" }))}
+      <circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    </svg>
   );
 }
 

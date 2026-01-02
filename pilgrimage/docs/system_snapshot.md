@@ -11,6 +11,10 @@
 | guardian_relation | text | no | father/husband/guardian relation label |
 | father_name_hi | text | no | applicant guardian |
 | address_hi | text | yes | applicant address |
+| address_state | text | no | state |
+| address_district | text | no | district |
+| address_city | text | no | city/village (combined in admin UI) |
+| address_pin | text | no | PIN code |
 | aadhaar_no | text | no | Aadhaar/ID number |
 | phone | text | yes | primary phone |
 | whatsapp | text | no | WhatsApp |
@@ -58,6 +62,10 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 | Father/Husband/Guardian relation | guardian_relation | Dropdown (Father/Husband/Guardian) | TODO | Optional |
 | Father/Guardian | father_name_hi | Applicant | Applicant | Optional |
 | Address | address_hi | Required | Required | Required |
+| State | address_state | Applicant | Applicant | Optional |
+| District | address_district | Applicant | Applicant | Optional |
+| City / Village | address_city | Applicant | Applicant | Optional |
+| PIN code | address_pin | Applicant | Applicant | Optional |
 | Aadhaar No. | aadhaar_no | Applicant | Applicant | Optional |
 | Phone | phone | Required | Required | Required |
 | WhatsApp | whatsapp | Applicant | Applicant | Optional |
@@ -113,7 +121,7 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 - No DB-level NOT NULL on address/phone to avoid breaking legacy rows; UI enforces required fields.
 
 ## Manual Test Checklist
-1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` to Supabase; verify age CHECK constraints.
+1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` + `20251231_address_components.sql` + `20251231_address_lookup_tables.sql` to Supabase; verify age CHECK constraints. Seed address lookup CSVs (states/districts; PIN table optional) via `supabase/scripts/seed_address_lookup.sql`.
 2. Admin `/yatris/new`: enter all PDF fields, ensure declaration required, submit -> redirect to detail; status=`submitted`.
 3. Admin `/yatris/[id]`: toggle each medical checkbox off/on and confirm meds inputs disable/clear; save; re-open to verify persisted. Update declaration timestamp and status.
 4. Admin uploads: upload photo and form image; confirm paths `photos/registrations/<id>/photo.jpg` and `forms/registrations/<id>/form.jpg` and checklist ticks.
@@ -124,3 +132,5 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 ## Change Log
 - 2025-12-29 — Registration schema/UI/mobile aligned with PDF; new Supabase migration + reservation_by enum; orchestrator mock now patches full dataset; system snapshot documented.
 - 2025-12-30 — Added health_common_meds for shared medical notes; UI uses combined medical notes field for heart/bp/diabetes/asthma.
+- 2025-12-31 — Added address components (state/district/city/village/tehsil/PIN) across admin forms and schema.
+- 2025-12-31 — Added address lookup tables + RPCs for state/district lists; PIN lookup optional, seed via CSV when needed.

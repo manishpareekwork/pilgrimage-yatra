@@ -1,0 +1,869 @@
+id,state_id,name
+AN-Nicobars,AN,Nicobars
+AN-North And Middle Andaman,AN,North And Middle Andaman
+AN-South Andamans,AN,South Andamans
+AP-Alluri Sitharama Raju,AP,Alluri Sitharama Raju
+AP-Anakapalli,AP,Anakapalli
+AP-Anantapur,AP,Anantapur
+AP-Ananthapuramu,AP,Ananthapuramu
+AP-Annamayya,AP,Annamayya
+AP-Bapatla,AP,Bapatla
+AP-Chittoor,AP,Chittoor
+AP-Dr. B.R. Ambedkar Konaseema,AP,Dr. B.R. Ambedkar Konaseema
+AP-East Godavari,AP,East Godavari
+AP-Eluru,AP,Eluru
+AP-Guntur,AP,Guntur
+AP-Kakinada,AP,Kakinada
+AP-Konaseema,AP,Konaseema
+AP-Krishna,AP,Krishna
+AP-Kurnool,AP,Kurnool
+AP-NTR,AP,NTR
+AP-Nandyal,AP,Nandyal
+AP-Nellore,AP,Nellore
+AP-Palnadu,AP,Palnadu
+AP-Parvathipuram Manyam,AP,Parvathipuram Manyam
+AP-Prakasam,AP,Prakasam
+AP-Spsr Nellore,AP,Spsr Nellore
+AP-Sri Sathya Sai,AP,Sri Sathya Sai
+AP-Srikakulam,AP,Srikakulam
+AP-Tirupati,AP,Tirupati
+AP-Visakhapatanam,AP,Visakhapatanam
+AP-Visakhapatnam,AP,Visakhapatnam
+AP-Vizianagaram,AP,Vizianagaram
+AP-West Godavari,AP,West Godavari
+AP-Y.S.R.,AP,Y.S.R.
+AP-YSR Kadapa,AP,YSR Kadapa
+AR-Anjaw,AR,Anjaw
+AR-Bichom,AR,Bichom
+AR-Changlang,AR,Changlang
+AR-Dibang Valley,AR,Dibang Valley
+AR-East Kameng,AR,East Kameng
+AR-East Siang,AR,East Siang
+AR-Kamle,AR,Kamle
+AR-Keyi Panyor,AR,Keyi Panyor
+AR-Kra Daadi,AR,Kra Daadi
+AR-Kurung Kumey,AR,Kurung Kumey
+AR-Lepa Rada,AR,Lepa Rada
+AR-Leparada,AR,Leparada
+AR-Lohit,AR,Lohit
+AR-Longding,AR,Longding
+AR-Lower Dibang Valley,AR,Lower Dibang Valley
+AR-Lower Siang,AR,Lower Siang
+AR-Lower Subansiri,AR,Lower Subansiri
+AR-Namsai,AR,Namsai
+AR-Pakke-Kessang,AR,Pakke-Kessang
+AR-Papum Pare,AR,Papum Pare
+AR-Shi Yomi,AR,Shi Yomi
+AR-Siang,AR,Siang
+AR-Tawang,AR,Tawang
+AR-Tirap,AR,Tirap
+AR-Upper Dibang Valley,AR,Upper Dibang Valley
+AR-Upper Siang,AR,Upper Siang
+AR-Upper Subansiri,AR,Upper Subansiri
+AR-West Kameng,AR,West Kameng
+AR-West Siang,AR,West Siang
+AS-Bajali,AS,Bajali
+AS-Baksa,AS,Baksa
+AS-Barpeta,AS,Barpeta
+AS-Biswanath,AS,Biswanath
+AS-Bongaigaon,AS,Bongaigaon
+AS-Cachar,AS,Cachar
+AS-Charaideo,AS,Charaideo
+AS-Chirang,AS,Chirang
+AS-Darrang,AS,Darrang
+AS-Dhemaji,AS,Dhemaji
+AS-Dhubri,AS,Dhubri
+AS-Dibrugarh,AS,Dibrugarh
+AS-Dima Hasao,AS,Dima Hasao
+AS-Goalpara,AS,Goalpara
+AS-Golaghat,AS,Golaghat
+AS-Hailakandi,AS,Hailakandi
+AS-Hojai,AS,Hojai
+AS-Jorhat,AS,Jorhat
+AS-Kamrup,AS,Kamrup
+AS-Kamrup Metro,AS,Kamrup Metro
+AS-Kamrup Metropolitan,AS,Kamrup Metropolitan
+AS-Karbi Anglong,AS,Karbi Anglong
+AS-Karimganj,AS,Karimganj
+AS-Kokrajhar,AS,Kokrajhar
+AS-Lakhimpur,AS,Lakhimpur
+AS-Majuli,AS,Majuli
+AS-Marigaon,AS,Marigaon
+AS-Morigaon,AS,Morigaon
+AS-Nagaon,AS,Nagaon
+AS-Nalbari,AS,Nalbari
+AS-Sivasagar,AS,Sivasagar
+AS-Sonitpur,AS,Sonitpur
+AS-South Salmara Mancachar,AS,South Salmara Mancachar
+AS-South Salmara-Mankachar,AS,South Salmara-Mankachar
+AS-Tamulpur,AS,Tamulpur
+AS-Tinsukia,AS,Tinsukia
+AS-Udalguri,AS,Udalguri
+AS-West Karbi Anglong,AS,West Karbi Anglong
+BR-Araria,BR,Araria
+BR-Arwal,BR,Arwal
+BR-Aurangabad,BR,Aurangabad
+BR-Banka,BR,Banka
+BR-Begusarai,BR,Begusarai
+BR-Bhagalpur,BR,Bhagalpur
+BR-Bhojpur,BR,Bhojpur
+BR-Buxar,BR,Buxar
+BR-Darbhanga,BR,Darbhanga
+BR-East Champaran,BR,East Champaran
+BR-Gaya,BR,Gaya
+BR-Gopalganj,BR,Gopalganj
+BR-Jamui,BR,Jamui
+BR-Jehanabad,BR,Jehanabad
+BR-Kaimur,BR,Kaimur
+BR-Kaimur (Bhabua),BR,Kaimur (Bhabua)
+BR-Katihar,BR,Katihar
+BR-Khagaria,BR,Khagaria
+BR-Kishanganj,BR,Kishanganj
+BR-Lakhisarai,BR,Lakhisarai
+BR-Madhepura,BR,Madhepura
+BR-Madhubani,BR,Madhubani
+BR-Munger,BR,Munger
+BR-Muzaffarpur,BR,Muzaffarpur
+BR-Nalanda,BR,Nalanda
+BR-Nawada,BR,Nawada
+BR-Pashchim Champaran,BR,Pashchim Champaran
+BR-Patna,BR,Patna
+BR-Purbi Champaran,BR,Purbi Champaran
+BR-Purnia,BR,Purnia
+BR-Rohtas,BR,Rohtas
+BR-Saharsa,BR,Saharsa
+BR-Samastipur,BR,Samastipur
+BR-Saran,BR,Saran
+BR-Sheikhpura,BR,Sheikhpura
+BR-Sheohar,BR,Sheohar
+BR-Sitamarhi,BR,Sitamarhi
+BR-Siwan,BR,Siwan
+BR-Supaul,BR,Supaul
+BR-Vaishali,BR,Vaishali
+BR-West Champaran,BR,West Champaran
+CG-Balod,CG,Balod
+CG-Baloda Bazar,CG,Baloda Bazar
+CG-Balrampur,CG,Balrampur
+CG-Balrampur-Ramanujganj,CG,Balrampur-Ramanujganj
+CG-Bastar,CG,Bastar
+CG-Bemetara,CG,Bemetara
+CG-Bijapur,CG,Bijapur
+CG-Bilaspur,CG,Bilaspur
+CG-Dantewada,CG,Dantewada
+CG-Dhamtari,CG,Dhamtari
+CG-Durg,CG,Durg
+CG-Gariaband,CG,Gariaband
+CG-Gariyaband,CG,Gariyaband
+CG-Gaurela-Pendra-Marwahi,CG,Gaurela-Pendra-Marwahi
+CG-Gaurella Pendra Marwahi,CG,Gaurella Pendra Marwahi
+CG-Janjgir-Champa,CG,Janjgir-Champa
+CG-Jashpur,CG,Jashpur
+CG-Kabirdham,CG,Kabirdham
+CG-Kanker,CG,Kanker
+CG-Khairagarh-Chhuikhadan-Gandai,CG,Khairagarh-Chhuikhadan-Gandai
+CG-Kondagaon,CG,Kondagaon
+CG-Korba,CG,Korba
+CG-Korea,CG,Korea
+CG-Mahasamund,CG,Mahasamund
+CG-Manendragarh-Chirmiri-Bharatpur,CG,Manendragarh-Chirmiri-Bharatpur
+CG-Mohla-Manpur-Ambagarh Chowki,CG,Mohla-Manpur-Ambagarh Chowki
+CG-Mungeli,CG,Mungeli
+CG-Narayanpur,CG,Narayanpur
+CG-Raigarh,CG,Raigarh
+CG-Raipur,CG,Raipur
+CG-Rajnandgaon,CG,Rajnandgaon
+CG-Sakti,CG,Sakti
+CG-Sarangarh-Bilaigarh,CG,Sarangarh-Bilaigarh
+CG-Sukma,CG,Sukma
+CG-Surajpur,CG,Surajpur
+CG-Surguja,CG,Surguja
+CH-Chandigarh,CH,Chandigarh
+DH-Dadra and Nagar Haveli,DH,Dadra and Nagar Haveli
+DH-Daman,DH,Daman
+DH-Diu,DH,Diu
+DL-Central,DL,Central
+DL-East,DL,East
+DL-New Delhi,DL,New Delhi
+DL-North,DL,North
+DL-North East,DL,North East
+DL-North West,DL,North West
+DL-Shahdara,DL,Shahdara
+DL-South,DL,South
+DL-South East,DL,South East
+DL-South West,DL,South West
+DL-West,DL,West
+GA-North Goa,GA,North Goa
+GA-South Goa,GA,South Goa
+GJ-Ahmadabad,GJ,Ahmadabad
+GJ-Ahmedabad,GJ,Ahmedabad
+GJ-Amreli,GJ,Amreli
+GJ-Anand,GJ,Anand
+GJ-Aravalli,GJ,Aravalli
+GJ-Arvalli,GJ,Arvalli
+GJ-Banas Kantha,GJ,Banas Kantha
+GJ-Banaskantha,GJ,Banaskantha
+GJ-Bharuch,GJ,Bharuch
+GJ-Bhavnagar,GJ,Bhavnagar
+GJ-Botad,GJ,Botad
+GJ-Chhota Udaipur,GJ,Chhota Udaipur
+GJ-Chhotaudepur,GJ,Chhotaudepur
+GJ-Dahod,GJ,Dahod
+GJ-Dang,GJ,Dang
+GJ-Devbhumi Dwarka,GJ,Devbhumi Dwarka
+GJ-Dohad,GJ,Dohad
+GJ-Gandhinagar,GJ,Gandhinagar
+GJ-Gir Somnath,GJ,Gir Somnath
+GJ-Jamnagar,GJ,Jamnagar
+GJ-Junagadh,GJ,Junagadh
+GJ-Kachchh,GJ,Kachchh
+GJ-Kheda,GJ,Kheda
+GJ-Kutch,GJ,Kutch
+GJ-Mahesana,GJ,Mahesana
+GJ-Mahisagar,GJ,Mahisagar
+GJ-Mehsana,GJ,Mehsana
+GJ-Morbi,GJ,Morbi
+GJ-Narmada,GJ,Narmada
+GJ-Navsari,GJ,Navsari
+GJ-Panch Mahals,GJ,Panch Mahals
+GJ-Panchmahal,GJ,Panchmahal
+GJ-Patan,GJ,Patan
+GJ-Porbandar,GJ,Porbandar
+GJ-Rajkot,GJ,Rajkot
+GJ-Sabar Kantha,GJ,Sabar Kantha
+GJ-Sabarkantha,GJ,Sabarkantha
+GJ-Surat,GJ,Surat
+GJ-Surendranagar,GJ,Surendranagar
+GJ-Tapi,GJ,Tapi
+GJ-Vadodara,GJ,Vadodara
+GJ-Valsad,GJ,Valsad
+GJ-Vav-Tharad,GJ,Vav-Tharad
+HP-Bilaspur,HP,Bilaspur
+HP-Chamba,HP,Chamba
+HP-Hamirpur,HP,Hamirpur
+HP-Kangra,HP,Kangra
+HP-Kinnaur,HP,Kinnaur
+HP-Kullu,HP,Kullu
+HP-Lahaul and Spiti,HP,Lahaul and Spiti
+HP-Lahul And Spiti,HP,Lahul And Spiti
+HP-Mandi,HP,Mandi
+HP-Shimla,HP,Shimla
+HP-Sirmaur,HP,Sirmaur
+HP-Solan,HP,Solan
+HP-Una,HP,Una
+HR-Ambala,HR,Ambala
+HR-Bhiwani,HR,Bhiwani
+HR-Charkhi Dadri,HR,Charkhi Dadri
+HR-Charki Dadri,HR,Charki Dadri
+HR-Faridabad,HR,Faridabad
+HR-Fatehabad,HR,Fatehabad
+HR-Gurugram,HR,Gurugram
+HR-Hisar,HR,Hisar
+HR-Jhajjar,HR,Jhajjar
+HR-Jind,HR,Jind
+HR-Kaithal,HR,Kaithal
+HR-Karnal,HR,Karnal
+HR-Kurukshetra,HR,Kurukshetra
+HR-Mahendragarh,HR,Mahendragarh
+HR-Nuh,HR,Nuh
+HR-Palwal,HR,Palwal
+HR-Panchkula,HR,Panchkula
+HR-Panipat,HR,Panipat
+HR-Rewari,HR,Rewari
+HR-Rohtak,HR,Rohtak
+HR-Sirsa,HR,Sirsa
+HR-Sonipat,HR,Sonipat
+HR-Yamunanagar,HR,Yamunanagar
+JH-Bokaro,JH,Bokaro
+JH-Chatra,JH,Chatra
+JH-Deoghar,JH,Deoghar
+JH-Dhanbad,JH,Dhanbad
+JH-Dumka,JH,Dumka
+JH-East Singhbhum,JH,East Singhbhum
+JH-East Singhbum,JH,East Singhbum
+JH-Garhwa,JH,Garhwa
+JH-Giridih,JH,Giridih
+JH-Godda,JH,Godda
+JH-Gumla,JH,Gumla
+JH-Hazaribag,JH,Hazaribag
+JH-Hazaribagh,JH,Hazaribagh
+JH-Jamtara,JH,Jamtara
+JH-Khunti,JH,Khunti
+JH-Koderma,JH,Koderma
+JH-Latehar,JH,Latehar
+JH-Lohardaga,JH,Lohardaga
+JH-Pakur,JH,Pakur
+JH-Palamu,JH,Palamu
+JH-Ramgarh,JH,Ramgarh
+JH-Ranchi,JH,Ranchi
+JH-Sahebganj,JH,Sahebganj
+JH-Sahibganj,JH,Sahibganj
+JH-Saraikela Kharsawan,JH,Saraikela Kharsawan
+JH-Seraikela-Kharsawan,JH,Seraikela-Kharsawan
+JH-Simdega,JH,Simdega
+JH-West Singhbhum,JH,West Singhbhum
+JK-Anantnag,JK,Anantnag
+JK-Bandipora,JK,Bandipora
+JK-Bandipore,JK,Bandipore
+JK-Baramulla,JK,Baramulla
+JK-Budgam,JK,Budgam
+JK-Doda,JK,Doda
+JK-Ganderbal,JK,Ganderbal
+JK-Jammu,JK,Jammu
+JK-Kathua,JK,Kathua
+JK-Kishtwar,JK,Kishtwar
+JK-Kulgam,JK,Kulgam
+JK-Kupwara,JK,Kupwara
+JK-Poonch,JK,Poonch
+JK-Pulwama,JK,Pulwama
+JK-Rajouri,JK,Rajouri
+JK-Ramban,JK,Ramban
+JK-Reasi,JK,Reasi
+JK-Samba,JK,Samba
+JK-Shopian,JK,Shopian
+JK-Srinagar,JK,Srinagar
+JK-Udhampur,JK,Udhampur
+KA-Bagalkot,KA,Bagalkot
+KA-Ballari,KA,Ballari
+KA-Bangalore Rural,KA,Bangalore Rural
+KA-Bangalore Urban,KA,Bangalore Urban
+KA-Belagavi,KA,Belagavi
+KA-Bengaluru Rural,KA,Bengaluru Rural
+KA-Bengaluru Urban,KA,Bengaluru Urban
+KA-Bidar,KA,Bidar
+KA-Bijapur,KA,Bijapur
+KA-Chamarajanagar,KA,Chamarajanagar
+KA-Chamarajanagara,KA,Chamarajanagara
+KA-Chikkaballapur,KA,Chikkaballapur
+KA-Chikkaballapura,KA,Chikkaballapura
+KA-Chikkamagaluru,KA,Chikkamagaluru
+KA-Chikmagalur,KA,Chikmagalur
+KA-Chitradurga,KA,Chitradurga
+KA-Dakshina Kannada,KA,Dakshina Kannada
+KA-Davanagere,KA,Davanagere
+KA-Davangere,KA,Davangere
+KA-Dharwad,KA,Dharwad
+KA-Gadag,KA,Gadag
+KA-Gadaga,KA,Gadaga
+KA-Hassan,KA,Hassan
+KA-Haveri,KA,Haveri
+KA-Kalaburagi,KA,Kalaburagi
+KA-Kodagu,KA,Kodagu
+KA-Kolar,KA,Kolar
+KA-Koppal,KA,Koppal
+KA-Mandya,KA,Mandya
+KA-Mysore,KA,Mysore
+KA-Mysuru,KA,Mysuru
+KA-Raichur,KA,Raichur
+KA-Ramanagara,KA,Ramanagara
+KA-Shimoga,KA,Shimoga
+KA-Shivamogga,KA,Shivamogga
+KA-Tumakuru,KA,Tumakuru
+KA-Udupi,KA,Udupi
+KA-Uttara Kannada,KA,Uttara Kannada
+KA-Vijayanagara,KA,Vijayanagara
+KA-Vijayapura,KA,Vijayapura
+KA-Vijaynagar,KA,Vijaynagar
+KA-Yadgir,KA,Yadgir
+KL-Alappuzha,KL,Alappuzha
+KL-Ernakulam,KL,Ernakulam
+KL-Idukki,KL,Idukki
+KL-Kannur,KL,Kannur
+KL-Kasaragod,KL,Kasaragod
+KL-Kollam,KL,Kollam
+KL-Kottayam,KL,Kottayam
+KL-Kozhikode,KL,Kozhikode
+KL-Malappuram,KL,Malappuram
+KL-Palakkad,KL,Palakkad
+KL-Pathanamthitta,KL,Pathanamthitta
+KL-Thiruvananthapuram,KL,Thiruvananthapuram
+KL-Thrissur,KL,Thrissur
+KL-Wayanad,KL,Wayanad
+LA-Kargil,LA,Kargil
+LA-Leh,LA,Leh
+LA-Leh Ladakh,LA,Leh Ladakh
+LD-Lakshadweep,LD,Lakshadweep
+LD-Lakshadweep District,LD,Lakshadweep District
+MH-Ahmednagar,MH,Ahmednagar
+MH-Akola,MH,Akola
+MH-Amravati,MH,Amravati
+MH-Aurangabad,MH,Aurangabad
+MH-Beed,MH,Beed
+MH-Bhandara,MH,Bhandara
+MH-Buldhana,MH,Buldhana
+MH-Chandrapur,MH,Chandrapur
+MH-Dhule,MH,Dhule
+MH-Gadchiroli,MH,Gadchiroli
+MH-Gondia,MH,Gondia
+MH-Hingoli,MH,Hingoli
+MH-Jalgaon,MH,Jalgaon
+MH-Jalna,MH,Jalna
+MH-Kolhapur,MH,Kolhapur
+MH-Latur,MH,Latur
+MH-Mumbai,MH,Mumbai
+MH-Mumbai City,MH,Mumbai City
+MH-Mumbai Suburban,MH,Mumbai Suburban
+MH-Nagpur,MH,Nagpur
+MH-Nanded,MH,Nanded
+MH-Nandurbar,MH,Nandurbar
+MH-Nashik,MH,Nashik
+MH-Osmanabad,MH,Osmanabad
+MH-Palghar,MH,Palghar
+MH-Parbhani,MH,Parbhani
+MH-Pune,MH,Pune
+MH-Raigad,MH,Raigad
+MH-Ratnagiri,MH,Ratnagiri
+MH-Sangli,MH,Sangli
+MH-Satara,MH,Satara
+MH-Sindhudurg,MH,Sindhudurg
+MH-Solapur,MH,Solapur
+MH-Thane,MH,Thane
+MH-Wardha,MH,Wardha
+MH-Washim,MH,Washim
+MH-Yavatmal,MH,Yavatmal
+ML-East Garo Hills,ML,East Garo Hills
+ML-East Jaintia Hills,ML,East Jaintia Hills
+ML-East Khasi Hills,ML,East Khasi Hills
+ML-Eastern West Khasi Hills,ML,Eastern West Khasi Hills
+ML-North Garo Hills,ML,North Garo Hills
+ML-Ri Bhoi,ML,Ri Bhoi
+ML-South Garo Hills,ML,South Garo Hills
+ML-South West Garo Hills,ML,South West Garo Hills
+ML-South West Khasi Hills,ML,South West Khasi Hills
+ML-West Garo Hills,ML,West Garo Hills
+ML-West Jaintia Hills,ML,West Jaintia Hills
+ML-West Khasi Hills,ML,West Khasi Hills
+MN-Bishnupur,MN,Bishnupur
+MN-Chandel,MN,Chandel
+MN-Churachandpur,MN,Churachandpur
+MN-Imphal East,MN,Imphal East
+MN-Imphal West,MN,Imphal West
+MN-Jiribam,MN,Jiribam
+MN-Kakching,MN,Kakching
+MN-Kamjong,MN,Kamjong
+MN-Kangpokpi,MN,Kangpokpi
+MN-Noney,MN,Noney
+MN-Pherzawl,MN,Pherzawl
+MN-Senapati,MN,Senapati
+MN-Tamenglong,MN,Tamenglong
+MN-Tengnoupal,MN,Tengnoupal
+MN-Thoubal,MN,Thoubal
+MN-Ukhrul,MN,Ukhrul
+MP-Agar Malwa,MP,Agar Malwa
+MP-Alirajpur,MP,Alirajpur
+MP-Anuppur,MP,Anuppur
+MP-Ashoknagar,MP,Ashoknagar
+MP-Balaghat,MP,Balaghat
+MP-Barwani,MP,Barwani
+MP-Betul,MP,Betul
+MP-Bhind,MP,Bhind
+MP-Bhopal,MP,Bhopal
+MP-Burhanpur,MP,Burhanpur
+MP-Chhatarpur,MP,Chhatarpur
+MP-Chhindwara,MP,Chhindwara
+MP-Damoh,MP,Damoh
+MP-Datia,MP,Datia
+MP-Dewas,MP,Dewas
+MP-Dhar,MP,Dhar
+MP-Dindori,MP,Dindori
+MP-East Nimar,MP,East Nimar
+MP-Guna,MP,Guna
+MP-Gwalior,MP,Gwalior
+MP-Harda,MP,Harda
+MP-Hoshangabad,MP,Hoshangabad
+MP-Indore,MP,Indore
+MP-Jabalpur,MP,Jabalpur
+MP-Jhabua,MP,Jhabua
+MP-Katni,MP,Katni
+MP-Khandwa,MP,Khandwa
+MP-Khargone,MP,Khargone
+MP-Maihar,MP,Maihar
+MP-Mandla,MP,Mandla
+MP-Mandsaur,MP,Mandsaur
+MP-Mauganj,MP,Mauganj
+MP-Morena,MP,Morena
+MP-Narsinghpur,MP,Narsinghpur
+MP-Neemuch,MP,Neemuch
+MP-Niwari,MP,Niwari
+MP-Pandhurna,MP,Pandhurna
+MP-Panna,MP,Panna
+MP-Raisen,MP,Raisen
+MP-Rajgarh,MP,Rajgarh
+MP-Ratlam,MP,Ratlam
+MP-Rewa,MP,Rewa
+MP-Sagar,MP,Sagar
+MP-Satna,MP,Satna
+MP-Sehore,MP,Sehore
+MP-Seoni,MP,Seoni
+MP-Shahdol,MP,Shahdol
+MP-Shajapur,MP,Shajapur
+MP-Sheopur,MP,Sheopur
+MP-Shivpuri,MP,Shivpuri
+MP-Sidhi,MP,Sidhi
+MP-Singrauli,MP,Singrauli
+MP-Tikamgarh,MP,Tikamgarh
+MP-Ujjain,MP,Ujjain
+MP-Umaria,MP,Umaria
+MP-Vidisha,MP,Vidisha
+MZ-Aizawl,MZ,Aizawl
+MZ-Champhai,MZ,Champhai
+MZ-Hnahthial,MZ,Hnahthial
+MZ-Khawzawl,MZ,Khawzawl
+MZ-Kolasib,MZ,Kolasib
+MZ-Lawngtlai,MZ,Lawngtlai
+MZ-Lunglei,MZ,Lunglei
+MZ-Mamit,MZ,Mamit
+MZ-Saiha,MZ,Saiha
+MZ-Saitual,MZ,Saitual
+MZ-Serchhip,MZ,Serchhip
+NL-Chümoukedima,NL,Chümoukedima
+NL-Dimapur,NL,Dimapur
+NL-Kiphire,NL,Kiphire
+NL-Kohima,NL,Kohima
+NL-Longleng,NL,Longleng
+NL-Mokokchung,NL,Mokokchung
+NL-Mon,NL,Mon
+NL-Niuland,NL,Niuland
+NL-Noklak,NL,Noklak
+NL-Peren,NL,Peren
+NL-Phek,NL,Phek
+NL-Shamator,NL,Shamator
+NL-Tseminyü,NL,Tseminyü
+NL-Tuensang,NL,Tuensang
+NL-Wokha,NL,Wokha
+NL-Zunheboto,NL,Zunheboto
+OD-Angul,OD,Angul
+OD-Anugul,OD,Anugul
+OD-Balangir,OD,Balangir
+OD-Balasore,OD,Balasore
+OD-Baleshwar,OD,Baleshwar
+OD-Bargarh,OD,Bargarh
+OD-Bhadrak,OD,Bhadrak
+OD-Boudh,OD,Boudh
+OD-Cuttack,OD,Cuttack
+OD-Debagarh,OD,Debagarh
+OD-Deogarh,OD,Deogarh
+OD-Dhenkanal,OD,Dhenkanal
+OD-Gajapati,OD,Gajapati
+OD-Ganjam,OD,Ganjam
+OD-Jagatsinghapur,OD,Jagatsinghapur
+OD-Jagatsinghpur,OD,Jagatsinghpur
+OD-Jajapur,OD,Jajapur
+OD-Jajpur,OD,Jajpur
+OD-Jharsuguda,OD,Jharsuguda
+OD-Kalahandi,OD,Kalahandi
+OD-Kandhamal,OD,Kandhamal
+OD-Kendrapara,OD,Kendrapara
+OD-Kendujhar,OD,Kendujhar
+OD-Khordha,OD,Khordha
+OD-Koraput,OD,Koraput
+OD-Malkangiri,OD,Malkangiri
+OD-Mayurbhanj,OD,Mayurbhanj
+OD-Nabarangpur,OD,Nabarangpur
+OD-Nayagarh,OD,Nayagarh
+OD-Nuapada,OD,Nuapada
+OD-Puri,OD,Puri
+OD-Rayagada,OD,Rayagada
+OD-Sambalpur,OD,Sambalpur
+OD-Sonepur,OD,Sonepur
+OD-Subarnapur,OD,Subarnapur
+OD-Sundargarh,OD,Sundargarh
+PB-Amritsar,PB,Amritsar
+PB-Barnala,PB,Barnala
+PB-Bathinda,PB,Bathinda
+PB-Faridkot,PB,Faridkot
+PB-Fatehgarh Sahib,PB,Fatehgarh Sahib
+PB-Fazilka,PB,Fazilka
+PB-Firozepur,PB,Firozepur
+PB-Firozpur,PB,Firozpur
+PB-Gurdaspur,PB,Gurdaspur
+PB-Hoshiarpur,PB,Hoshiarpur
+PB-Jalandhar,PB,Jalandhar
+PB-Kapurthala,PB,Kapurthala
+PB-Ludhiana,PB,Ludhiana
+PB-Malerkotla,PB,Malerkotla
+PB-Mansa,PB,Mansa
+PB-Moga,PB,Moga
+PB-Pathankot,PB,Pathankot
+PB-Patiala,PB,Patiala
+PB-Rupnagar,PB,Rupnagar
+PB-S.A.S Nagar,PB,S.A.S Nagar
+PB-Sahibzada Ajit Singh Nagar,PB,Sahibzada Ajit Singh Nagar
+PB-Sangrur,PB,Sangrur
+PB-Shahid Bhagat Singh Nagar,PB,Shahid Bhagat Singh Nagar
+PB-Sri Muktsar Sahib,PB,Sri Muktsar Sahib
+PB-Tarn Taran,PB,Tarn Taran
+PY-Karaikal,PY,Karaikal
+PY-Mahe,PY,Mahe
+PY-Mahé,PY,Mahé
+PY-Pondicherry,PY,Pondicherry
+PY-Puducherry,PY,Puducherry
+PY-Yanam,PY,Yanam
+RJ-Ajmer,RJ,Ajmer
+RJ-Alwar,RJ,Alwar
+RJ-Balotra,RJ,Balotra
+RJ-Banswara,RJ,Banswara
+RJ-Baran,RJ,Baran
+RJ-Barmer,RJ,Barmer
+RJ-Beawar,RJ,Beawar
+RJ-Bharatpur,RJ,Bharatpur
+RJ-Bhilwara,RJ,Bhilwara
+RJ-Bikaner,RJ,Bikaner
+RJ-Bundi,RJ,Bundi
+RJ-Chittorgarh,RJ,Chittorgarh
+RJ-Churu,RJ,Churu
+RJ-Dausa,RJ,Dausa
+RJ-Deeg,RJ,Deeg
+RJ-Dholpur,RJ,Dholpur
+RJ-Didwana Kuchaman,RJ,Didwana Kuchaman
+RJ-Dungarpur,RJ,Dungarpur
+RJ-Ganganagar,RJ,Ganganagar
+RJ-Hanumangarh,RJ,Hanumangarh
+RJ-Jaipur,RJ,Jaipur
+RJ-Jaisalmer,RJ,Jaisalmer
+RJ-Jalore,RJ,Jalore
+RJ-Jhalawar,RJ,Jhalawar
+RJ-Jhunjhunu,RJ,Jhunjhunu
+RJ-Jodhpur,RJ,Jodhpur
+RJ-Karauli,RJ,Karauli
+RJ-Khairthal-Tijara,RJ,Khairthal-Tijara
+RJ-Kota,RJ,Kota
+RJ-Kotputli-Behror,RJ,Kotputli-Behror
+RJ-Nagaur,RJ,Nagaur
+RJ-Pali,RJ,Pali
+RJ-Phalodi,RJ,Phalodi
+RJ-Pratapgarh,RJ,Pratapgarh
+RJ-Rajsamand,RJ,Rajsamand
+RJ-Salumbar,RJ,Salumbar
+RJ-Sawai Madhopur,RJ,Sawai Madhopur
+RJ-Sikar,RJ,Sikar
+RJ-Sirohi,RJ,Sirohi
+RJ-Sri Ganganagar,RJ,Sri Ganganagar
+RJ-Tonk,RJ,Tonk
+RJ-Udaipur,RJ,Udaipur
+SK-East District,SK,East District
+SK-Gangtok,SK,Gangtok
+SK-Gyalshing,SK,Gyalshing
+SK-Mangan,SK,Mangan
+SK-Namchi,SK,Namchi
+SK-North District,SK,North District
+SK-Pakyong,SK,Pakyong
+SK-Soreng,SK,Soreng
+SK-South District,SK,South District
+SK-West District,SK,West District
+TN-Ariyalur,TN,Ariyalur
+TN-Chengalpattu,TN,Chengalpattu
+TN-Chennai,TN,Chennai
+TN-Coimbatore,TN,Coimbatore
+TN-Cuddalore,TN,Cuddalore
+TN-Dharmapuri,TN,Dharmapuri
+TN-Dindigul,TN,Dindigul
+TN-Erode,TN,Erode
+TN-Kallakurichi,TN,Kallakurichi
+TN-Kanchipuram,TN,Kanchipuram
+TN-Kanniyakumari,TN,Kanniyakumari
+TN-Kanyakumari,TN,Kanyakumari
+TN-Karur,TN,Karur
+TN-Krishnagiri,TN,Krishnagiri
+TN-Madurai,TN,Madurai
+TN-Mayiladuthurai,TN,Mayiladuthurai
+TN-Nagapattinam,TN,Nagapattinam
+TN-Namakkal,TN,Namakkal
+TN-Nilgiris,TN,Nilgiris
+TN-Perambalur,TN,Perambalur
+TN-Pudukkottai,TN,Pudukkottai
+TN-Ramanathapuram,TN,Ramanathapuram
+TN-Ranipet,TN,Ranipet
+TN-Salem,TN,Salem
+TN-Sivaganga,TN,Sivaganga
+TN-Tenkasi,TN,Tenkasi
+TN-Thanjavur,TN,Thanjavur
+TN-Theni,TN,Theni
+TN-Thiruvallur,TN,Thiruvallur
+TN-Thiruvarur,TN,Thiruvarur
+TN-Thoothukudi,TN,Thoothukudi
+TN-Tiruchirappalli,TN,Tiruchirappalli
+TN-Tirunelveli,TN,Tirunelveli
+TN-Tirupathur,TN,Tirupathur
+TN-Tirupattur,TN,Tirupattur
+TN-Tiruppur,TN,Tiruppur
+TN-Tiruvallur,TN,Tiruvallur
+TN-Tiruvannamalai,TN,Tiruvannamalai
+TN-Tiruvarur,TN,Tiruvarur
+TN-Tuticorin,TN,Tuticorin
+TN-Vellore,TN,Vellore
+TN-Villupuram,TN,Villupuram
+TN-Viluppuram,TN,Viluppuram
+TN-Virudhunagar,TN,Virudhunagar
+TR-Dhalai,TR,Dhalai
+TR-Gomati,TR,Gomati
+TR-Khowai,TR,Khowai
+TR-North Tripura,TR,North Tripura
+TR-Sepahijala,TR,Sepahijala
+TR-South Tripura,TR,South Tripura
+TR-Unakoti,TR,Unakoti
+TR-West Tripura,TR,West Tripura
+TS-Adilabad,TS,Adilabad
+TS-Bhadradri Kothagudem,TS,Bhadradri Kothagudem
+TS-Hanamkonda,TS,Hanamkonda
+TS-Hanumakonda,TS,Hanumakonda
+TS-Hyderabad,TS,Hyderabad
+TS-Jagitial,TS,Jagitial
+TS-Jagtial,TS,Jagtial
+TS-Jangaon,TS,Jangaon
+TS-Jangoan,TS,Jangoan
+TS-Jayashankar Bhupalapally,TS,Jayashankar Bhupalapally
+TS-Jayashankar Bhupalpally,TS,Jayashankar Bhupalpally
+TS-Jogulamba Gadwal,TS,Jogulamba Gadwal
+TS-Kamareddy,TS,Kamareddy
+TS-Karimnagar,TS,Karimnagar
+TS-Khammam,TS,Khammam
+TS-Kumuram Bheem Asifabad,TS,Kumuram Bheem Asifabad
+TS-Mahabubabad,TS,Mahabubabad
+TS-Mahabubnagar,TS,Mahabubnagar
+TS-Mahbubnagar,TS,Mahbubnagar
+TS-Mancherial,TS,Mancherial
+TS-Medak,TS,Medak
+TS-Medchal–Malkajgiri,TS,Medchal–Malkajgiri
+TS-Mulugu,TS,Mulugu
+TS-Nagarkurnool,TS,Nagarkurnool
+TS-Nalgonda,TS,Nalgonda
+TS-Narayanpet,TS,Narayanpet
+TS-Nirmal,TS,Nirmal
+TS-Nizamabad,TS,Nizamabad
+TS-Peddapalli,TS,Peddapalli
+TS-Rajanna Sircilla,TS,Rajanna Sircilla
+TS-Ranga Reddy,TS,Ranga Reddy
+TS-Sangareddy,TS,Sangareddy
+TS-Siddipet,TS,Siddipet
+TS-Suryapet,TS,Suryapet
+TS-Vikarabad,TS,Vikarabad
+TS-Wanaparthy,TS,Wanaparthy
+TS-Warangal,TS,Warangal
+TS-Yadadri Bhuvanagiri,TS,Yadadri Bhuvanagiri
+UK-Almora,UK,Almora
+UK-Bageshwar,UK,Bageshwar
+UK-Chamoli,UK,Chamoli
+UK-Champawat,UK,Champawat
+UK-Dehradun,UK,Dehradun
+UK-Haridwar,UK,Haridwar
+UK-Nainital,UK,Nainital
+UK-Pauri Garhwal,UK,Pauri Garhwal
+UK-Pithoragarh,UK,Pithoragarh
+UK-Rudra Prayag,UK,Rudra Prayag
+UK-Rudraprayag,UK,Rudraprayag
+UK-Tehri Garhwal,UK,Tehri Garhwal
+UK-Udam Singh Nagar,UK,Udam Singh Nagar
+UK-Udham Singh Nagar,UK,Udham Singh Nagar
+UK-Uttar Kashi,UK,Uttar Kashi
+UK-Uttarkashi,UK,Uttarkashi
+UP-Agra,UP,Agra
+UP-Aligarh,UP,Aligarh
+UP-Ambedkar Nagar,UP,Ambedkar Nagar
+UP-Amethi,UP,Amethi
+UP-Amroha,UP,Amroha
+UP-Auraiya,UP,Auraiya
+UP-Ayodhya,UP,Ayodhya
+UP-Azamgarh,UP,Azamgarh
+UP-Baghpat,UP,Baghpat
+UP-Bagpat,UP,Bagpat
+UP-Bahraich,UP,Bahraich
+UP-Ballia,UP,Ballia
+UP-Balrampur,UP,Balrampur
+UP-Banda,UP,Banda
+UP-Barabanki,UP,Barabanki
+UP-Bareilly,UP,Bareilly
+UP-Basti,UP,Basti
+UP-Bhadohi,UP,Bhadohi
+UP-Bijnor,UP,Bijnor
+UP-Budaun,UP,Budaun
+UP-Bulandshahr,UP,Bulandshahr
+UP-Chandauli,UP,Chandauli
+UP-Chitrakoot,UP,Chitrakoot
+UP-Deoria,UP,Deoria
+UP-Etah,UP,Etah
+UP-Etawah,UP,Etawah
+UP-Farrukhabad,UP,Farrukhabad
+UP-Fatehpur,UP,Fatehpur
+UP-Firozabad,UP,Firozabad
+UP-Gautam Buddha Nagar,UP,Gautam Buddha Nagar
+UP-Ghaziabad,UP,Ghaziabad
+UP-Ghazipur,UP,Ghazipur
+UP-Gonda,UP,Gonda
+UP-Gorakhpur,UP,Gorakhpur
+UP-Hamirpur,UP,Hamirpur
+UP-Hapur,UP,Hapur
+UP-Hardoi,UP,Hardoi
+UP-Hathras,UP,Hathras
+UP-Jalaun,UP,Jalaun
+UP-Jaunpur,UP,Jaunpur
+UP-Jhansi,UP,Jhansi
+UP-Kannauj,UP,Kannauj
+UP-Kanpur Dehat,UP,Kanpur Dehat
+UP-Kanpur Nagar,UP,Kanpur Nagar
+UP-Kasganj,UP,Kasganj
+UP-Kaushambi,UP,Kaushambi
+UP-Kheri,UP,Kheri
+UP-Kushi Nagar,UP,Kushi Nagar
+UP-Kushinagar,UP,Kushinagar
+UP-Lakhimpur Kheri,UP,Lakhimpur Kheri
+UP-Lalitpur,UP,Lalitpur
+UP-Lucknow,UP,Lucknow
+UP-Maharajganj,UP,Maharajganj
+UP-Mahoba,UP,Mahoba
+UP-Mainpuri,UP,Mainpuri
+UP-Mathura,UP,Mathura
+UP-Mau,UP,Mau
+UP-Meerut,UP,Meerut
+UP-Mirzapur,UP,Mirzapur
+UP-Moradabad,UP,Moradabad
+UP-Muzaffarnagar,UP,Muzaffarnagar
+UP-Pilibhit,UP,Pilibhit
+UP-Pratapgarh,UP,Pratapgarh
+UP-Prayagraj,UP,Prayagraj
+UP-Rae Bareli,UP,Rae Bareli
+UP-Raebareli,UP,Raebareli
+UP-Rampur,UP,Rampur
+UP-Saharanpur,UP,Saharanpur
+UP-Sambhal,UP,Sambhal
+UP-Sant Kabeer Nagar,UP,Sant Kabeer Nagar
+UP-Sant Kabir Nagar,UP,Sant Kabir Nagar
+UP-Shahjahanpur,UP,Shahjahanpur
+UP-Shamli,UP,Shamli
+UP-Shravasti,UP,Shravasti
+UP-Siddharth Nagar,UP,Siddharth Nagar
+UP-Siddharthnagar,UP,Siddharthnagar
+UP-Sitapur,UP,Sitapur
+UP-Sonbhadra,UP,Sonbhadra
+UP-Sultanpur,UP,Sultanpur
+UP-Unnao,UP,Unnao
+UP-Varanasi,UP,Varanasi
+WB-24 Paraganas North,WB,24 Paraganas North
+WB-24 Paraganas South,WB,24 Paraganas South
+WB-Alipurduar,WB,Alipurduar
+WB-Bankura,WB,Bankura
+WB-Birbhum,WB,Birbhum
+WB-Cooch Behar,WB,Cooch Behar
+WB-Coochbehar,WB,Coochbehar
+WB-Dakshin Dinajpur,WB,Dakshin Dinajpur
+WB-Darjeeling,WB,Darjeeling
+WB-Dinajpur Dakshin,WB,Dinajpur Dakshin
+WB-Dinajpur Uttar,WB,Dinajpur Uttar
+WB-Hooghly,WB,Hooghly
+WB-Howrah,WB,Howrah
+WB-Jalpaiguri,WB,Jalpaiguri
+WB-Jhargram,WB,Jhargram
+WB-Kalimpong,WB,Kalimpong
+WB-Kolkata,WB,Kolkata
+WB-Maldah,WB,Maldah
+WB-Medinipur East,WB,Medinipur East
+WB-Medinipur West,WB,Medinipur West
+WB-Murshidabad,WB,Murshidabad
+WB-Nadia,WB,Nadia
+WB-North 24 Parganas,WB,North 24 Parganas
+WB-Paschim Bardhaman,WB,Paschim Bardhaman
+WB-Paschim Medinipur,WB,Paschim Medinipur
+WB-Purba Bardhaman,WB,Purba Bardhaman
+WB-Purba Medinipur,WB,Purba Medinipur
+WB-Purulia,WB,Purulia
+WB-South 24 Parganas,WB,South 24 Parganas
+WB-Uttar Dinajpur,WB,Uttar Dinajpur

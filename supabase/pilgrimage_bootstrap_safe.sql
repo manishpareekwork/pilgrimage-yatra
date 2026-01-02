@@ -50,6 +50,10 @@ create table if not exists public.yatra_registrations (
   guardian_relation text,
   father_name_hi text,
   address_hi text,
+  address_state text,
+  address_district text,
+  address_city text,
+  address_pin text,
   aadhaar_no text,
   phone text,
   whatsapp text,
@@ -101,6 +105,10 @@ alter table public.yatra_registrations
   add column if not exists guardian_relation text,
   add column if not exists father_name_hi text,
   add column if not exists address_hi text,
+  add column if not exists address_state text,
+  add column if not exists address_district text,
+  add column if not exists address_city text,
+  add column if not exists address_pin text,
   add column if not exists phone text,
   add column if not exists whatsapp text,
   add column if not exists train_class text,
@@ -149,6 +157,22 @@ set health_common_meds = nullif(
 )
 where health_common_meds is null;
 
+-- address lookup tables (state/district)
+create table if not exists public.address_states (
+  id text primary key,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.address_districts (
+  id text primary key,
+  state_id text not null references public.address_states(id) on delete cascade,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_address_districts_state on public.address_districts(state_id);
+
 -- reviews (human-in-the-loop audit)
 create table if not exists public.yatra_reviews (
   id uuid primary key default gen_random_uuid(),
@@ -171,6 +195,8 @@ create unique index if not exists yatra_registrations_phone_unique
 alter table public.profiles enable row level security;
 alter table public.yatra_registrations enable row level security;
 alter table public.yatra_reviews enable row level security;
+alter table public.address_states enable row level security;
+alter table public.address_districts enable row level security;
 
 -- profiles: a user reads/updates only their own
 drop policy if exists "read own profile" on public.profiles;
@@ -240,6 +266,14 @@ for select using (
 drop policy if exists "reviews write staff" on public.yatra_reviews;
 create policy "reviews write staff" on public.yatra_reviews
 for insert with check ((auth.jwt() ->> 'role') in ('reviewer','admin'));
+
+drop policy if exists "read address states" on public.address_states;
+create policy "read address states" on public.address_states
+for select using (auth.role() = 'authenticated');
+
+drop policy if exists "read address districts" on public.address_districts;
+create policy "read address districts" on public.address_districts
+for select using (auth.role() = 'authenticated');
 
 -- ---------- Views ----------
 create or replace view public.v_registrations_with_profiles as
@@ -315,6 +349,10 @@ begin
     guardian_relation = coalesce((p_patch->>'guardian_relation'), r.guardian_relation),
     father_name_hi = coalesce((p_patch->>'father_name_hi'), r.father_name_hi),
     address_hi = coalesce((p_patch->>'address_hi'), r.address_hi),
+    address_state = coalesce((p_patch->>'address_state'), r.address_state),
+    address_district = coalesce((p_patch->>'address_district'), r.address_district),
+    address_city = coalesce((p_patch->>'address_city'), r.address_city),
+    address_pin = coalesce((p_patch->>'address_pin'), r.address_pin),
     aadhaar_no = coalesce((p_patch->>'aadhaar_no'), r.aadhaar_no),
     dob = coalesce((p_patch->>'dob')::date, r.dob),
     age_years = coalesce((p_patch->>'age_years')::smallint, r.age_years),
@@ -415,6 +453,28 @@ begin
     end
   where r.id = p_id;
 end$$;
+
+-- Address lookup RPCs
+create or replace function public.fn_list_states()
+returns table(state_id text, state_name text)
+language sql
+stable
+as $$
+  select id, name
+  from public.address_states
+  order by name;
+$$;
+
+create or replace function public.fn_list_districts(p_state_id text)
+returns table(district_id text, district_name text)
+language sql
+stable
+as $$
+  select id, name
+  from public.address_districts
+  where state_id = p_state_id
+  order by name;
+$$;
 
 -- Create review (staff only by RLS)
 create or replace function public.fn_create_review(

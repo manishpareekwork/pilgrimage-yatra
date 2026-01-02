@@ -1,6 +1,7 @@
 -- Seed demo registrations for Pilgrimage Yatra
 -- Usage: run in Supabase SQL editor or `psql` connected to your project.
 -- Safe to re-run; uses fixed IDs for demo owners/creators (replace with real auth.user ids if needed).
+-- For address lookup data, use supabase/scripts/seed_address_lookup.sql.
 
 begin;
 

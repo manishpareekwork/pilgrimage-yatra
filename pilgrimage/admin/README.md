@@ -10,6 +10,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 NEXT_PUBLIC_ORCHESTRATOR_URL=https://pilgrimage-yatra.onrender.com
 ```
 
+You can also copy `admin/.env.template` and fill in values.
+
 ## Scripts
 - `npm run dev` — Next dev (Turbopack) with `TURBOPACK_ROOT` pinned to this folder.
 - `npm run dev:webpack` — fallback to webpack (`NEXT_FORCE_WEBPACK=1`) if styles stop updating.

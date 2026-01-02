@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
+import { ChakraSpinner } from "@/components/ui";
 
 type Props = {
   registrationId: string;
@@ -161,7 +162,13 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
     event.target.value = "";
   };
 
-  const items = [
+  const items: Array<{
+    key: "photo" | "form";
+    label: string;
+    path: string | null;
+    preview: string | null;
+    accept: string;
+  }> = [
     {
       key: "photo",
       label: "Photo",
@@ -183,7 +190,7 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
       <div className="flex flex-wrap items-center gap-3">
         {items.map((item) => {
           const isUploading = uploadingKind === item.key;
-          const isDisabled = isUploading || uploadingKind !== null || !hasOrchestrator;
+          const isDisabled = isUploading || uploadingKind !== null;
           const previewUrl = item.preview || (item.path?.startsWith("http") ? item.path : null);
           const showImage = isImageFile(item.path) || isImageFile(previewUrl);
           return (
@@ -197,18 +204,28 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
               ) : (
                 <div className="upload-thumb-placeholder" aria-label={`${item.label} placeholder`}>
                   {isUploading ? (
-                    "Uploading"
+                    <>
+                      <ChakraSpinner className="h-5 w-5" title="Uploading" />
+                      <span>Uploading</span>
+                    </>
                   ) : (
                     <>
-                      <svg viewBox="0 0 20 20" className="upload-thumb-plus" aria-hidden="true">
-                        <path
-                          d="M10 4v12M4 10h12"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
+                      <div className="relative flex items-center justify-center">
+                        <ChakraSpinner
+                          className="h-5 w-5 text-[color:var(--muted)]"
+                          animate={false}
+                          title="Add upload"
                         />
-                      </svg>
+                        <svg viewBox="0 0 20 20" className="upload-thumb-plus absolute" aria-hidden="true">
+                          <path
+                            d="M10 4v12M4 10h12"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
                       <span>Add {item.label}</span>
                     </>
                   )}
@@ -225,6 +242,9 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
           );
         })}
       </div>
+      {!hasOrchestrator && (
+        <div className="text-xs text-amber-600">Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.</div>
+      )}
       {uploadError && <div className="text-xs text-rose-500">{uploadError}</div>}
     </div>
   );

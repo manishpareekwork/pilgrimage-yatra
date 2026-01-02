@@ -28,6 +28,10 @@ type FormInput = {
   guardian_relation?: string;
   father_name_hi?: string;
   address_hi: string;
+  address_state?: string;
+  address_district?: string;
+  address_city?: string;
+  address_pin?: string;
   aadhaar_no?: string;
   phone: string;
   whatsapp?: string;
@@ -83,6 +87,10 @@ const parseFormData = (
     guardian_relation: asOptionalString(formData.get("guardian_relation")),
     father_name_hi: asOptionalString(formData.get("father_name_hi")),
     address_hi: asOptionalString(formData.get("address_hi")) || "",
+    address_state: asOptionalString(formData.get("address_state")),
+    address_district: asOptionalString(formData.get("address_district")),
+    address_city: asOptionalString(formData.get("address_city")),
+    address_pin: asOptionalString(formData.get("address_pin")),
     aadhaar_no: asOptionalString(formData.get("aadhaar_no")),
     phone: asOptionalString(formData.get("phone")) || "",
     whatsapp: asOptionalString(formData.get("whatsapp")),
@@ -186,6 +194,10 @@ export async function createRegistrationAction(
     guardian_relation: input.guardian_relation ?? null,
     father_name_hi: input.father_name_hi ?? null,
     address_hi: input.address_hi,
+    address_state: input.address_state ?? null,
+    address_district: input.address_district ?? null,
+    address_city: input.address_city ?? null,
+    address_pin: input.address_pin ?? null,
     aadhaar_no: input.aadhaar_no ?? null,
     dob: input.dob ?? null,
     age_years: input.age_years ?? null,

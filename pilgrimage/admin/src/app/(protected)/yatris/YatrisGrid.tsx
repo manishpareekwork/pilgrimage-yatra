@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { PageHeader, Select, TextInput } from "@/components/ui";
+import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
 import {
@@ -877,7 +877,7 @@ export function YatrisGrid({
                 ) : (
                   <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
                     {isLoadingPreview ? (
-                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--muted)] border-t-transparent" />
+                      <ChakraSpinner className="h-4 w-4" title="Loading" />
                     ) : (
                       <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
                         <rect
@@ -922,7 +922,7 @@ export function YatrisGrid({
                 />
                 <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
                   {isUploading ? (
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[color:var(--muted)] border-t-transparent" />
+                    <ChakraSpinner className="h-4 w-4" title="Uploading" />
                   ) : (
                     <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
                       <path

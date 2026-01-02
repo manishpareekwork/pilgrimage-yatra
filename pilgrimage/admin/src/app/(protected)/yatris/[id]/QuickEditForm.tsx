@@ -1,9 +1,11 @@
 "use client";
 
 import { updateRegistrationAction } from "./actions";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckboxRow, Field, FormSection, Select, TextArea, TextInput } from "@/components/ui";
 import { TRAIN_CLASS_OPTIONS, normalizeTrainClass } from "@/lib/trainClasses";
+import { getBrowserSupabase } from "@/lib/supabaseBrowser";
+import { listDistricts, listStates, type AddressOption } from "@/lib/addressLookup";
 
 type Registration = {
   id: string;
@@ -12,6 +14,10 @@ type Registration = {
   guardian_relation?: string | null;
   father_name_hi?: string | null;
   address_hi?: string | null;
+  address_state?: string | null;
+  address_district?: string | null;
+  address_city?: string | null;
+  address_pin?: string | null;
   aadhaar_no?: string | null;
   phone?: string | null;
   whatsapp?: string | null;
@@ -82,6 +88,7 @@ export function QuickEditForm({
   formId?: string;
 }) {
   const formRef = useRef<HTMLFormElement | null>(null);
+  const supabase = useMemo(() => getBrowserSupabase(), []);
   const [healthHeart, setHealthHeart] = useState(Boolean(registration.health_heart));
   const [healthBp, setHealthBp] = useState(Boolean(registration.health_bp));
   const [healthDiabetes, setHealthDiabetes] = useState(Boolean(registration.health_diabetes));
@@ -90,10 +97,21 @@ export function QuickEditForm({
   const [otherActive, setOtherActive] = useState(
     Boolean(registration.health_other) || Boolean(registration.health_other_meds)
   );
+  const [stateOptions, setStateOptions] = useState<AddressOption[]>([]);
+  const [districtOptions, setDistrictOptions] = useState<AddressOption[]>([]);
+  const [addressState, setAddressState] = useState(registration.address_state ?? "");
+  const [addressDistrict, setAddressDistrict] = useState(registration.address_district ?? "");
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const commonMedicalActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
   const otherLabel = registration.health_other || "Other condition";
   const trainClassValue = normalizeTrainClass(registration.train_class);
-  const hasCustomTrainClass = Boolean(trainClassValue && !TRAIN_CLASS_OPTIONS.includes(trainClassValue));
+  const hasCustomTrainClass = Boolean(
+    trainClassValue && !TRAIN_CLASS_OPTIONS.some((option) => option === trainClassValue)
+  );
+  const hasCustomState = Boolean(addressState && !stateOptions.some((option) => option.id === addressState));
+  const hasCustomDistrict = Boolean(
+    addressDistrict && !districtOptions.some((option) => option.id === addressDistrict)
+  );
 
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
@@ -108,6 +126,47 @@ export function QuickEditForm({
   useEffect(() => {
     if (!commonMedicalActive) setCommonMedicalNotes("");
   }, [commonMedicalActive]);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadStates = async () => {
+      try {
+        const options = await listStates(supabase);
+        if (!isActive) return;
+        setStateOptions(options);
+      } catch (err) {
+        if (!isActive) return;
+        setLookupError(err instanceof Error ? err.message : "Unable to load states.");
+      }
+    };
+    void loadStates();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!addressState) {
+      setDistrictOptions([]);
+      if (addressDistrict) setAddressDistrict("");
+      return;
+    }
+    let isActive = true;
+    const loadDistricts = async () => {
+      try {
+        const options = await listDistricts(supabase, addressState);
+        if (!isActive) return;
+        setDistrictOptions(options);
+      } catch (err) {
+        if (!isActive) return;
+        setLookupError(err instanceof Error ? err.message : "Unable to load districts.");
+      }
+    };
+    void loadDistricts();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase, addressState, addressDistrict]);
   useEffect(() => {
     if (!otherActive) {
       clearInput("health_other_meds");
@@ -177,6 +236,58 @@ export function QuickEditForm({
           <Field label="Address" htmlFor="address_hi" required className="col-span-full">
             <TextArea name="address_hi" required defaultValue={registration.address_hi ?? ""} rows={3} />
           </Field>
+          <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="State" htmlFor="address_state">
+              <Select
+                name="address_state"
+                value={addressState}
+                onChange={(event) => {
+                  setAddressState(event.target.value);
+                  setAddressDistrict("");
+                }}
+              >
+                <option value="">Select</option>
+                {hasCustomState && <option value={addressState}>{addressState}</option>}
+                {stateOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="District" htmlFor="address_district">
+              <Select
+                name="address_district"
+                value={addressDistrict}
+                onChange={(event) => setAddressDistrict(event.target.value)}
+                disabled={!addressState}
+              >
+                <option value="">Select</option>
+                {hasCustomDistrict && <option value={addressDistrict}>{addressDistrict}</option>}
+                {districtOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="City / Village" htmlFor="address_city">
+              <TextInput
+                name="address_city"
+                defaultValue={registration.address_city ?? ""}
+                placeholder="City or village"
+              />
+            </Field>
+            <Field label="PIN code" htmlFor="address_pin">
+              <TextInput
+                name="address_pin"
+                defaultValue={registration.address_pin ?? ""}
+                placeholder="PIN code"
+                inputMode="numeric"
+              />
+            </Field>
+          </div>
+          {lookupError && <div className="col-span-full text-xs text-rose-500">{lookupError}</div>}
         </div>
       </FormSection>
 
