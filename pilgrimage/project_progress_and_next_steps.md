@@ -1,6 +1,8 @@
 # Pilgrimage / Yatra Project — Progress & Next Steps Log
 
-_Last updated: 2025‑12‑11_
+_Last updated: 2026-01-01_
+
+Note: This document is the current source of truth; older versions are obsolete.
 
 This document tracks all progress, configuration milestones, and next planned actions across the three major components:
 1. **Cloud (GCP + Supabase Integration)**  
@@ -28,7 +30,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Task | Status | Notes |
 |------|---------|-------|
 | Project Creation | ✅ | `pilgrimage-yatra` in Mumbai region. |
-| Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode enum, full registration columns, helper RPCs, RLS. |
+| Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode + reservation_by enums, full PDF registration columns, helper RPCs, RLS (migration `20251229_registration_alignment.sql`). |
 | Buckets | ✅ | `forms` and `photos` created (private) with staff read policy. |
 | First Admin User | ⚙️ Pending | Create Auth user → run `select public.admin_set_user_role('<uuid>'::uuid, 'admin');` |
 | Review/Volunteer Roles | ⚙️ Pending | To assign once reviewers onboarded. |
@@ -42,7 +44,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Next.js Scaffold | ✅ | App Router + Tailwind v4, strict TS. |
 | Supabase Auth Integration | ✅ | Email/password login (`/login`), middleware redirects unauthenticated users. |
 | Dashboard | ✅ | Status tiles (inline styled) with banner header. |
-| Yatris CRUD | ✅ | `/yatris` list with filters; `/yatris/[id]` detail + inline edit + approve/reject RPC call; `/yatris/new` creates registrations. |
+| Yatris CRUD | ✅ | `/yatris` list with filters; `/yatris/[id]` detail + full PDF-aligned quick edit + uploads + approve/reject RPC; `/yatris/new` full PDF form (declaration required) using create+patch RPCs. |
 | Users | ✅ | `/users` admin-only profile table. |
 | Styling | ⚙️ Mixed | Some views use inline styling to bypass dev CSS issues; align via shared styles next. |
 
@@ -54,8 +56,8 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Flutter Environment | ✅ | Flutter SDK configured; null-safety enabled. |
 | Supabase SDK Integration | ✅ | `supabase_flutter`, `go_router`, `flutter_dotenv` wired with `.env` loader. |
 | Auth Screen | ✅ | Email/password login. |
-| Registration Form | ✅ | Manual registration inserts into `yatra_registrations`; captures form photo, uploads to `forms` bucket, stores `form_image_url`. |
-| Admin Tab | ✅ | Role-gated list/detail for needs_review; approve/reject buttons stubbed. |
+| Registration Form | ✅ | Full PDF-aligned fields with medical toggles, reservation_by, declaration required; create → optional upload → patch flow storing `form_image_url`. |
+| Admin Tab | ✅ | Role-gated list/detail; read-only detail shows all fields; approval wiring still pending. |
 
 ---
 
@@ -67,7 +69,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 
 ### 2. Cloud API Middleware (Render: https://pilgrimage-yatra.onrender.com)
 - [x] Scaffold Node.js + TypeScript Express service (`/healthz`, `/registrations`, `/process-form` mock).
-- [ ] Replace fake signed URL with Supabase Storage signed URL call + auth checks.
+- [x] Replace fake signed URL with Supabase Storage signed URL call + auth checks.
 - [ ] Implement real `/process-form` with OCR integration (Doc AI/Tesseract) and RLS-safe writes.
 - [ ] Redeploy to Render with secrets.
 
@@ -85,6 +87,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ### 5. Tooling & Docs
 - [ ] Add `.env.template` files for admin/cloud/mobile.
 - [ ] Add CI smoke tests: `npm run lint` in admin, `npm test` for cloud, `flutter analyze` for mobile.
+- [ ] Verify dashboard hero/pill layout + status card spacing in dev and run `npm run build` for admin.
 
 ---
 
@@ -116,6 +119,36 @@ This document tracks all progress, configuration milestones, and next planned ac
 ## 📝 Update Log
 | Date | Update |
 |------|---------|
+| 2026-01-01 | Dashboard hero + status cards refined: pill-based CTA, compact status tiles, and improved spacing/controls. |
+| 2026-01-01 | Yatris listing upgraded to admin grid: server-side search/filter/sort/pagination, column customization + saved views, CSV export, responsive table/card view. |
+| 2026-01-01 | Refined `/yatris/new` form layout: calmer spacing, updated input sizing, streamlined medical notes, and polished declaration/actions styling. |
+| 2026-01-01 | Dashboard de-noised (removed filler copy), removed duplicate New Registration CTA from header, fixed app-shell main padding/max-width, corrected dark theme tokens for readable text, and improved theme toggle dropdown spacing. |
+| 2026-01-01 | Dashboard and header cleaned up: removed filler copy, fixed spacing, improved card depth, replaced logo placeholder with image, redesigned theme toggle, and simplified CTA. |
+| 2026-01-01 | Dashboard visual refresh (spacing, card depth, improved theme tokens) plus redesigned theme toggle dropdown; kept Database connected status label. |
+| 2025-12-29 | Standardized Admin UI kit usage across dashboard, `/yatris/new`, `/yatris/[id]`, create user; fixed AppShell main container padding/max-width; fixed profiles ensureProfileRow to upsert. |
+| 2025-12-29 | Introduced shared FormKit (PageContainer/PageHeader/SectionCard/Field inputs) and refactored `/yatris/new` and `/yatris/[id]` to professional responsive dark theme; added date/datetime pickers and sticky actions. |
+| 2025-12-29 | Fixed `/yatris/[id]` load failure by fetching from base table + auth-aware server client; ensured profiles row exists; improved detail page layout and error diagnostics. |
+| 2025-12-29 | Refined `/yatris/new` UI into sectioned card layout with reusable form components; added proper date/datetime pickers; fixed Fill Sample Data uniqueness. |
+| 2025-12-29 | Fixed Next.js params/searchParams await warnings on /yatris/[id]; improved form contrast; signed_at date picker; father/guardian dropdown. |
+| 2025-12-29 | Fixed React useActionState crash on NewRegistrationForm; added Fill Sample Data + Minimal mode; verified row insert + redirect. |
+| 2025-12-29 | Registration form fully aligned with PDF; DB, Admin, Mobile updated; system snapshot generated. |
+| 2025-12-29 | Admin dashboard spacing/radius improved; inner card content centering still pending (to polish next). |
+| 2025-12-29 | New Yatri registration flow hardened (zod validation, inline error, owner/created_by set, redirect to detail) and upload checklist added on detail page. |
+| **2025-12-23** | Fixed Admin layout regression: restored Tailwind globals + shared AppShell; dashboard cards visible; pages centered; docs noted as source of truth. |
+| **2025-12-23** | Admin UI cards/layout refreshed (nav/header, empty states, buttons) and docs marked as current source of truth with implemented statuses. |
+| **2025-12-23** | Dashboard counts fixed with error handling/empty-state CTA; Yatris list now shows empty-state CTA and stable filters; nav/buttons standardized; added Supabase seed script (`supabase/scripts/seed.sql`) with 5 demo rows. |
+| **2025-12-22** | Resolved Next.js cookie access error in admin (await cookies before passing to Supabase helper) to fix `/yatris/new` and protected layout rendering. |
+| **2025-12-22** | Fixed admin Supabase server client cookie handling (await cookies) to resolve Next.js sync cookies error on `/yatris/new`. |
+| **2025-12-22** | Fixed async `searchParams` handling on `/yatris` to comply with Next.js dynamic API rules (filters/search now stable). |
+| **2025-12-22** | Uploads now tied to registrationId paths (`forms/registrations/<id>/form.jpg`, `photos/registrations/<id>/photo.jpg`); admin and mobile flows updated, re-upload overwrites and persists; verified via UI upload + preview. |
+| **2025-12-21** | Admin UI uploads for photo/form image via `/sign-url` implemented; verified by upload + persisted preview on Yatri detail. |
+| **2025-12-21** | Implemented real signed URL issuance in orchestrator for private buckets; verified via curl upload (`docs/api/orchestrator.md`). |
+| **2025-12-21** | Created `docs/ui_functional_spec.md` detailing UI layouts and functional behavior per screen for admin web and mobile; to be updated each milestone. |
+| **2025-12-21** | Fixed Supabase server client cookie handling in admin (no async adapter) to resolve `nextCookies.get is not a function` in protected layout; test: `npm run dev` then load a protected page to confirm auth redirect works. |
+| **2025-12-20** | Admin login: added autocomplete attributes and short cooldown after 429 responses to avoid repeated Supabase password token calls; test via rapid submits and observe wait messaging, then sign in normally to reach `/dashboard`. |
+| **2025-12-20** | Admin login now throttles rapid submits and surfaces clear 429/too-many-attempts messaging to prevent duplicate Supabase password token calls; test: `cd pilgrimage/admin && npm run dev`, attempt rapid double-submit to see throttle message, then wait a second and sign in to reach `/dashboard`. |
+| **2025-12-20** | Admin login form now guards double-submit (single Supabase token call) and refreshes router after sign-in; test via `cd pilgrimage/admin && npm run dev`, sign in, and confirm redirect to `/dashboard`. |
+| **2025-12-20** | Replaced `/sign-url` stub with real Supabase Storage signed upload/download URLs behind Supabase JWT auth; added docs (`docs/api/orchestrator.md`) and `.env.template` for cloud. Testing: `cd pilgrimage/cloud && npm run build`; then POST `/sign-url` with a valid Supabase access token and verify upload via `curl -X PUT "$signedUrl" --upload-file sample.jpg`. |
 | **2025‑11‑11** | Initial progress log created — cloud + admin scaffolds verified, Supabase schema live. |
 | **2025‑11‑18** | Added Express-based middleware scaffold under `pilgrimage/cloud` with `/healthz` + `/sign-url` placeholder; document updated to reflect new structure. |
 | **2025‑02‑14** | Documented Render base URL (`https://pilgrimage-yatra.onrender.com`), refreshed admin/mobile readmes, and noted inline-style fallback for admin UI while build cache issues are investigated. |

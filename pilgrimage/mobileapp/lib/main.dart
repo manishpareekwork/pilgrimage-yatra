@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:postgrest/postgrest.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'dart:typed_data';
 import 'dart:io';
@@ -152,7 +151,7 @@ class _LoginPageState extends State<LoginPage> {
                   image: MemoryImage(_bg!),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.55),
+                    Colors.black.withValues(alpha: 0.55),
                     BlendMode.darken,
                   ),
                 ),
@@ -196,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.white10),
                       boxShadow: const [
@@ -226,7 +225,7 @@ class _LoginPageState extends State<LoginPage> {
                               borderSide: const BorderSide(color: Colors.orangeAccent),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.05),
+                            fillColor: Colors.white.withValues(alpha: 0.05),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -246,7 +245,7 @@ class _LoginPageState extends State<LoginPage> {
                               borderSide: const BorderSide(color: Colors.orangeAccent),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.05),
+                            fillColor: Colors.white.withValues(alpha: 0.05),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -342,7 +341,7 @@ class HomePage extends StatelessWidget {
                   image: const AssetImage('assets/images/banner.png'),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.45),
+                    Colors.black.withValues(alpha: 0.45),
                     BlendMode.darken,
                   ),
                 ),
@@ -378,7 +377,7 @@ class HomePage extends StatelessWidget {
                   const SizedBox(height: 14),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.white10),
                       boxShadow: const [
@@ -414,7 +413,7 @@ class HomePage extends StatelessWidget {
                         if (isAdmin)
                           FilledButton.icon(
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.12),
+                              backgroundColor: Colors.white.withValues(alpha: 0.12),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 12),
@@ -454,7 +453,7 @@ class _MetricCard extends StatelessWidget {
       width: 150,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white12),
       ),
@@ -467,7 +466,7 @@ class _MetricCard extends StatelessWidget {
                 height: 28,
                 width: 28,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, size: 18, color: Colors.white70),
@@ -506,19 +505,40 @@ class RegistrationFormPage extends StatefulWidget {
 
 class _RegistrationFormPageState extends State<RegistrationFormPage> {
   final _formKey = GlobalKey<FormState>();
+  final _receiptNo = TextEditingController();
   final _name = TextEditingController();
   final _father = TextEditingController();
   final _address = TextEditingController();
+  final _aadhaar = TextEditingController();
   final _phone = TextEditingController();
   final _whatsapp = TextEditingController();
+  final _dob = TextEditingController();
+  final _ageYears = TextEditingController();
+  final _heightCm = TextEditingController();
+  final _weightKg = TextEditingController();
   final _trainClass = TextEditingController();
+  final _healthHeartMeds = TextEditingController();
+  final _healthBpMeds = TextEditingController();
+  final _healthDiabetesMeds = TextEditingController();
+  final _healthAsthmaMeds = TextEditingController();
   final _healthOther = TextEditingController();
+  final _healthOtherMeds = TextEditingController();
   final _emergencyName = TextEditingController();
+  final _emergencyFather = TextEditingController();
+  final _emergencyAge = TextEditingController();
+  final _emergencyAddress = TextEditingController();
   final _emergencyPhone = TextEditingController();
 
+  bool _healthHeart = false;
   bool _healthBp = false;
   bool _healthDiabetes = false;
+  bool _healthAsthma = false;
+  bool _otherActive = false;
   String _travelMode = 'train';
+  String _reservationBy = 'self';
+  bool _attendedBadarinath2024 = false;
+  bool _sadhuSantCategory = false;
+  bool _declarationAccepted = false;
   String? _message;
   bool _busy = false;
   XFile? _formImage;
@@ -527,71 +547,154 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_declarationAccepted) {
+      setState(() {
+        _message = 'Please accept the declaration to submit.';
+      });
+      return;
+    }
     setState(() {
       _busy = true;
-      _message = null;
+      _message = 'Creating registration…';
     });
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
     if (user == null) {
       if (mounted) context.go('/login');
+      setState(() => _busy = false);
       return;
     }
 
+    // Step 1: create registration first
+    late final String registrationId;
+    final signedAtIso = DateTime.now().toIso8601String();
+    try {
+      final result = await supabase.rpc('fn_create_registration', params: {
+        'p_owner': user.id,
+        'p_created_by': user.id,
+        'p_name_hi': _name.text.trim(),
+        'p_address_hi': _address.text.trim(),
+        'p_phone': _phone.text.trim(),
+        'p_declaration_accepted': _declarationAccepted,
+        'p_declaration_signed_at': signedAtIso,
+      });
+      final createdId = result as String?;
+      if (createdId == null) {
+        throw Exception('Registration id missing');
+      }
+      registrationId = createdId;
+    } on PostgrestException catch (e) {
+      setState(() {
+        _busy = false;
+        _message = e.message;
+      });
+      return;
+    } catch (e) {
+      setState(() {
+        _busy = false;
+        _message = 'Could not create registration: $e';
+      });
+      return;
+    }
+
+    // Step 2: upload form image if present
     String? formImagePath;
+    bool uploadFailed = false;
     if (_formImage != null) {
+      setState(() {
+        _message = 'Uploading form image…';
+      });
       try {
         final bytes = await File(_formImage!.path).readAsBytes();
-        final path =
-            'forms/${user.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final path = 'forms/registrations/$registrationId/form.jpg';
         await supabase.storage.from('forms').uploadBinary(
               path,
               bytes,
-              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+              fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
             );
         formImagePath = path;
-      } catch (e) {
+      } on PostgrestException catch (e) {
+        uploadFailed = true;
         setState(() {
-          _message = 'Image upload failed: $e';
+          _message = 'Image upload failed (registration saved): ${e.message}';
+        });
+      } catch (e) {
+        uploadFailed = true;
+        setState(() {
+          _message = 'Image upload failed (registration saved): $e';
         });
       }
     }
 
-    final payload = {
-      'owner': user.id,
-      'created_by': user.id,
+    setState(() {
+      _message = 'Saving details…';
+    });
+
+    final patch = {
+      'receipt_no': _receiptNo.text.trim().isEmpty ? null : _receiptNo.text.trim(),
       'name_hi': _name.text.trim(),
       'father_name_hi': _father.text.trim().isEmpty ? null : _father.text.trim(),
       'address_hi': _address.text.trim(),
+      'aadhaar_no': _aadhaar.text.trim().isEmpty ? null : _aadhaar.text.trim(),
       'phone': _phone.text.trim(),
-      'whatsapp': _whatsapp.text.trim(),
+      'whatsapp': _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
+      'dob': _dob.text.trim().isEmpty ? null : _dob.text.trim(),
+      'age_years': _ageYears.text.trim().isEmpty ? null : int.tryParse(_ageYears.text.trim()),
+      'height_cm': _heightCm.text.trim().isEmpty ? null : double.tryParse(_heightCm.text.trim()),
+      'weight_kg': _weightKg.text.trim().isEmpty ? null : double.tryParse(_weightKg.text.trim()),
       'travel_mode': _travelMode,
-      'train_class': _trainClass.text.trim(),
+      'train_class': _trainClass.text.trim().isEmpty ? null : _trainClass.text.trim(),
+      'reservation_by': _reservationBy.isEmpty ? null : _reservationBy,
+      'health_heart': _healthHeart,
+      'health_heart_meds':
+          _healthHeart ? (_healthHeartMeds.text.trim().isEmpty ? null : _healthHeartMeds.text.trim()) : null,
       'health_bp': _healthBp,
+      'health_bp_meds': _healthBp ? (_healthBpMeds.text.trim().isEmpty ? null : _healthBpMeds.text.trim()) : null,
       'health_diabetes': _healthDiabetes,
-      'health_other': _healthOther.text.trim(),
-      'emergency_contact_name': _emergencyName.text.trim(),
-      'emergency_contact_phone': _emergencyPhone.text.trim(),
+      'health_diabetes_meds':
+          _healthDiabetes ? (_healthDiabetesMeds.text.trim().isEmpty ? null : _healthDiabetesMeds.text.trim()) : null,
+      'health_asthma': _healthAsthma,
+      'health_asthma_meds':
+          _healthAsthma ? (_healthAsthmaMeds.text.trim().isEmpty ? null : _healthAsthmaMeds.text.trim()) : null,
+      'health_other': _otherActive ? (_healthOther.text.trim().isEmpty ? null : _healthOther.text.trim()) : null,
+      'health_other_meds':
+          _otherActive ? (_healthOtherMeds.text.trim().isEmpty ? null : _healthOtherMeds.text.trim()) : null,
+      'emergency_contact_name': _emergencyName.text.trim().isEmpty ? null : _emergencyName.text.trim(),
+      'emergency_contact_father_name': _emergencyFather.text.trim().isEmpty ? null : _emergencyFather.text.trim(),
+      'emergency_contact_age_years':
+          _emergencyAge.text.trim().isEmpty ? null : int.tryParse(_emergencyAge.text.trim()),
+      'emergency_contact_address': _emergencyAddress.text.trim().isEmpty ? null : _emergencyAddress.text.trim(),
+      'emergency_contact_phone': _emergencyPhone.text.trim().isEmpty ? null : _emergencyPhone.text.trim(),
+      'attended_badarinath_2024': _attendedBadarinath2024,
+      'sadhu_sant_category': _sadhuSantCategory,
+      'declaration_accepted': _declarationAccepted,
+      'declaration_signed_at': signedAtIso,
       'form_image_url': formImagePath,
       'status': 'submitted',
     };
 
     try {
-      await supabase.from('yatra_registrations').insert(payload);
+      await supabase.rpc('fn_update_registration', params: {
+        'p_id': registrationId,
+        'p_patch': patch,
+      });
       setState(() {
-        _message = 'Registration submitted.';
+        _busy = false;
+        _message = uploadFailed
+            ? 'Registration submitted; form image upload failed.'
+            : formImagePath != null
+                ? 'Registration submitted with form image.'
+                : 'Registration submitted (no form image uploaded).';
       });
     } on PostgrestException catch (e) {
       setState(() {
-        _message = e.message;
+        _busy = false;
+        _message = 'Registration saved but details update failed: ${e.message}';
       });
     } catch (e) {
       setState(() {
-        _message = 'Could not submit: $e';
-      });
-    } finally {
-      setState(() {
         _busy = false;
+        _message = 'Registration saved but details update failed: $e';
       });
     }
   }
@@ -621,8 +724,14 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       _name.text = _name.text.isEmpty ? 'राम कुमार' : _name.text;
       _address.text = _address.text.isEmpty ? 'पुरी, ओडिशा' : _address.text;
       _phone.text = _phone.text.isEmpty ? '+919812345678' : _phone.text;
+      _aadhaar.text = _aadhaar.text.isEmpty ? '123456789012' : _aadhaar.text;
+      _ageYears.text = _ageYears.text.isEmpty ? '45' : _ageYears.text;
+      _heightCm.text = _heightCm.text.isEmpty ? '170' : _heightCm.text;
+      _weightKg.text = _weightKg.text.isEmpty ? '70' : _weightKg.text;
       _travelMode = 'train';
       _healthBp = true;
+      _healthBpMeds.text = _healthBpMeds.text.isEmpty ? 'Amlodipine' : _healthBpMeds.text;
+      _declarationAccepted = true;
       _extracting = false;
       _message = 'Extracted sample data from form image (mock).';
     });
@@ -666,7 +775,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
           image: DecorationImage(
             image: AssetImage('assets/images/banner.png'),
             fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.65), BlendMode.darken),
+            colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.65), BlendMode.darken),
           ),
         ),
         child: SafeArea(
@@ -680,7 +789,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                     Container(
                       margin: const EdgeInsets.only(bottom: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: Colors.white24),
                       ),
@@ -722,6 +831,11 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                       ),
                     ),
                   _buildTextField(
+                    controller: _receiptNo,
+                    label: 'Receipt No.',
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
                     controller: _name,
                     label: 'Name (Hindi allowed)',
                     validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
@@ -730,6 +844,11 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   _buildTextField(
                     controller: _father,
                     label: 'Father/Guardian',
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _aadhaar,
+                    label: 'Aadhaar',
                   ),
                   const SizedBox(height: 10),
                   _buildTextField(
@@ -752,8 +871,32 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                     keyboard: TextInputType.phone,
                   ),
                   const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _dob,
+                    label: 'Date of Birth (YYYY-MM-DD)',
+                    keyboard: TextInputType.datetime,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _ageYears,
+                    label: 'Age (years)',
+                    keyboard: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _heightCm,
+                    label: 'Height (cm)',
+                    keyboard: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _weightKg,
+                    label: 'Weight (kg)',
+                    keyboard: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: _travelMode,
+                    initialValue: _travelMode,
                     dropdownColor: const Color(0xff0f172a),
                     style: const TextStyle(color: Colors.white),
                     iconEnabledColor: Colors.white70,
@@ -776,21 +919,127 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                     label: 'Train Class (II AC, III AC, etc)',
                   ),
                   const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _reservationBy,
+                    dropdownColor: const Color(0xff0f172a),
+                    style: const TextStyle(color: Colors.white),
+                    iconEnabledColor: Colors.white70,
+                    decoration: _inputDecoration('Reservation By'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'self',
+                        child: Text('Self', style: TextStyle(color: Colors.white)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'committee',
+                        child: Text('Committee', style: TextStyle(color: Colors.white)),
+                      ),
+                      DropdownMenuItem(
+                        value: '',
+                        child: Text('Not set', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _reservationBy = v ?? ''),
+                  ),
+                  const SizedBox(height: 6),
+                  SwitchListTile(
+                    title: const Text('Health: Heart', style: TextStyle(color: Colors.white)),
+                    value: _healthHeart,
+                    thumbColor: _activeColor(Colors.orangeAccent),
+                    trackColor: _activeColor(Colors.orangeAccent.withValues(alpha: 0.4), inactive: Colors.white24.withValues(alpha: 0.2)),
+                    subtitle: _buildTextField(
+                      controller: _healthHeartMeds,
+                      label: 'Heart medicines / notes',
+                      enabled: _healthHeart,
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        _healthHeart = v;
+                        if (!v) _healthHeartMeds.clear();
+                      });
+                    },
+                  ),
                   SwitchListTile(
                     title: const Text('Health: BP', style: TextStyle(color: Colors.white)),
                     value: _healthBp,
-                    activeColor: Colors.orangeAccent,
-                    onChanged: (v) => setState(() => _healthBp = v),
+                    thumbColor: _activeColor(Colors.orangeAccent),
+                    trackColor: _activeColor(Colors.orangeAccent.withValues(alpha: 0.4), inactive: Colors.white24.withValues(alpha: 0.2)),
+                    subtitle: _buildTextField(
+                      controller: _healthBpMeds,
+                      label: 'BP medicines / notes',
+                      enabled: _healthBp,
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        _healthBp = v;
+                        if (!v) _healthBpMeds.clear();
+                      });
+                    },
                   ),
                   SwitchListTile(
                     title: const Text('Health: Diabetes', style: TextStyle(color: Colors.white)),
                     value: _healthDiabetes,
-                    activeColor: Colors.orangeAccent,
-                    onChanged: (v) => setState(() => _healthDiabetes = v),
+                    thumbColor: _activeColor(Colors.orangeAccent),
+                    trackColor: _activeColor(Colors.orangeAccent.withValues(alpha: 0.4), inactive: Colors.white24.withValues(alpha: 0.2)),
+                    subtitle: _buildTextField(
+                      controller: _healthDiabetesMeds,
+                      label: 'Diabetes medicines / notes',
+                      enabled: _healthDiabetes,
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        _healthDiabetes = v;
+                        if (!v) _healthDiabetesMeds.clear();
+                      });
+                    },
                   ),
-                  _buildTextField(
-                    controller: _healthOther,
-                    label: 'Other health notes',
+                  SwitchListTile(
+                    title: const Text('Health: Asthma', style: TextStyle(color: Colors.white)),
+                    value: _healthAsthma,
+                    thumbColor: _activeColor(Colors.orangeAccent),
+                    trackColor: _activeColor(Colors.orangeAccent.withValues(alpha: 0.4), inactive: Colors.white24.withValues(alpha: 0.2)),
+                    subtitle: _buildTextField(
+                      controller: _healthAsthmaMeds,
+                      label: 'Asthma medicines / notes',
+                      enabled: _healthAsthma,
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        _healthAsthma = v;
+                        if (!v) _healthAsthmaMeds.clear();
+                      });
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('Other condition', style: TextStyle(color: Colors.white)),
+                    value: _otherActive,
+                    thumbColor: _activeColor(Colors.orangeAccent),
+                    trackColor: _activeColor(Colors.orangeAccent.withValues(alpha: 0.4), inactive: Colors.white24.withValues(alpha: 0.2)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTextField(
+                          controller: _healthOther,
+                          label: 'Condition',
+                          enabled: _otherActive,
+                        ),
+                        const SizedBox(height: 6),
+                        _buildTextField(
+                          controller: _healthOtherMeds,
+                          label: 'Medicines / notes',
+                          enabled: _otherActive,
+                        ),
+                      ],
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        _otherActive = v;
+                        if (!v) {
+                          _healthOther.clear();
+                          _healthOtherMeds.clear();
+                        }
+                      });
+                    },
                   ),
                   const SizedBox(height: 10),
                   _buildTextField(
@@ -799,9 +1048,48 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   ),
                   const SizedBox(height: 10),
                   _buildTextField(
+                    controller: _emergencyFather,
+                    label: 'Emergency Contact Father/Guardian',
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _emergencyAge,
+                    label: 'Emergency Contact Age',
+                    keyboard: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
                     controller: _emergencyPhone,
                     label: 'Emergency Contact Phone',
                     keyboard: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: _emergencyAddress,
+                    label: 'Emergency Contact Address',
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 10),
+                  CheckboxListTile(
+                    value: _attendedBadarinath2024,
+                    onChanged: (v) => setState(() => _attendedBadarinath2024 = v ?? false),
+                    title: const Text('Attended Badarinath 2024', style: TextStyle(color: Colors.white)),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    fillColor: _activeColor(Colors.orangeAccent),
+                  ),
+                  CheckboxListTile(
+                    value: _sadhuSantCategory,
+                    onChanged: (v) => setState(() => _sadhuSantCategory = v ?? false),
+                    title: const Text('Sadhu/Sant category', style: TextStyle(color: Colors.white)),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    fillColor: _activeColor(Colors.orangeAccent),
+                  ),
+                  CheckboxListTile(
+                    value: _declarationAccepted,
+                    onChanged: (v) => setState(() => _declarationAccepted = v ?? false),
+                    title: const Text('I accept the declaration (required)', style: TextStyle(color: Colors.white)),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    fillColor: _activeColor(Colors.orangeAccent),
                   ),
                   const SizedBox(height: 16),
                   if (_message != null)
@@ -850,6 +1138,12 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     );
   }
 
+  WidgetStateProperty<Color?> _activeColor(Color active, {Color? inactive}) {
+    return WidgetStateProperty.resolveWith(
+      (states) => states.contains(WidgetState.selected) ? active : (inactive ?? Colors.white24),
+    );
+  }
+
   InputDecoration _inputDecoration(String label) => InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
@@ -862,7 +1156,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
           borderSide: const BorderSide(color: Colors.orangeAccent),
         ),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.08),
+        fillColor: Colors.white.withValues(alpha: 0.08),
       );
 
   Widget _buildTextField({
@@ -870,12 +1164,14 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     required String label,
     TextInputType? keyboard,
     int maxLines = 1,
+    bool enabled = true,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboard,
+      enabled: enabled,
       validator: validator,
       style: const TextStyle(color: Colors.white),
       decoration: _inputDecoration(label),
@@ -943,7 +1239,7 @@ class _AdminListPageState extends State<AdminListPage> {
           Padding(
             padding: const EdgeInsets.all(12),
             child: DropdownButtonFormField<String>(
-              value: _status,
+              initialValue: _status,
               decoration: const InputDecoration(labelText: 'Status'),
               items: const [
                 DropdownMenuItem(value: '', child: Text('All')),
@@ -1018,49 +1314,55 @@ class AdminDetailPage extends StatelessWidget {
           );
         }
         final reg = snapshot.data!.first;
+        String fmt(dynamic value) {
+          if (value == null) return '—';
+          if (value is String && value.trim().isEmpty) return '—';
+          return value.toString();
+        }
         return Scaffold(
           appBar: AppBar(title: const Text('Registration Detail')),
-          body: Padding(
+          body: ListView(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  reg['name_hi'] ?? 'Unknown',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(reg['address_hi'] ?? ''),
-                const SizedBox(height: 8),
-                Text('Phone: ${reg['phone'] ?? ''}'),
-                Text('WhatsApp: ${reg['whatsapp'] ?? ''}'),
-                Text('Travel: ${reg['travel_mode'] ?? ''} (${reg['train_class'] ?? ''})'),
-                Text('Health BP: ${reg['health_bp'] == true ? "Yes" : "No"}'),
-                Text('Health Diabetes: ${reg['health_diabetes'] == true ? "Yes" : "No"}'),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    FilledButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Approve will call RPC later')),
-                        );
-                      },
-                      child: const Text('Approve'),
-                    ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reject will call RPC later')),
-                        );
-                      },
-                      child: const Text('Reject'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            children: [
+              Text(
+                reg['name_hi'] ?? 'Unknown',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text('Receipt: ${fmt(reg['receipt_no'])}'),
+              Text('Aadhaar: ${fmt(reg['aadhaar_no'])}'),
+              Text('Father: ${fmt(reg['father_name_hi'])}'),
+              const SizedBox(height: 8),
+              Text('Address: ${fmt(reg['address_hi'])}'),
+              Text('Phone: ${fmt(reg['phone'])}'),
+              Text('WhatsApp: ${fmt(reg['whatsapp'])}'),
+              Text('DOB: ${fmt(reg['dob'])}   Age: ${fmt(reg['age_years'])}'),
+              Text('Height/Weight: ${fmt(reg['height_cm'])} cm / ${fmt(reg['weight_kg'])} kg'),
+              Text('Travel: ${fmt(reg['travel_mode'])} (${fmt(reg['train_class'])})'),
+              Text('Reservation By: ${fmt(reg['reservation_by'])}'),
+              const Divider(),
+              const Text('Medical', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Heart: ${reg['health_heart'] == true ? "Yes" : "No"} — Meds: ${fmt(reg['health_heart_meds'])}'),
+              Text('BP: ${reg['health_bp'] == true ? "Yes" : "No"} — Meds: ${fmt(reg['health_bp_meds'])}'),
+              Text('Diabetes: ${reg['health_diabetes'] == true ? "Yes" : "No"} — Meds: ${fmt(reg['health_diabetes_meds'])}'),
+              Text('Asthma: ${reg['health_asthma'] == true ? "Yes" : "No"} — Meds: ${fmt(reg['health_asthma_meds'])}'),
+              Text('Other: ${fmt(reg['health_other'])} — Meds: ${fmt(reg['health_other_meds'])}'),
+              const Divider(),
+              const Text('Emergency', style: TextStyle(fontWeight: FontWeight.w600)),
+              Text('Name: ${fmt(reg['emergency_contact_name'])}'),
+              Text('Father/Guardian: ${fmt(reg['emergency_contact_father_name'])}'),
+              Text('Age: ${fmt(reg['emergency_contact_age_years'])}'),
+              Text('Phone: ${fmt(reg['emergency_contact_phone'])}'),
+              Text('Address: ${fmt(reg['emergency_contact_address'])}'),
+              const Divider(),
+              Text('Attended Badarinath 2024: ${reg['attended_badarinath_2024'] == true ? "Yes" : "No"}'),
+              Text('Sadhu/Sant category: ${reg['sadhu_sant_category'] == true ? "Yes" : "No"}'),
+              Text('Declaration: ${reg['declaration_accepted'] == true ? "Accepted" : "Pending"}'),
+              Text('Signed at: ${fmt(reg['declaration_signed_at'])}'),
+              Text('Form image: ${fmt(reg['form_image_url'])}'),
+              Text('Photo: ${fmt(reg['photo_url'])}'),
+              Text('Status: ${fmt(reg['status'])}'),
+            ],
           ),
         );
       },

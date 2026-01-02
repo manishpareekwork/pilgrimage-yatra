@@ -32,6 +32,10 @@ begin
   if not exists (select 1 from pg_type where typname = 'travel_mode') then
     create type travel_mode as enum ('train','air');
   end if;
+
+  if not exists (select 1 from pg_type where typname = 'reservation_by') then
+    create type reservation_by as enum ('self','committee');
+  end if;
 end$$;
 
 -- ---------- Tables ----------
@@ -49,32 +53,100 @@ create table if not exists public.yatra_registrations (
   id uuid primary key default gen_random_uuid(),
   owner uuid references auth.users(id),
   created_by uuid references auth.users(id),
+  receipt_no text,
   name_hi text not null,
+  guardian_relation text,
   father_name_hi text,
   address_hi text,
+  aadhaar_no text,
   phone text,
   whatsapp text,
+  dob date,
+  age_years smallint,
+  height_cm numeric(5,2),
+  weight_kg numeric(5,2),
   travel_mode travel_mode,
   train_class text,
+  reservation_by reservation_by,
+  health_heart boolean default false,
+  health_heart_meds text,
   health_bp boolean default false,
+  health_bp_meds text,
   health_diabetes boolean default false,
+  health_diabetes_meds text,
+  health_asthma boolean default false,
+  health_asthma_meds text,
   health_other text,
+  health_other_meds text,
   emergency_contact_name text,
+  emergency_contact_father_name text,
+  emergency_contact_age_years smallint,
+  emergency_contact_address text,
   emergency_contact_phone text,
   photo_url text,
   form_image_url text,
+  attended_badarinath_2024 boolean default false,
+  sadhu_sant_category boolean default false,
+  declaration_accepted boolean not null default false,
+  declaration_signed_at timestamptz,
   status reg_status not null default 'submitted',
   ocr_confidence numeric,
   raw_json jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint yatra_registrations_age_years_check check (age_years is null or age_years between 0 and 120),
+  constraint yatra_registrations_emergency_age_check check (emergency_contact_age_years is null or emergency_contact_age_years between 0 and 120)
 );
 
 alter table public.yatra_registrations
+  add column if not exists receipt_no text,
+  add column if not exists aadhaar_no text,
+  add column if not exists dob date,
+  add column if not exists age_years smallint,
+  add column if not exists height_cm numeric(5,2),
+  add column if not exists weight_kg numeric(5,2),
+  add column if not exists travel_mode travel_mode,
+  add column if not exists guardian_relation text,
   add column if not exists father_name_hi text,
+  add column if not exists address_hi text,
+  add column if not exists phone text,
+  add column if not exists whatsapp text,
   add column if not exists train_class text,
+  add column if not exists reservation_by reservation_by,
+  add column if not exists health_heart boolean default false,
+  add column if not exists health_heart_meds text,
+  add column if not exists health_bp boolean default false,
+  add column if not exists health_bp_meds text,
+  add column if not exists health_diabetes boolean default false,
+  add column if not exists health_diabetes_meds text,
+  add column if not exists health_asthma boolean default false,
+  add column if not exists health_asthma_meds text,
   add column if not exists health_other text,
+  add column if not exists health_other_meds text,
   add column if not exists emergency_contact_name text,
-  add column if not exists emergency_contact_phone text;
+  add column if not exists emergency_contact_father_name text,
+  add column if not exists emergency_contact_age_years smallint,
+  add column if not exists emergency_contact_address text,
+  add column if not exists emergency_contact_phone text,
+  add column if not exists photo_url text,
+  add column if not exists form_image_url text,
+  add column if not exists attended_badarinath_2024 boolean default false,
+  add column if not exists sadhu_sant_category boolean default false,
+  add column if not exists declaration_accepted boolean not null default false,
+  add column if not exists declaration_signed_at timestamptz,
+  add column if not exists status reg_status not null default 'submitted',
+  add column if not exists ocr_confidence numeric,
+  add column if not exists raw_json jsonb,
+  add column if not exists created_at timestamptz not null default now();
+
+alter table public.yatra_registrations
+  drop constraint if exists yatra_registrations_age_years_check,
+  add constraint yatra_registrations_age_years_check
+    check (age_years is null or age_years between 0 and 120);
+
+alter table public.yatra_registrations
+  drop constraint if exists yatra_registrations_emergency_age_check,
+  add constraint yatra_registrations_emergency_age_check
+    check (emergency_contact_age_years is null or emergency_contact_age_years between 0 and 120);
 
 -- reviews (human-in-the-loop audit)
 create table if not exists public.yatra_reviews (
@@ -184,33 +256,45 @@ create or replace function public.fn_create_registration(
   p_owner uuid,
   p_created_by uuid,
   p_name_hi text,
-  p_father_name_hi text,
   p_address_hi text,
   p_phone text,
-  p_whatsapp text,
-  p_travel_mode travel_mode,
-  p_train_class text,
-  p_health_bp boolean,
-  p_health_diabetes boolean,
-  p_health_other text,
-  p_emergency_contact_name text,
-  p_emergency_contact_phone text,
-  p_photo_url text,
-  p_form_image_url text
+  p_declaration_accepted boolean default false,
+  p_declaration_signed_at timestamptz default null
 ) returns uuid
 language plpgsql
 as $$
 declare
   new_id uuid;
 begin
+  if coalesce(trim(p_name_hi), '') = '' then
+    raise exception 'name_hi is required';
+  end if;
+  if coalesce(trim(p_address_hi), '') = '' then
+    raise exception 'address_hi is required';
+  end if;
+  if coalesce(trim(p_phone), '') = '' then
+    raise exception 'phone is required';
+  end if;
+
   insert into public.yatra_registrations (
-    owner, created_by, name_hi, father_name_hi, address_hi, phone, whatsapp,
-    travel_mode, train_class, health_bp, health_diabetes, health_other,
-    emergency_contact_name, emergency_contact_phone, photo_url, form_image_url
+    owner,
+    created_by,
+    name_hi,
+    address_hi,
+    phone,
+    declaration_accepted,
+    declaration_signed_at
   ) values (
-    p_owner, p_created_by, p_name_hi, p_father_name_hi, p_address_hi, p_phone, p_whatsapp,
-    p_travel_mode, p_train_class, coalesce(p_health_bp,false), coalesce(p_health_diabetes,false),
-    p_health_other, p_emergency_contact_name, p_emergency_contact_phone, p_photo_url, p_form_image_url
+    p_owner,
+    p_created_by,
+    p_name_hi,
+    p_address_hi,
+    p_phone,
+    coalesce(p_declaration_accepted, false),
+    case
+      when coalesce(p_declaration_accepted, false) then coalesce(p_declaration_signed_at, now())
+      else null
+    end
   )
   returning id into new_id;
   return new_id;
@@ -224,27 +308,72 @@ create or replace function public.fn_update_registration(
 language plpgsql
 as $$
 begin
-  update public.yatra_registrations set
-    name_hi       = coalesce((p_patch->>'name_hi'), name_hi),
-    father_name_hi = coalesce((p_patch->>'father_name_hi'), father_name_hi),
-    address_hi    = coalesce((p_patch->>'address_hi'), address_hi),
-    phone         = coalesce((p_patch->>'phone'), phone),
-    whatsapp      = coalesce((p_patch->>'whatsapp'), whatsapp),
-    travel_mode   = coalesce((p_patch->>'travel_mode')::travel_mode, travel_mode),
-    train_class   = coalesce((p_patch->>'train_class'), train_class),
-    health_bp     = coalesce((p_patch->>'health_bp')::boolean, health_bp),
-    health_diabetes = coalesce((p_patch->>'health_diabetes')::boolean, health_diabetes),
-    health_other  = coalesce((p_patch->>'health_other'), health_other),
-    emergency_contact_name = coalesce((p_patch->>'emergency_contact_name'), emergency_contact_name),
-    emergency_contact_phone = coalesce((p_patch->>'emergency_contact_phone'), emergency_contact_phone),
-    photo_url     = coalesce((p_patch->>'photo_url'), photo_url),
-    form_image_url= coalesce((p_patch->>'form_image_url'), form_image_url),
-    status        = coalesce((p_patch->>'status')::reg_status, status),
-    ocr_confidence= coalesce((p_patch->>'ocr_confidence')::numeric, ocr_confidence),
-    raw_json      = case when p_patch ? 'raw_json'
-                         then coalesce((p_patch->'raw_json')::jsonb, raw_json)
-                         else raw_json end
-  where id = p_id;
+  update public.yatra_registrations r
+  set
+    receipt_no = coalesce((p_patch->>'receipt_no'), r.receipt_no),
+    name_hi = coalesce((p_patch->>'name_hi'), r.name_hi),
+    guardian_relation = coalesce((p_patch->>'guardian_relation'), r.guardian_relation),
+    father_name_hi = coalesce((p_patch->>'father_name_hi'), r.father_name_hi),
+    address_hi = coalesce((p_patch->>'address_hi'), r.address_hi),
+    aadhaar_no = coalesce((p_patch->>'aadhaar_no'), r.aadhaar_no),
+    dob = coalesce((p_patch->>'dob')::date, r.dob),
+    age_years = coalesce((p_patch->>'age_years')::smallint, r.age_years),
+    height_cm = coalesce((p_patch->>'height_cm')::numeric, r.height_cm),
+    weight_kg = coalesce((p_patch->>'weight_kg')::numeric, r.weight_kg),
+    phone = coalesce((p_patch->>'phone'), r.phone),
+    whatsapp = coalesce((p_patch->>'whatsapp'), r.whatsapp),
+    travel_mode = coalesce((p_patch->>'travel_mode')::travel_mode, r.travel_mode),
+    train_class = coalesce((p_patch->>'train_class'), r.train_class),
+    reservation_by = coalesce((p_patch->>'reservation_by')::reservation_by, r.reservation_by),
+    health_bp = coalesce((p_patch->>'health_bp')::boolean, r.health_bp),
+    health_bp_meds = case
+      when coalesce((p_patch->>'health_bp')::boolean, r.health_bp) then coalesce((p_patch->>'health_bp_meds'), r.health_bp_meds)
+      else null
+    end,
+    health_diabetes = coalesce((p_patch->>'health_diabetes')::boolean, r.health_diabetes),
+    health_diabetes_meds = case
+      when coalesce((p_patch->>'health_diabetes')::boolean, r.health_diabetes) then coalesce((p_patch->>'health_diabetes_meds'), r.health_diabetes_meds)
+      else null
+    end,
+    health_heart = coalesce((p_patch->>'health_heart')::boolean, r.health_heart),
+    health_heart_meds = case
+      when coalesce((p_patch->>'health_heart')::boolean, r.health_heart) then coalesce((p_patch->>'health_heart_meds'), r.health_heart_meds)
+      else null
+    end,
+    health_asthma = coalesce((p_patch->>'health_asthma')::boolean, r.health_asthma),
+    health_asthma_meds = case
+      when coalesce((p_patch->>'health_asthma')::boolean, r.health_asthma) then coalesce((p_patch->>'health_asthma_meds'), r.health_asthma_meds)
+      else null
+    end,
+    health_other = coalesce((p_patch->>'health_other'), r.health_other),
+    health_other_meds = case
+      when coalesce(nullif((p_patch->>'health_other'), ''), r.health_other) is null then null
+      else coalesce((p_patch->>'health_other_meds'), r.health_other_meds)
+    end,
+    emergency_contact_name = coalesce((p_patch->>'emergency_contact_name'), r.emergency_contact_name),
+    emergency_contact_father_name = coalesce((p_patch->>'emergency_contact_father_name'), r.emergency_contact_father_name),
+    emergency_contact_age_years = coalesce((p_patch->>'emergency_contact_age_years')::smallint, r.emergency_contact_age_years),
+    emergency_contact_address = coalesce((p_patch->>'emergency_contact_address'), r.emergency_contact_address),
+    emergency_contact_phone = coalesce((p_patch->>'emergency_contact_phone'), r.emergency_contact_phone),
+    photo_url = coalesce((p_patch->>'photo_url'), r.photo_url),
+    form_image_url = coalesce((p_patch->>'form_image_url'), r.form_image_url),
+    attended_badarinath_2024 = coalesce((p_patch->>'attended_badarinath_2024')::boolean, r.attended_badarinath_2024),
+    sadhu_sant_category = coalesce((p_patch->>'sadhu_sant_category')::boolean, r.sadhu_sant_category),
+    declaration_accepted = coalesce((p_patch->>'declaration_accepted')::boolean, r.declaration_accepted),
+    declaration_signed_at = case
+      when p_patch ? 'declaration_signed_at' then (p_patch->>'declaration_signed_at')::timestamptz
+      when coalesce((p_patch->>'declaration_accepted')::boolean, r.declaration_accepted) = false then null
+      when coalesce((p_patch->>'declaration_accepted')::boolean, r.declaration_accepted) = true
+        and r.declaration_signed_at is null then now()
+      else r.declaration_signed_at
+    end,
+    status = coalesce((p_patch->>'status')::reg_status, r.status),
+    ocr_confidence = coalesce((p_patch->>'ocr_confidence')::numeric, r.ocr_confidence),
+    raw_json = case
+      when p_patch ? 'raw_json' then coalesce((p_patch->'raw_json')::jsonb, r.raw_json)
+      else r.raw_json
+    end
+  where r.id = p_id;
 end$$;
 
 -- Create review (staff only by RLS)

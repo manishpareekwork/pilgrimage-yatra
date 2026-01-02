@@ -1,204 +1,192 @@
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
-import banner from "@/assets/images/common/banner-hdr.png";
+import Link from "next/link";
 
 const statusLabels = [
-  { key: "submitted", label: "Submitted", color: "bg-amber-100 text-amber-800" },
-  { key: "needs_review", label: "Needs Review", color: "bg-indigo-100 text-indigo-800" },
-  { key: "approved", label: "Approved", color: "bg-emerald-100 text-emerald-800" },
-  { key: "rejected", label: "Rejected", color: "bg-rose-100 text-rose-800" },
+  { key: "submitted", label: "Submitted" },
+  { key: "needs_review", label: "Needs Review" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
 ] as const;
+
+const statusColors: Record<string, string> = {
+  submitted: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+  needs_review: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
+  approved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300",
+  rejected: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
+};
 
 export default async function DashboardPage() {
   const supabase = await getServerSupabase();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData?.user) redirect("/login");
 
-  const totals = await Promise.all(
-    statusLabels.map(async ({ key, label }) => {
-      const { count } = await supabase
+  let errorMessage: string | null = null;
+  let allCount = 0;
+  const totals: { key: string; label: string; count: number }[] = [];
+
+  try {
+    const { count: totalCount, error: allError } = await supabase
+      .from("yatra_registrations")
+      .select("id", { count: "exact", head: true });
+    if (allError) throw allError;
+    allCount = totalCount ?? 0;
+
+    for (const { key, label } of statusLabels) {
+      const { count, error } = await supabase
         .from("yatra_registrations")
         .select("id", { count: "exact", head: true })
         .eq("status", key);
-      return { label, key, count: count ?? 0 };
-    })
-  );
+      if (error) throw error;
+      totals.push({ key, label, count: count ?? 0 });
+    }
+  } catch (err: any) {
+    errorMessage = err?.message || "Unable to load dashboard data.";
+  }
 
-  const { count: allCount } = await supabase
-    .from("yatra_registrations")
-    .select("id", { count: "exact", head: true });
+  const isConnected = !errorMessage;
+  const dbLabel = isConnected ? "Database connected" : "Database disconnected";
+  const dbDot = isConnected ? "bg-emerald-400" : "bg-rose-400";
+
+  const showHeroCta = errorMessage || allCount > 0;
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 16px", color: "#0f172a" }}>
-      <div
-        style={{
-          position: "relative",
-          borderRadius: 28,
-          overflow: "hidden",
-          minHeight: 240,
-          boxShadow: "0 20px 50px rgba(15,23,42,0.35)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          marginBottom: 28,
-        }}
+    <div>
+      <section
+        className="card card--hover dashboard-hero min-h-[200px]"
+        style={{ backgroundImage: "url('/banner.png')", padding: "12px" }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `linear-gradient(135deg, rgba(11,18,33,0.82), rgba(11,18,33,0.65)), url(${banner.src})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.1), transparent 35%)",
-          }}
-        />
-        <div
-          style={{
-            position: "relative",
-            padding: "28px 32px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            color: "#fff",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div
-              style={{
-                fontSize: 11,
-                letterSpacing: "0.25em",
-                textTransform: "uppercase",
-                color: "rgba(255,255,255,0.78)",
-                fontWeight: 600,
-              }}
-            >
-              Yatra Control
-            </div>
-            <div style={{ fontSize: 32, fontWeight: 700 }}>Dashboard</div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>
-              Live snapshot of registrations for Jagannath Puri 2025 with RLS protection and review
-              workflow.
-            </div>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "6px 10px",
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.12)",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              <span
-                style={{
-                  height: 8,
-                  width: 8,
-                  borderRadius: 999,
-                  background: "#bbf7d0",
-                  display: "inline-block",
-                }}
-              />
-              Supabase connected · Service health good
-            </div>
+        <div className="grid min-h-[200px] grid-rows-2 gap-4">
+          <div className="flex flex-col items-start justify-start gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+            <span className="pill pill--contrast pill--wide sm:self-start">
+              <span className={`h-2 w-2 rounded-full ${dbDot}`} />
+              {dbLabel}
+            </span>
           </div>
-          <div
-            style={{
-              alignSelf: "flex-start",
-              background: "rgba(255,255,255,0.9)",
-              color: "#0f172a",
-              borderRadius: 16,
-              padding: "14px 16px",
-              minWidth: 220,
-              boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
-            }}
-          >
-            <div style={{ fontSize: 12, textTransform: "uppercase", color: "#ea580c", fontWeight: 700 }}>
-              Total registrations
-            </div>
-            <div style={{ fontSize: 30, fontWeight: 700 }}>{allCount ?? 0}</div>
-            <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>All statuses</div>
+
+          <div className="flex flex-col items-start justify-end gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <span className="pill pill--contrast pill--metric pill--wide">
+              <span className="pill__metric">{allCount}</span>
+              <span>Total registrations</span>
+            </span>
+            {showHeroCta && (
+              <Link
+                href="/yatris/new"
+                className="pill pill--contrast pill--metric pill--wide pill--clickable pill--cta inline-flex items-center"
+              >
+                <span className="pill__metric">+</span>
+                <span>New Registration</span>
+              </Link>
+            )}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div
-        style={{
-          display: "grid",
-          gap: 16,
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        }}
-      >
-        {totals.map(({ key, label, count }) => (
-          <div
-            key={key}
-            style={{
-              borderRadius: 16,
-              background: "#fff",
-              padding: 18,
-              boxShadow: "0 12px 32px rgba(15,23,42,0.12)",
-              border: "1px solid rgba(226,232,240,0.8)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                color: "#475569",
-                fontSize: 13,
-                fontWeight: 700,
-                textTransform: "uppercase",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-flex",
-                  height: 36,
-                  width: 36,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 12,
-                  background: "#f8fafc",
-                  fontSize: 18,
-                }}
+      <div style={{ height: "24px" }} aria-hidden="true" />
+
+      <div className="space-y-10">
+        {errorMessage && (
+          <section className="card border border-rose-400/40 bg-rose-500/10 p-6">
+            <div className="text-sm text-rose-700 dark:text-rose-200">
+              Failed to load: {errorMessage}
+            </div>
+          </section>
+        )}
+
+        {!errorMessage && allCount === 0 && (
+          <section className="card card--hover p-6">
+            <div className="space-y-4 text-sm text-[color:var(--muted)]">
+              <p>No registrations yet.</p>
+              <Link
+                href="/yatris/new"
+                className="btn-secondary inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm"
               >
-                {key === "submitted" && "📝"}
-                {key === "needs_review" && "🔍"}
-                {key === "approved" && "✅"}
-                {key === "rejected" && "⛔"}
-              </span>
-              {label}
+                + New Registration
+              </Link>
             </div>
-            <div style={{ fontSize: 30, fontWeight: 700, color: "#0f172a", marginTop: 8 }}>
-              {count}
-            </div>
-            <div
-              style={{
-                marginTop: 10,
-                height: 6,
-                borderRadius: 999,
-                background: "#e2e8f0",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${Math.min(100, count && allCount ? (count / (allCount || 1)) * 100 : 0).toFixed(0)}%`,
-                  background: "linear-gradient(90deg, #f97316, #0ea5e9)",
-                }}
-              />
-            </div>
+          </section>
+        )}
+
+        {!errorMessage && (
+          <div className="flex flex-wrap gap-6">
+            {statusLabels.map(({ key, label }) => {
+              const count = totals.find((t) => t.key === key)?.count ?? 0;
+              const pct = Math.min(100, allCount ? (count / allCount) * 100 : 0);
+              return (
+                <section
+                  key={key}
+                  className="card card--hover overflow-hidden w-full flex-none sm:w-[200px] lg:w-[220px]"
+                  style={{ padding: "12px" }}
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-baseline gap-2">
+                        <div className="text-2xl font-semibold text-[color:var(--ink)]">
+                          {count}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                          {label}
+                        </div>
+                      </div>
+                      <div className="rounded-full bg-[color:var(--surface-muted)] px-2 py-1 text-[10px] font-semibold text-[color:var(--muted)]">
+                        {pct.toFixed(0)}%
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="h-1.5 w-full overflow-hidden rounded-md border border-[color:var(--border)] bg-[color:var(--surface-muted)]">
+                        <div
+                          className="h-full rounded-md bg-[color:var(--accent)]"
+                          style={{ width: `${pct.toFixed(0)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-2 rounded-md bg-[color:var(--surface-muted)] px-2 py-1.5">
+                        <button
+                          type="button"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--ink)]"
+                          aria-label={`View ${label}`}
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                            <path
+                              d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                            />
+                            <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--muted)] hover:bg-[color:var(--surface)] hover:text-[color:var(--ink)]"
+                          aria-label={`Edit ${label}`}
+                        >
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                            <path
+                              d="M4 16.5V20h3.5L18.3 9.2l-3.5-3.5L4 16.5Z"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M14.8 5.7l3.5 3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

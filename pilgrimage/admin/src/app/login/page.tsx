@@ -11,21 +11,50 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const [retryAfterMs, setRetryAfterMs] = useState<number>(0);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
+    const now = Date.now();
+    if (loading) return;
+    if (retryAfterMs && now < retryAfterMs) {
+      const seconds = Math.ceil((retryAfterMs - now) / 1000);
+      setError(`Too many attempts. Please wait ${seconds}s before retrying.`);
       return;
     }
-    router.replace("/dashboard");
+    if (lastAttemptAt && now - lastAttemptAt < 1500) {
+      setError("Please wait a moment before trying again.");
+      return;
+    }
+    setLastAttemptAt(now);
+    setError(null);
+    setLoading(true);
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInError) {
+        const message =
+          signInError.status === 429
+            ? "Too many attempts. Please wait a few seconds before retrying."
+            : signInError.message;
+        setError(message);
+        if (signInError.status === 429) {
+          setRetryAfterMs(Date.now() + 5_000);
+        }
+        return;
+      }
+
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,6 +113,7 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -106,6 +136,7 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
