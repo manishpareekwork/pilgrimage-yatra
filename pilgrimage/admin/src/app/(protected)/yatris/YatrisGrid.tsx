@@ -189,7 +189,12 @@ export function YatrisGrid({
   const columnsRef = useRef<HTMLDetailsElement>(null);
   const statusRef = useRef<HTMLDetailsElement>(null);
   const exportRef = useRef<HTMLDetailsElement>(null);
-  const detailRefs = [viewsRef, columnsRef, statusRef, exportRef];
+  const detailRefs: Array<React.RefObject<HTMLDetailsElement | null>> = [
+    viewsRef,
+    columnsRef,
+    statusRef,
+    exportRef,
+  ];
 
   const canReview = currentRole === "admin" || currentRole === "reviewer";
 
@@ -201,7 +206,7 @@ export function YatrisGrid({
     });
   };
 
-  const openExclusive = (activeRef: React.RefObject<HTMLDetailsElement>) => {
+  const openExclusive = (activeRef: React.RefObject<HTMLDetailsElement | null>) => {
     setOpenRowMenuId(null);
     detailRefs.forEach((ref) => {
       if (ref.current && ref !== activeRef) {
