@@ -1,6 +1,6 @@
 import { approveRegistration, rejectRegistration } from "./actions";
 import { QuickEditForm } from "./QuickEditForm";
-import { UploadControls } from "./UploadControls";
+import { UploadThumbnails } from "./UploadThumbnails";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -13,17 +13,39 @@ const formatDateTime = (value?: string | null) => {
   return date.toLocaleString("en-GB");
 };
 
-const StatusPill = ({ status }: { status?: string | null }) => {
-  const base = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold";
+const formatStatus = (status?: string | null) => {
+  if (!status) return "Submitted";
+  return status.replace(/_/g, " ");
+};
+
+const StatusPill = ({ status, className = "" }: { status?: string | null; className?: string }) => {
+  const base = `inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${className}`.trim();
+  const label = formatStatus(status);
   switch (status) {
     case "approved":
-      return <span className={`${base} bg-emerald-500/20 text-emerald-300`}>Approved</span>;
+      return (
+        <span className={`${base} bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200`}>
+          {label}
+        </span>
+      );
     case "rejected":
-      return <span className={`${base} bg-rose-500/20 text-rose-300`}>Rejected</span>;
+      return (
+        <span className={`${base} bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200`}>
+          {label}
+        </span>
+      );
     case "needs_review":
-      return <span className={`${base} bg-amber-500/20 text-amber-300`}>Needs Review</span>;
+      return (
+        <span className={`${base} bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200`}>
+          {label}
+        </span>
+      );
     default:
-      return <span className={`${base} bg-slate-500/20 text-slate-300`}>{status || "Submitted"}</span>;
+      return (
+        <span className={`${base} bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200`}>
+          {label}
+        </span>
+      );
   }
 };
 
@@ -64,25 +86,25 @@ export default async function YatriDetail({
   if (error && !isNotFound) {
     return (
       <FormSection title="Unable to load registration" description="The record could not be fetched.">
-        <div className="space-y-3 text-sm text-slate-300">
-          <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-3 py-2 text-red-200">
+        <div className="space-y-3 text-sm text-[color:var(--muted)]">
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-rose-600 dark:text-rose-200">
             Please try again or contact support if this persists.
           </div>
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
-              <dt className="text-slate-500">Registration ID</dt>
-              <dd className="font-semibold text-slate-100 break-all">{id}</dd>
+              <dt className="text-[color:var(--subtle)]">Registration ID</dt>
+              <dd className="font-semibold text-[color:var(--ink)] break-all">{id}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Signed in as</dt>
-              <dd className="font-semibold text-slate-100">
+              <dt className="text-[color:var(--subtle)]">Signed in as</dt>
+              <dd className="font-semibold text-[color:var(--ink)]">
                 {user.email || "—"} · {String(currentRole || "—")}
               </dd>
             </div>
             {isDev && (
               <div className="sm:col-span-2">
-                <dt className="text-slate-500">Supabase error</dt>
-                <dd className="font-mono text-xs text-red-200">
+                <dt className="text-[color:var(--subtle)]">Supabase error</dt>
+                <dd className="font-mono text-xs text-rose-600 dark:text-rose-200">
                   {error.message}
                   {error.code ? ` (code: ${error.code})` : ""}
                 </dd>
@@ -91,7 +113,7 @@ export default async function YatriDetail({
           </dl>
           <Link
             href="/yatris"
-            className="inline-flex rounded-xl border border-slate-700/60 px-4 py-2 text-sm text-slate-200"
+            className="btn-secondary inline-flex items-center"
           >
             Back to Yatris
           </Link>
@@ -103,31 +125,31 @@ export default async function YatriDetail({
   if (isNotFound) {
     return (
       <FormSection title="Registration not found">
-        <div className="space-y-3 text-sm text-slate-300">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 px-3 py-2 text-amber-200">
+        <div className="space-y-3 text-sm text-[color:var(--muted)]">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-200">
             We could not find a registration with this ID.
           </div>
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
-              <dt className="text-slate-500">Registration ID</dt>
-              <dd className="font-semibold text-slate-100 break-all">{id}</dd>
+              <dt className="text-[color:var(--subtle)]">Registration ID</dt>
+              <dd className="font-semibold text-[color:var(--ink)] break-all">{id}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Signed in as</dt>
-              <dd className="font-semibold text-slate-100">
+              <dt className="text-[color:var(--subtle)]">Signed in as</dt>
+              <dd className="font-semibold text-[color:var(--ink)]">
                 {user.email || "—"} · {String(currentRole || "—")}
               </dd>
             </div>
             {isDev && (
               <div>
-                <dt className="text-slate-500">Current user ID</dt>
-                <dd className="font-mono text-xs text-slate-400 break-all">{user.id}</dd>
+                <dt className="text-[color:var(--subtle)]">Current user ID</dt>
+                <dd className="font-mono text-xs text-[color:var(--subtle)] break-all">{user.id}</dd>
               </div>
             )}
           </dl>
           <Link
             href="/yatris"
-            className="inline-flex rounded-xl border border-slate-700/60 px-4 py-2 text-sm text-slate-200"
+            className="btn-secondary inline-flex items-center"
           >
             Back to Yatris
           </Link>
@@ -139,72 +161,65 @@ export default async function YatriDetail({
   const created = createdValue === "1";
 
   return (
-    <div className="space-y-6">
+    <div className="yatri-detail space-y-6">
       <div className="space-y-2">
-        <PageHeader
-          title={registration.name_hi || "Registration"}
-          subtitle="Review details, uploads, and quick edits."
-          actions={
-            <>
-              <button
-                type="submit"
-                form="quick-edit-form"
-                className="rounded-xl bg-gradient-to-r from-orange-500 to-sky-500 px-4 py-2 text-sm font-semibold text-black shadow"
-              >
-                Save changes
-              </button>
-              <form action={approveRegistration}>
-                <input type="hidden" name="id" value={registration.id} />
-                <button
-                  type="submit"
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-                >
-                  Approve
+        <div className="relative">
+          <PageHeader
+            className="relative z-30 overflow-visible yatris-hero yatri-detail-hero"
+            title={registration.name_hi || "Registration"}
+            actions={
+              <div className="header-actions flex flex-wrap items-center gap-2">
+                <button type="submit" form="quick-edit-form" className="btn-primary inline-flex items-center">
+                  Save changes
                 </button>
-              </form>
-              <form action={rejectRegistration}>
-                <input type="hidden" name="id" value={registration.id} />
-                <button
-                  type="submit"
-                  className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
-                >
-                  Reject
-                </button>
-              </form>
-              <Link
-                href="/yatris"
-                className="rounded-xl border border-slate-700/60 px-4 py-2 text-sm text-slate-200"
-              >
-                Back to list
-              </Link>
-            </>
-          }
-        />
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-          <StatusPill status={registration.status} />
-          <span>ID: {registration.id}</span>
-          <span>Created: {formatDateTime(registration.created_at)}</span>
+                <form action={approveRegistration}>
+                  <input type="hidden" name="id" value={registration.id} />
+                  <button
+                    type="submit"
+                    className="btn-secondary inline-flex items-center text-emerald-600 dark:text-emerald-300"
+                  >
+                    Approve
+                  </button>
+                </form>
+                <form action={rejectRegistration}>
+                  <input type="hidden" name="id" value={registration.id} />
+                  <button
+                    type="submit"
+                    className="btn-secondary inline-flex items-center text-rose-600 dark:text-rose-300"
+                  >
+                    Reject
+                  </button>
+                </form>
+                <Link href="/yatris" className="btn-secondary inline-flex items-center">
+                  Back to list
+                </Link>
+              </div>
+            }
+          />
+          <div className="detail-thumbs">
+            <UploadThumbnails
+              registrationId={registration.id}
+              photoPath={registration.photo_url}
+              formPath={registration.form_image_url}
+              orchestratorUrl={orchestratorUrl}
+            />
+          </div>
+        </div>
+        <div className="detail-meta flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
+          <StatusPill status={registration.status} className="detail-pill" />
+          <span className="detail-pill detail-pill--neutral">ID: {registration.id}</span>
+          <span className="detail-pill detail-pill--neutral">Created: {formatDateTime(registration.created_at)}</span>
         </div>
       </div>
 
       {created && (
-        <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-200">
+        <div className="card border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
           Registration created.
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="space-y-6">
-          <QuickEditForm registration={registration} formId="quick-edit-form" />
-        </div>
-        <div className="space-y-6">
-          <UploadControls
-            registrationId={registration.id}
-            initialPhotoPath={registration.photo_url}
-            initialFormPath={registration.form_image_url}
-            orchestratorUrl={orchestratorUrl}
-          />
-        </div>
+      <div className="space-y-6">
+        <QuickEditForm registration={registration} formId="quick-edit-form" />
       </div>
     </div>
   );

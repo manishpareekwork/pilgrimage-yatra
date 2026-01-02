@@ -22,8 +22,6 @@ type UploadState = {
   formPreview: string | null;
 };
 
-const MAX_OBJECT_LENGTH = 512;
-
 export function UploadControls({
   registrationId,
   initialPhotoPath,
@@ -163,75 +161,85 @@ export function UploadControls({
     const previewKey = `${kind}Preview` as const;
     const path = state[pathKey];
     const preview = state[previewKey];
-    const accent = kind === "photo" ? "bg-indigo-500" : "bg-amber-500";
+    const isImage =
+      Boolean(preview) && (kind === "photo" || Boolean(path && /\.(png|jpe?g)$/i.test(path)));
+    const isDisabled = state.uploading || !hasOrchestrator;
 
     return (
-      <div className="rounded-2xl border border-slate-800/60 bg-slate-950/40 p-4 overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400 font-semibold">
-              {label}
-            </p>
-            <p className="text-sm text-slate-400">
-              Private bucket ({kind === "photo" ? "photos" : "forms"}). Signed URL upload.
-            </p>
+      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]/80 p-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-muted)]">
+            {isImage && preview ? (
+              <img src={preview} alt={`${label} preview`} className="h-full w-full object-cover" />
+            ) : (
+              <svg viewBox="0 0 20 20" className="h-6 w-6 text-[color:var(--muted)]" aria-hidden="true">
+                <path
+                  d="M3 5.5h14v9H3z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+                <circle cx="7" cy="9" r="1.2" fill="currentColor" />
+                <path
+                  d="M4.5 13l3-2.5 2.5 2 3-3 2.5 2.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </div>
-          <label className="inline-flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-[color:var(--ink)]">{label}</div>
+            <div className="text-xs text-[color:var(--muted)]">
+              Private bucket ({kind === "photo" ? "photos" : "forms"}). Signed URL upload.
+            </div>
+          </div>
+          <label
+            className={`btn-secondary inline-flex min-h-[32px] items-center text-[12px] ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+          >
             <input
               type="file"
               accept={kind === "photo" ? "image/jpeg,image/png" : "image/jpeg,image/png,application/pdf"}
-              className="hidden"
+              className="sr-only"
               onChange={onFileChange(kind)}
-              disabled={state.uploading || !hasOrchestrator}
+              disabled={isDisabled}
             />
-            <span
-              className={`px-3 py-2 rounded-xl text-sm font-semibold text-white ${accent} hover:opacity-90 cursor-pointer flex items-center gap-2`}
-            >
-              {state.uploading ? (
-                <>
-                  <span className="h-4 w-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
-                  Uploading…
-                </>
-              ) : (
-                "Upload"
-              )}
-            </span>
+            {state.uploading ? "Uploading..." : "Upload"}
           </label>
         </div>
-        <div className="text-xs text-slate-500 mb-2">
-          Associated with Registration ID: <span className="font-mono text-slate-200">{registrationId}</span>
+        <div className="mt-2 text-[11px] text-[color:var(--subtle)]">
+          {path ? (
+            <span className="truncate">
+              Stored: <span className="font-mono">{path}</span>
+            </span>
+          ) : (
+            "No file uploaded yet."
+          )}
         </div>
-        {preview ? (
-          <div className="rounded-lg overflow-hidden border border-slate-800/60">
-            <img src={preview} alt={`${label} preview`} className="w-full max-h-56 object-cover" />
-          </div>
-        ) : path ? (
-          <div className="text-sm text-slate-300">
-            Uploaded: <code className="text-xs text-slate-400">{path}</code>
-          </div>
-        ) : (
-          <div className="text-sm text-slate-500">No file uploaded yet.</div>
-        )}
       </div>
     );
   };
 
   return (
-    <FormSection title="Uploads" description="Photo + form image uploads.">
+    <FormSection title="Uploads" description="Photo + form image uploads." className="yatri-detail-section">
       <div className="space-y-4">
         {!hasOrchestrator && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-200">
             Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.
           </div>
         )}
         {state.error && (
-          <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-200">
             {state.error}
           </div>
         )}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {renderCard("photo", "Upload Photo")}
-          {renderCard("form", "Upload Form Image")}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+          {renderCard("photo", "Photo")}
+          {renderCard("form", "Form Image")}
         </div>
       </div>
     </FormSection>

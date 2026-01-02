@@ -29,6 +29,7 @@
 | health_diabetes_meds | text | no | cleared if health_diabetes=false |
 | health_asthma | boolean | no (default false) | asthma flag |
 | health_asthma_meds | text | no | cleared if health_asthma=false |
+| health_common_meds | text | no | shared notes for heart/bp/diabetes/asthma |
 | health_other | text | no | other condition text |
 | health_other_meds | text | no | cleared if health_other is null/empty |
 | emergency_contact_name | text | no | companion/emergency name |
@@ -47,7 +48,7 @@
 | raw_json | jsonb | no | OCR/raw payload |
 | created_at | timestamptz | yes | default now() |
 
-Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_status` (submitted, needs_review, approved, rejected). Meds columns are nulled automatically in fn_update_registration when the flag is false.
+Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_status` (submitted, needs_review, approved, rejected). Meds columns are nulled automatically in fn_update_registration when the flag is false; health_common_meds is set when provided and cleared when all medical flags are false.
 
 ## Field Mapping (PDF → DB → Admin UI → Mobile UI → Validation)
 | PDF Field | DB Column | Admin UI | Mobile UI | Validation |
@@ -72,6 +73,7 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 | Blood Pressure + meds | health_bp / health_bp_meds | Checkbox + meds | Switch + meds | Meds cleared when unchecked |
 | Diabetes + meds | health_diabetes / health_diabetes_meds | Checkbox + meds | Switch + meds | Meds cleared when unchecked |
 | Asthma + meds | health_asthma / health_asthma_meds | Checkbox + meds | Switch + meds | Meds cleared when unchecked |
+| Medicines / notes (common) | health_common_meds | Shared textarea | Shared textarea | Cleared when no medical flags |
 | Other condition + meds | health_other / health_other_meds | Text + meds (tied to toggle) | Text + meds (toggle) | Meds cleared when empty/toggle off |
 | Emergency Contact Name | emergency_contact_name | Emergency section | Emergency section | Optional |
 | Emergency Father Name | emergency_contact_father_name | Emergency section | Emergency section | Optional |
@@ -111,7 +113,7 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 - No DB-level NOT NULL on address/phone to avoid breaking legacy rows; UI enforces required fields.
 
 ## Manual Test Checklist
-1. Apply migration `20251229_registration_alignment.sql` to Supabase; verify age CHECK constraints.
+1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` to Supabase; verify age CHECK constraints.
 2. Admin `/yatris/new`: enter all PDF fields, ensure declaration required, submit -> redirect to detail; status=`submitted`.
 3. Admin `/yatris/[id]`: toggle each medical checkbox off/on and confirm meds inputs disable/clear; save; re-open to verify persisted. Update declaration timestamp and status.
 4. Admin uploads: upload photo and form image; confirm paths `photos/registrations/<id>/photo.jpg` and `forms/registrations/<id>/form.jpg` and checklist ticks.
@@ -121,3 +123,4 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 
 ## Change Log
 - 2025-12-29 — Registration schema/UI/mobile aligned with PDF; new Supabase migration + reservation_by enum; orchestrator mock now patches full dataset; system snapshot documented.
+- 2025-12-30 — Added health_common_meds for shared medical notes; UI uses combined medical notes field for heart/bp/diabetes/asthma.

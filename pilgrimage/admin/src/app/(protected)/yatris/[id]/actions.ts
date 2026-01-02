@@ -33,9 +33,11 @@ export async function updateRegistrationAction(formData: FormData) {
   const healthBp = boolVal(formData.get("health_bp"));
   const healthDiabetes = boolVal(formData.get("health_diabetes"));
   const healthAsthma = boolVal(formData.get("health_asthma"));
+  const healthCommon = strOrNull(formData.get("health_common_meds"));
   const healthOther = strOrNull(formData.get("health_other"));
   const declarationAccepted = boolVal(formData.get("declaration_accepted"));
   const declarationSignedAtInput = strOrNull(formData.get("declaration_signed_at"));
+  const commonActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
 
   const patch = {
     receipt_no: strOrNull(formData.get("receipt_no")),
@@ -61,6 +63,7 @@ export async function updateRegistrationAction(formData: FormData) {
     health_diabetes_meds: healthDiabetes ? strOrNull(formData.get("health_diabetes_meds")) : null,
     health_asthma: healthAsthma,
     health_asthma_meds: healthAsthma ? strOrNull(formData.get("health_asthma_meds")) : null,
+    health_common_meds: commonActive ? healthCommon : null,
     health_other: healthOther,
     health_other_meds: healthOther ? strOrNull(formData.get("health_other_meds")) : null,
     emergency_contact_name: strOrNull(formData.get("emergency_contact_name")),

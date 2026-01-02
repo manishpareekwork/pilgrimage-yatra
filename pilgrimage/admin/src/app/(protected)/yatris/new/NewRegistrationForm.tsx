@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ActionState } from "./actions";
 import {
@@ -13,6 +13,8 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui";
+import { getBrowserSupabase } from "@/lib/supabaseBrowser";
+import { TRAIN_CLASS_OPTIONS } from "@/lib/trainClasses";
 
 const initialState: ActionState = { error: null, id: null, fieldErrors: null };
 
@@ -65,6 +67,9 @@ export function NewRegistrationForm({
   const [state, formAction, isPending] = React.useActionState(action, initialState);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement | null>(null);
+  const supabase = useMemo(() => getBrowserSupabase(), []);
+  const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
+  const hasOrchestrator = Boolean(orchestratorUrl);
   const [healthHeart, setHealthHeart] = useState(false);
   const [healthBp, setHealthBp] = useState(false);
   const [healthDiabetes, setHealthDiabetes] = useState(false);
@@ -73,6 +78,13 @@ export function NewRegistrationForm({
   const [otherActive, setOtherActive] = useState(false);
   const [minimalMode, setMinimalMode] = useState(false);
   const [optionalOpen, setOptionalOpen] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [formFile, setFormFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [formPreview, setFormPreview] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadAttempted, setUploadAttempted] = useState(false);
 
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as
@@ -105,6 +117,83 @@ export function NewRegistrationForm({
     setInputValue("declaration_signed_at", formatDateTimeLocal(new Date()));
   };
 
+  const setPreviewFromFile = (
+    file: File | null,
+    setter: React.Dispatch<React.SetStateAction<string | null>>
+  ) => {
+    if (!file || !file.type.startsWith("image/")) {
+      setter(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setter(url);
+  };
+
+  const handleFileChange =
+    (kind: "photo" | "form") => (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0] ?? null;
+      if (kind === "photo") {
+        setPhotoFile(file);
+        setPreviewFromFile(file, setPhotoPreview);
+      } else {
+        setFormFile(file);
+        setPreviewFromFile(file, setFormPreview);
+      }
+      event.target.value = "";
+    };
+
+  const renderUploadSlot = (
+    kind: "photo" | "form",
+    label: string,
+    file: File | null,
+    previewUrl: string | null
+  ) => {
+    const isDisabled = isPending || uploadingFiles || !hasOrchestrator;
+    const placeholderText = uploadingFiles ? "Uploading" : file ? "Selected" : `Add ${label}`;
+    const accept =
+      kind === "photo" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf";
+
+    return (
+      <label className={`upload-thumb ${isDisabled ? "upload-thumb--disabled" : ""}`} title={label}>
+        {previewUrl ? (
+          <img src={previewUrl} alt={`${label} preview`} className="upload-thumb-image" />
+        ) : (
+          <div className="upload-thumb-placeholder" aria-label={`${label} placeholder`}>
+            <svg viewBox="0 0 20 20" className="upload-thumb-plus" aria-hidden="true">
+              <path
+                d="M10 4v12M4 10h12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span>{placeholderText}</span>
+          </div>
+        )}
+        <input
+          type="file"
+          accept={accept}
+          className="sr-only"
+          disabled={isDisabled}
+          onChange={handleFileChange(kind)}
+        />
+      </label>
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (formPreview) URL.revokeObjectURL(formPreview);
+    };
+  }, [formPreview]);
+
   const fillSampleData = () => {
     const uniqueSuffix = String(Date.now()).slice(-9).padStart(9, "0");
     const uniquePhone = `9${uniqueSuffix}`;
@@ -122,7 +211,7 @@ export function NewRegistrationForm({
     setInputValue("height_cm", "168.5");
     setInputValue("weight_kg", "66.2");
     setInputValue("travel_mode", "train");
-    setInputValue("train_class", "sleeper");
+    setInputValue("train_class", "Sleeper Class (SL)");
     setInputValue("reservation_by", "self");
     setSignedAtNow();
     setCheckboxValue("declaration_accepted", true);
@@ -131,11 +220,97 @@ export function NewRegistrationForm({
     setCommonMedicalNotes("Aspirin, Metformin");
   };
 
-  useEffect(() => {
-    if (state?.id && !state?.error) {
-      router.push(`/yatris/${state.id}?created=1`);
+  const signUrl = async (action: "upload" | "download", bucket: "forms" | "photos", object: string) => {
+    if (!orchestratorUrl) {
+      throw new Error("Orchestrator URL not configured.");
     }
-  }, [router, state?.error, state?.id]);
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+    const res = await fetch(`${orchestratorUrl}/sign-url`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bucket,
+        object,
+        action,
+        expiresIn: 600,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error?.message || "Failed to get signed URL");
+    }
+    const json = await res.json();
+    return json.signedUrl as string;
+  };
+
+  const buildUploadPath = (kind: "photo" | "form", registrationId: string) =>
+    kind === "photo"
+      ? `photos/registrations/${registrationId}/photo.jpg`
+      : `forms/registrations/${registrationId}/form.jpg`;
+
+  const uploadFile = async (kind: "photo" | "form", file: File, registrationId: string) => {
+    const bucket = kind === "photo" ? "photos" : "forms";
+    const object = buildUploadPath(kind, registrationId);
+    const uploadUrl = await signUrl("upload", bucket, object);
+    const put = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!put.ok) {
+      throw new Error("Upload failed");
+    }
+    const column = kind === "photo" ? "photo_url" : "form_image_url";
+    const { error } = await supabase.rpc("fn_update_registration", {
+      p_id: registrationId,
+      p_patch: { [column]: object },
+    });
+    if (error) throw error;
+  };
+
+  const uploadSelectedFiles = async (registrationId: string) => {
+    if (photoFile) await uploadFile("photo", photoFile, registrationId);
+    if (formFile) await uploadFile("form", formFile, registrationId);
+  };
+
+  useEffect(() => {
+    if (!state?.id || state?.error || uploadAttempted) return;
+    setUploadAttempted(true);
+    if (!photoFile && !formFile) {
+      router.push(`/yatris/${state.id}?created=1`);
+      return;
+    }
+    if (!hasOrchestrator) {
+      setUploadError("Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.");
+      return;
+    }
+    let isActive = true;
+    const runUploads = async () => {
+      setUploadingFiles(true);
+      setUploadError(null);
+      try {
+        await uploadSelectedFiles(state.id as string);
+        if (isActive) router.push(`/yatris/${state.id}?created=1`);
+      } catch (err) {
+        if (isActive) {
+          setUploadError(err instanceof Error ? err.message : "Upload failed");
+        }
+      } finally {
+        if (isActive) setUploadingFiles(false);
+      }
+    };
+    void runUploads();
+    return () => {
+      isActive = false;
+    };
+  }, [router, state?.error, state?.id, photoFile, formFile, hasOrchestrator, uploadAttempted]);
 
   const commonMedicalActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
 
@@ -202,6 +377,29 @@ export function NewRegistrationForm({
             Fill Sample Data
           </button>
         </div>
+      </FormSection>
+
+      <FormSection title="Uploads" description="Optional photo and form image uploads.">
+        <div className="flex flex-wrap items-center gap-4">
+          {renderUploadSlot("photo", "Photo", photoFile, photoPreview)}
+          {renderUploadSlot("form", "Form", formFile, formPreview)}
+        </div>
+        {!hasOrchestrator && (
+          <div className="text-xs text-amber-600">Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.</div>
+        )}
+        {uploadingFiles && (
+          <div className="text-xs text-[color:var(--muted)]">Uploading selected files...</div>
+        )}
+        {uploadError && (
+          <div className="text-xs text-rose-500">
+            {uploadError}
+            {state?.id && (
+              <Link href={`/yatris/${state.id}`} className="ml-2 text-[color:var(--accent)]">
+                Open record
+              </Link>
+            )}
+          </div>
+        )}
       </FormSection>
 
       <FormSection title="Applicant">
@@ -344,12 +542,14 @@ export function NewRegistrationForm({
             </Select>
           </Field>
           <Field label="Train Class" htmlFor="train_class" error={fieldErrors?.train_class}>
-            <TextInput
-              id="train_class"
-              name="train_class"
-              placeholder="II AC, Sleeper, etc."
-              error={hasFieldError("train_class")}
-            />
+            <Select id="train_class" name="train_class" error={hasFieldError("train_class")}>
+              <option value="">Select</option>
+              {TRAIN_CLASS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Reservation By" htmlFor="reservation_by" error={fieldErrors?.reservation_by}>
             <Select
@@ -409,6 +609,11 @@ export function NewRegistrationForm({
                 aria-label="Medicines / notes"
                 rows={3}
                 className="min-h-24"
+              />
+              <input
+                type="hidden"
+                name="health_common_meds"
+                value={commonMedicalActive ? commonMedicalNotes : ""}
               />
               <input
                 type="hidden"
@@ -647,6 +852,11 @@ export function NewRegistrationForm({
                     aria-label="Medicines / notes"
                     rows={3}
                     className="min-h-24"
+                  />
+                  <input
+                    type="hidden"
+                    name="health_common_meds"
+                    value={commonMedicalActive ? commonMedicalNotes : ""}
                   />
                   <input
                     type="hidden"

@@ -3,6 +3,7 @@
 import { updateRegistrationAction } from "./actions";
 import { useEffect, useRef, useState } from "react";
 import { CheckboxRow, Field, FormSection, Select, TextArea, TextInput } from "@/components/ui";
+import { TRAIN_CLASS_OPTIONS, normalizeTrainClass } from "@/lib/trainClasses";
 
 type Registration = {
   id: string;
@@ -29,6 +30,7 @@ type Registration = {
   health_diabetes_meds?: string | null;
   health_asthma?: boolean | null;
   health_asthma_meds?: string | null;
+  health_common_meds?: string | null;
   health_other?: string | null;
   health_other_meds?: string | null;
   emergency_contact_name?: string | null;
@@ -52,7 +54,24 @@ const formatDateTimeLocal = (value?: string | null) => {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 16);
+  const pad = (num: number) => String(num).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+};
+
+const buildCommonMedicalNotes = (registration: Registration) => {
+  if (registration.health_common_meds) return registration.health_common_meds;
+  const parts = [
+    registration.health_heart_meds,
+    registration.health_bp_meds,
+    registration.health_diabetes_meds,
+    registration.health_asthma_meds,
+  ]
+    .map((value) => value?.trim())
+    .filter(Boolean) as string[];
+
+  return parts.join(", ");
 };
 
 export function QuickEditForm({
@@ -67,34 +86,36 @@ export function QuickEditForm({
   const [healthBp, setHealthBp] = useState(Boolean(registration.health_bp));
   const [healthDiabetes, setHealthDiabetes] = useState(Boolean(registration.health_diabetes));
   const [healthAsthma, setHealthAsthma] = useState(Boolean(registration.health_asthma));
-  const [otherActive, setOtherActive] = useState(Boolean(registration.health_other));
+  const [commonMedicalNotes, setCommonMedicalNotes] = useState(() => buildCommonMedicalNotes(registration));
+  const [otherActive, setOtherActive] = useState(
+    Boolean(registration.health_other) || Boolean(registration.health_other_meds)
+  );
+  const commonMedicalActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
+  const otherLabel = registration.health_other || "Other condition";
+  const trainClassValue = normalizeTrainClass(registration.train_class);
+  const hasCustomTrainClass = Boolean(trainClassValue && !TRAIN_CLASS_OPTIONS.includes(trainClassValue));
 
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
     if (el) el.value = "";
   };
 
+  const setInputValue = (name: string, value: string) => {
+    const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+    if (el) el.value = value;
+  };
+
   useEffect(() => {
-    if (!healthHeart) clearInput("health_heart_meds");
-  }, [healthHeart]);
-  useEffect(() => {
-    if (!healthBp) clearInput("health_bp_meds");
-  }, [healthBp]);
-  useEffect(() => {
-    if (!healthDiabetes) clearInput("health_diabetes_meds");
-  }, [healthDiabetes]);
-  useEffect(() => {
-    if (!healthAsthma) clearInput("health_asthma_meds");
-  }, [healthAsthma]);
+    if (!commonMedicalActive) setCommonMedicalNotes("");
+  }, [commonMedicalActive]);
   useEffect(() => {
     if (!otherActive) {
-      clearInput("health_other");
       clearInput("health_other_meds");
     }
   }, [otherActive]);
 
   return (
-    <form ref={formRef} id={formId} action={updateRegistrationAction} className="space-y-6">
+    <form ref={formRef} id={formId} action={updateRegistrationAction} className="yatri-detail-form space-y-6">
       <input type="hidden" name="id" value={registration.id} />
 
       <FormSection title="Applicant" description="Primary identification and contact details.">
@@ -169,7 +190,15 @@ export function QuickEditForm({
             </Select>
           </Field>
           <Field label="Train Class" htmlFor="train_class">
-            <TextInput name="train_class" defaultValue={registration.train_class ?? ""} />
+            <Select name="train_class" defaultValue={trainClassValue}>
+              <option value="">Select</option>
+              {hasCustomTrainClass && <option value={trainClassValue}>{trainClassValue}</option>}
+              {TRAIN_CLASS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Reservation By" htmlFor="reservation_by">
             <Select name="reservation_by" defaultValue={registration.reservation_by ?? ""}>
@@ -190,98 +219,92 @@ export function QuickEditForm({
       </FormSection>
 
       <FormSection title="Medical" description="Conditions and medicine notes.">
-        <div className="space-y-4">
-          <CheckboxRow
-            name="health_heart"
-            label="Heart condition"
-            checked={healthHeart}
-            onChange={(event) => setHealthHeart(event.target.checked)}
-            className="border-b border-slate-800/60 pb-4 last:border-b-0 last:pb-0"
-          >
-            <Field label="Medicines / notes" htmlFor="health_heart_meds" helperText="Enter ongoing medicines / notes">
-              <TextInput
-                id="health_heart_meds"
-                name="health_heart_meds"
-                disabled={!healthHeart}
-                defaultValue={registration.health_heart_meds ?? ""}
-                placeholder="Medicines / notes"
-              />
-            </Field>
-          </CheckboxRow>
-          <CheckboxRow
-            name="health_bp"
-            label="Blood Pressure"
-            checked={healthBp}
-            onChange={(event) => setHealthBp(event.target.checked)}
-            className="border-b border-slate-800/60 pb-4 last:border-b-0 last:pb-0"
-          >
-            <Field label="Medicines / notes" htmlFor="health_bp_meds" helperText="Enter ongoing medicines / notes">
-              <TextInput
-                id="health_bp_meds"
-                name="health_bp_meds"
-                disabled={!healthBp}
-                defaultValue={registration.health_bp_meds ?? ""}
-                placeholder="Medicines / notes"
-              />
-            </Field>
-          </CheckboxRow>
-          <CheckboxRow
-            name="health_diabetes"
-            label="Diabetes"
-            checked={healthDiabetes}
-            onChange={(event) => setHealthDiabetes(event.target.checked)}
-            className="border-b border-slate-800/60 pb-4 last:border-b-0 last:pb-0"
-          >
-            <Field label="Medicines / notes" htmlFor="health_diabetes_meds" helperText="Enter ongoing medicines / notes">
-              <TextInput
-                id="health_diabetes_meds"
-                name="health_diabetes_meds"
-                disabled={!healthDiabetes}
-                defaultValue={registration.health_diabetes_meds ?? ""}
-                placeholder="Medicines / notes"
-              />
-            </Field>
-          </CheckboxRow>
-          <CheckboxRow
-            name="health_asthma"
-            label="Asthma"
-            checked={healthAsthma}
-            onChange={(event) => setHealthAsthma(event.target.checked)}
-            className="border-b border-slate-800/60 pb-4 last:border-b-0 last:pb-0"
-          >
-            <Field label="Medicines / notes" htmlFor="health_asthma_meds" helperText="Enter ongoing medicines / notes">
-              <TextInput
-                id="health_asthma_meds"
-                name="health_asthma_meds"
-                disabled={!healthAsthma}
-                defaultValue={registration.health_asthma_meds ?? ""}
-                placeholder="Medicines / notes"
-              />
-            </Field>
-          </CheckboxRow>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <CheckboxRow
+              name="health_heart"
+              label="Heart condition"
+              checked={healthHeart}
+              onChange={(event) => setHealthHeart(event.target.checked)}
+              inputClassName="mt-0"
+            />
+            <CheckboxRow
+              name="health_bp"
+              label="Blood Pressure"
+              checked={healthBp}
+              onChange={(event) => setHealthBp(event.target.checked)}
+              inputClassName="mt-0"
+            />
+            <CheckboxRow
+              name="health_diabetes"
+              label="Diabetes"
+              checked={healthDiabetes}
+              onChange={(event) => setHealthDiabetes(event.target.checked)}
+              inputClassName="mt-0"
+            />
+            <CheckboxRow
+              name="health_asthma"
+              label="Asthma"
+              checked={healthAsthma}
+              onChange={(event) => setHealthAsthma(event.target.checked)}
+              inputClassName="mt-0"
+            />
+          </div>
+          <Field label="Medicines / notes" htmlFor="health_common_meds">
+            <TextArea
+              id="health_common_meds"
+              value={commonMedicalNotes}
+              onChange={(event) => setCommonMedicalNotes(event.target.value)}
+              disabled={!commonMedicalActive}
+              placeholder="Medicines / notes for selected conditions"
+              aria-label="Medicines / notes"
+              rows={3}
+              className="min-h-24"
+            />
+            <input
+              type="hidden"
+              name="health_common_meds"
+              value={commonMedicalActive ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_heart_meds"
+              value={healthHeart ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_bp_meds"
+              value={healthBp ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_diabetes_meds"
+              value={healthDiabetes ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_asthma_meds"
+              value={healthAsthma ? commonMedicalNotes : ""}
+            />
+          </Field>
           <CheckboxRow
             label="Other condition"
             checked={otherActive}
             onChange={(event) => setOtherActive(event.target.checked)}
+            className="gap-6 border-t border-[color:var(--border)] pt-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]"
+            inputClassName="mt-0"
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Condition" htmlFor="health_other">
-                <TextInput
-                  name="health_other"
-                  disabled={!otherActive}
-                  defaultValue={registration.health_other ?? ""}
-                  placeholder="Condition"
-                />
-              </Field>
-              <Field label="Medicines / notes" htmlFor="health_other_meds" helperText="Enter ongoing medicines / notes">
-                <TextInput
-                  name="health_other_meds"
-                  disabled={!otherActive}
-                  defaultValue={registration.health_other_meds ?? ""}
-                  placeholder="Medicines / notes"
-                />
-              </Field>
-            </div>
+            <input type="hidden" name="health_other" value={otherActive ? otherLabel : ""} />
+            <TextArea
+              id="health_other_meds"
+              name="health_other_meds"
+              disabled={!otherActive}
+              defaultValue={registration.health_other_meds ?? ""}
+              placeholder="Other condition notes"
+              aria-label="Other condition notes"
+              rows={2}
+              className="min-h-20"
+            />
           </CheckboxRow>
         </div>
       </FormSection>
@@ -337,24 +360,42 @@ export function QuickEditForm({
         </div>
       </FormSection>
 
-      <FormSection title="Declaration" description="Acceptance and timestamp.">
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm text-slate-200">
-            <input
-              type="checkbox"
-              name="declaration_accepted"
-              required
-              defaultChecked={registration.declaration_accepted ?? false}
-              className="h-4 w-4 rounded border-slate-700/60 bg-slate-950/40 text-orange-400 focus:ring-orange-400"
-            />
-            Declaration accepted (required)
-          </label>
+      <FormSection title="Declaration">
+        <div className="space-y-5 text-sm text-[color:var(--muted)]">
+          <p className="text-[color:var(--ink)]">
+            I declare that the information provided is correct and I agree to comply with the Yatra
+            guidelines.
+          </p>
+          <Field label="Declaration acceptance" htmlFor="declaration_accepted">
+            <label className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
+              <input
+                id="declaration_accepted"
+                type="checkbox"
+                name="declaration_accepted"
+                required
+                defaultChecked={registration.declaration_accepted ?? false}
+                className="h-4 w-4 rounded border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--accent)] focus:ring-[color:var(--accent)]"
+              />
+              <span className="text-[color:var(--accent)]">I accept the declaration</span>
+            </label>
+          </Field>
           <Field label="Signed at" htmlFor="declaration_signed_at">
-            <TextInput
-              type="datetime-local"
-              name="declaration_signed_at"
-              defaultValue={formatDateTimeLocal(registration.declaration_signed_at)}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              <TextInput
+                id="declaration_signed_at"
+                type="datetime-local"
+                name="declaration_signed_at"
+                defaultValue={formatDateTimeLocal(registration.declaration_signed_at)}
+                className="w-full sm:w-[240px]"
+              />
+              <button
+                type="button"
+                onClick={() => setInputValue("declaration_signed_at", formatDateTimeLocal(new Date().toISOString()))}
+                className="rounded-xl border border-[color:var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
+              >
+                Now
+              </button>
+            </div>
           </Field>
         </div>
       </FormSection>

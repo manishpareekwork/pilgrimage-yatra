@@ -46,6 +46,7 @@ type FormInput = {
   health_bp_meds?: string;
   health_asthma: boolean;
   health_asthma_meds?: string;
+  health_common_meds?: string;
   health_other?: string;
   health_other_meds?: string;
   emergency_contact_name?: string;
@@ -100,6 +101,7 @@ const parseFormData = (
     health_bp_meds: asOptionalString(formData.get("health_bp_meds")),
     health_asthma: formData.get("health_asthma") === "on",
     health_asthma_meds: asOptionalString(formData.get("health_asthma_meds")),
+    health_common_meds: asOptionalString(formData.get("health_common_meds")),
     health_other: asOptionalString(formData.get("health_other")),
     health_other_meds: asOptionalString(formData.get("health_other_meds")),
     emergency_contact_name: asOptionalString(formData.get("emergency_contact_name")),
@@ -159,6 +161,7 @@ export async function createRegistrationAction(
   }
 
   const input = parsed.data;
+  const commonActive = input.health_heart || input.health_bp || input.health_diabetes || input.health_asthma;
   const createPayload = {
     p_owner: userData.user.id,
     p_created_by: userData.user.id,
@@ -201,6 +204,7 @@ export async function createRegistrationAction(
     health_bp_meds: input.health_bp ? input.health_bp_meds ?? null : null,
     health_asthma: input.health_asthma ?? false,
     health_asthma_meds: input.health_asthma ? input.health_asthma_meds ?? null : null,
+    health_common_meds: commonActive ? input.health_common_meds ?? null : null,
     health_other: input.health_other ?? null,
     health_other_meds: input.health_other ? input.health_other_meds ?? null : null,
     emergency_contact_name: input.emergency_contact_name ?? null,

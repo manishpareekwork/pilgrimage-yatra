@@ -76,6 +76,7 @@ create table if not exists public.yatra_registrations (
   health_diabetes_meds text,
   health_asthma boolean default false,
   health_asthma_meds text,
+  health_common_meds text,
   health_other text,
   health_other_meds text,
   emergency_contact_name text,
@@ -120,6 +121,7 @@ alter table public.yatra_registrations
   add column if not exists health_diabetes_meds text,
   add column if not exists health_asthma boolean default false,
   add column if not exists health_asthma_meds text,
+  add column if not exists health_common_meds text,
   add column if not exists health_other text,
   add column if not exists health_other_meds text,
   add column if not exists emergency_contact_name text,
@@ -147,6 +149,13 @@ alter table public.yatra_registrations
   drop constraint if exists yatra_registrations_emergency_age_check,
   add constraint yatra_registrations_emergency_age_check
     check (emergency_contact_age_years is null or emergency_contact_age_years between 0 and 120);
+
+update public.yatra_registrations
+set health_common_meds = nullif(
+  trim(both ', ' from concat_ws(', ', health_heart_meds, health_bp_meds, health_diabetes_meds, health_asthma_meds)),
+  ''
+)
+where health_common_meds is null;
 
 -- reviews (human-in-the-loop audit)
 create table if not exists public.yatra_reviews (
@@ -344,6 +353,46 @@ begin
     health_asthma_meds = case
       when coalesce((p_patch->>'health_asthma')::boolean, r.health_asthma) then coalesce((p_patch->>'health_asthma_meds'), r.health_asthma_meds)
       else null
+    end,
+    health_common_meds = case
+      when p_patch ? 'health_common_meds' then nullif((p_patch->>'health_common_meds'), '')
+      when (
+        p_patch ? 'health_heart'
+        or p_patch ? 'health_bp'
+        or p_patch ? 'health_diabetes'
+        or p_patch ? 'health_asthma'
+        or p_patch ? 'health_heart_meds'
+        or p_patch ? 'health_bp_meds'
+        or p_patch ? 'health_diabetes_meds'
+        or p_patch ? 'health_asthma_meds'
+      )
+      then nullif(
+        trim(both ', ' from concat_ws(
+          ', ',
+          case
+            when coalesce((p_patch->>'health_heart')::boolean, r.health_heart)
+              then coalesce((p_patch->>'health_heart_meds'), r.health_heart_meds)
+            else null
+          end,
+          case
+            when coalesce((p_patch->>'health_bp')::boolean, r.health_bp)
+              then coalesce((p_patch->>'health_bp_meds'), r.health_bp_meds)
+            else null
+          end,
+          case
+            when coalesce((p_patch->>'health_diabetes')::boolean, r.health_diabetes)
+              then coalesce((p_patch->>'health_diabetes_meds'), r.health_diabetes_meds)
+            else null
+          end,
+          case
+            when coalesce((p_patch->>'health_asthma')::boolean, r.health_asthma)
+              then coalesce((p_patch->>'health_asthma_meds'), r.health_asthma_meds)
+            else null
+          end
+        )),
+        ''
+      )
+      else r.health_common_meds
     end,
     health_other = coalesce((p_patch->>'health_other'), r.health_other),
     health_other_meds = case
