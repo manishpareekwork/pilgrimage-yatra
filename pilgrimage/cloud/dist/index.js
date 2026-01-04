@@ -2,6 +2,24 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 const app = express();
 app.use(express.json());
+const allowedOrigins = new Set((process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean));
+const allowAnyOrigin = allowedOrigins.size === 0 || allowedOrigins.has("*");
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && (allowAnyOrigin || allowedOrigins.has(origin))) {
+        res.setHeader("Access-Control-Allow-Origin", allowAnyOrigin ? "*" : origin);
+        res.setHeader("Vary", "Origin");
+    }
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
+    if (req.method === "OPTIONS") {
+        return res.status(204).end();
+    }
+    return next();
+});
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = supabaseUrl && supabaseServiceKey
@@ -23,7 +41,24 @@ function extractRole(user) {
     if (typeof appMetaRole === 'string') {
         return appMetaRole;
     }
+    const userMetaRole = user.user_metadata?.role;
+    if (typeof userMetaRole === 'string') {
+        return userMetaRole;
+    }
     return undefined;
+}
+async function resolveRole(user) {
+    const direct = extractRole(user);
+    if (direct)
+        return direct;
+    if (!supabase)
+        return undefined;
+    const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+    return data?.role ?? undefined;
 }
 async function requireAuth(req, res, next) {
     if (!supabase) {
@@ -38,11 +73,22 @@ async function requireAuth(req, res, next) {
     if (error || !data?.user) {
         return respondError(res, 401, 'unauthorized', 'Invalid or expired token');
     }
+    const role = await resolveRole(data.user);
     req.auth = {
         userId: data.user.id,
-        role: extractRole(data.user),
+        role,
         token,
     };
+    return next();
+}
+async function requireStaff(req, res, next) {
+    const auth = req.auth;
+    if (!auth) {
+        return respondError(res, 401, 'unauthorized', 'Missing auth context');
+    }
+    if (!auth.role || (auth.role !== 'admin' && auth.role !== 'reviewer')) {
+        return respondError(res, 403, 'forbidden', 'Staff role required');
+    }
     return next();
 }
 function requireSupabase(res) {
@@ -115,6 +161,96 @@ app.post('/sign-url', requireAuth, async (req, res) => {
     catch (err) {
         return respondError(res, 500, 'sign_url_error', 'Failed to create signed URL', err);
     }
+});
+const normalizeStationCode = (value) => typeof value === 'string' ? value.trim().toUpperCase() : '';
+const normalizeStationName = (value) => typeof value === 'string' ? value.trim() : '';
+const normalizeStationState = (value) => {
+    if (value === null || value === undefined)
+        return null;
+    if (typeof value !== 'string')
+        return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
+};
+app.get('/master-stations', requireAuth, requireStaff, async (req, res) => {
+    if (!supabase) {
+        return respondError(res, 503, 'service_unavailable', 'Supabase not configured');
+    }
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    let query = supabase
+        .from('master_stations')
+        .select('id, code, name, state, created_at')
+        .order('code');
+    if (q) {
+        query = query.or(`code.ilike.%${q}%,name.ilike.%${q}%`);
+    }
+    const { data, error } = await query;
+    if (error) {
+        return respondError(res, 500, 'db_error', 'Failed to load stations', error.message);
+    }
+    return res.json({ data: data ?? [] });
+});
+app.post('/master-stations', requireAuth, requireStaff, async (req, res) => {
+    if (!supabase) {
+        return respondError(res, 503, 'service_unavailable', 'Supabase not configured');
+    }
+    const code = normalizeStationCode(req.body?.code);
+    const name = normalizeStationName(req.body?.name);
+    const state = normalizeStationState(req.body?.state);
+    if (!code || !name) {
+        return respondError(res, 422, 'invalid_request', 'code and name are required');
+    }
+    const { data, error } = await supabase
+        .from('master_stations')
+        .insert({ code, name, state })
+        .select('id, code, name, state, created_at')
+        .single();
+    if (error || !data) {
+        return respondError(res, 500, 'db_error', 'Failed to create station', error?.message);
+    }
+    return res.status(201).json({ data });
+});
+app.patch('/master-stations/:id', requireAuth, requireStaff, async (req, res) => {
+    if (!supabase) {
+        return respondError(res, 503, 'service_unavailable', 'Supabase not configured');
+    }
+    const id = req.params.id;
+    const code = normalizeStationCode(req.body?.code);
+    const name = normalizeStationName(req.body?.name);
+    const state = normalizeStationState(req.body?.state);
+    if (!id || !code || !name) {
+        return respondError(res, 422, 'invalid_request', 'id, code, and name are required');
+    }
+    const { data, error } = await supabase
+        .from('master_stations')
+        .update({ code, name, state })
+        .eq('id', id)
+        .select('id, code, name, state, created_at')
+        .maybeSingle();
+    if (error) {
+        return respondError(res, 500, 'db_error', 'Failed to update station', error.message);
+    }
+    if (!data) {
+        return respondError(res, 404, 'invalid_request', 'Station not found');
+    }
+    return res.json({ data });
+});
+app.delete('/master-stations/:id', requireAuth, requireStaff, async (req, res) => {
+    if (!supabase) {
+        return respondError(res, 503, 'service_unavailable', 'Supabase not configured');
+    }
+    const id = req.params.id;
+    if (!id) {
+        return respondError(res, 422, 'invalid_request', 'id is required');
+    }
+    const { error } = await supabase
+        .from('master_stations')
+        .delete()
+        .eq('id', id);
+    if (error) {
+        return respondError(res, 500, 'db_error', 'Failed to delete station', error.message);
+    }
+    return res.json({ ok: true });
 });
 // Create registration via service role (for server-to-server calls)
 app.post('/registrations', async (req, res) => {

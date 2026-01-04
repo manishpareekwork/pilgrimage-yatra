@@ -4,6 +4,16 @@ import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 
+const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL?.replace(/\/$/, "");
+
+type StationRow = {
+  id: string;
+  code: string;
+  name: string;
+  state: string | null;
+  created_at: string | null;
+};
+
 const toText = (value: FormDataEntryValue | null) =>
   value ? value.toString().trim() : "";
 
@@ -47,8 +57,30 @@ async function createStation(formData: FormData) {
   const state = toText(formData.get("state")) || null;
   if (!code || !name) return;
 
+  if (!orchestratorUrl) {
+    throw new Error("NEXT_PUBLIC_ORCHESTRATOR_URL is not configured.");
+  }
+
   const supabase = await getActionSupabase();
-  await supabase.from("master_stations").insert({ code, name, state });
+  const { data: session } = await supabase.auth.getSession();
+  const token = session.session?.access_token;
+  if (!token) {
+    throw new Error("Unable to read auth session.");
+  }
+
+  const response = await fetch(`${orchestratorUrl}/master-stations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code, name, state }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message ?? "Failed to create station.");
+  }
   revalidatePath("/masters/stations");
 }
 
@@ -60,8 +92,30 @@ async function updateStation(formData: FormData) {
   const state = toText(formData.get("state")) || null;
   if (!id || !code || !name) return;
 
+  if (!orchestratorUrl) {
+    throw new Error("NEXT_PUBLIC_ORCHESTRATOR_URL is not configured.");
+  }
+
   const supabase = await getActionSupabase();
-  await supabase.from("master_stations").update({ code, name, state }).eq("id", id);
+  const { data: session } = await supabase.auth.getSession();
+  const token = session.session?.access_token;
+  if (!token) {
+    throw new Error("Unable to read auth session.");
+  }
+
+  const response = await fetch(`${orchestratorUrl}/master-stations/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code, name, state }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message ?? "Failed to update station.");
+  }
   revalidatePath("/masters/stations");
 }
 
@@ -70,8 +124,28 @@ async function deleteStation(formData: FormData) {
   const id = toText(formData.get("id"));
   if (!id) return;
 
+  if (!orchestratorUrl) {
+    throw new Error("NEXT_PUBLIC_ORCHESTRATOR_URL is not configured.");
+  }
+
   const supabase = await getActionSupabase();
-  await supabase.from("master_stations").delete().eq("id", id);
+  const { data: session } = await supabase.auth.getSession();
+  const token = session.session?.access_token;
+  if (!token) {
+    throw new Error("Unable to read auth session.");
+  }
+
+  const response = await fetch(`${orchestratorUrl}/master-stations/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error?.message ?? "Failed to delete station.");
+  }
   revalidatePath("/masters/stations");
 }
 
@@ -85,17 +159,33 @@ export default async function MasterStationsPage({
   const queryParam = Array.isArray(params.q) ? params.q?.[0] : params.q;
   const q = queryParam?.trim() ?? "";
 
-  let query = supabase
-    .from("master_stations")
-    .select("id, code, name, state, created_at")
-    .order("code");
+  const { data: session } = await supabase.auth.getSession();
+  const token = session.session?.access_token;
 
-  if (q) {
-    query = query.or(`code.ilike.%${q}%,name.ilike.%${q}%`);
+  let stations: StationRow[] = [];
+  let errorMessage: string | null = null;
+  if (!orchestratorUrl) {
+    errorMessage = "NEXT_PUBLIC_ORCHESTRATOR_URL is not configured.";
+  } else if (!token) {
+    errorMessage = "Unable to read auth session.";
+  } else {
+    const url = new URL(`${orchestratorUrl}/master-stations`);
+    if (q) url.searchParams.set("q", q);
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      errorMessage = payload?.error?.message ?? "Failed to load stations.";
+    } else {
+      const payload = await response.json().catch(() => null);
+      stations = (payload?.data ?? []) as StationRow[];
+    }
   }
 
-  const { data: stations, error } = await query;
-  const stationCount = stations?.length ?? 0;
+  const error = errorMessage ? { message: errorMessage } : null;
+  const stationCount = stations.length;
 
   return (
     <div id="stations" className="yatris-grid masters-stations flex flex-col gap-6">
