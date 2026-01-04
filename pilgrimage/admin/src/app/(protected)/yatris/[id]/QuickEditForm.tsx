@@ -28,6 +28,8 @@ type Registration = {
   travel_mode?: string | null;
   train_class?: string | null;
   reservation_by?: string | null;
+  category_id?: string | null;
+  health_none?: boolean | null;
   health_heart?: boolean | null;
   health_heart_meds?: string | null;
   health_bp?: boolean | null;
@@ -44,6 +46,10 @@ type Registration = {
   emergency_contact_age_years?: number | null;
   emergency_contact_address?: string | null;
   emergency_contact_phone?: string | null;
+  accompanying_name?: string | null;
+  accompanying_guardian_name?: string | null;
+  accompanying_resident_of?: string | null;
+  accompanying_phone?: string | null;
   attended_badarinath_2024?: boolean | null;
   sadhu_sant_category?: boolean | null;
   declaration_accepted?: boolean | null;
@@ -89,6 +95,8 @@ export function QuickEditForm({
 }) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const [travelMode, setTravelMode] = useState(registration.travel_mode ?? "");
+  const [healthNone, setHealthNone] = useState(Boolean(registration.health_none));
   const [healthHeart, setHealthHeart] = useState(Boolean(registration.health_heart));
   const [healthBp, setHealthBp] = useState(Boolean(registration.health_bp));
   const [healthDiabetes, setHealthDiabetes] = useState(Boolean(registration.health_diabetes));
@@ -102,7 +110,9 @@ export function QuickEditForm({
   const [addressState, setAddressState] = useState(registration.address_state ?? "");
   const [addressDistrict, setAddressDistrict] = useState(registration.address_district ?? "");
   const [lookupError, setLookupError] = useState<string | null>(null);
-  const commonMedicalActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const commonMedicalActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
   const otherLabel = registration.health_other || "Other condition";
   const trainClassValue = normalizeTrainClass(registration.train_class);
   const hasCustomTrainClass = Boolean(
@@ -146,6 +156,26 @@ export function QuickEditForm({
   }, [supabase]);
 
   useEffect(() => {
+    let isActive = true;
+    const loadCategories = async () => {
+      const { data, error } = await supabase
+        .from("yatra_categories")
+        .select("id, name")
+        .order("name");
+      if (!isActive) return;
+      if (error) {
+        setCategoryError(error.message);
+        return;
+      }
+      setCategoryOptions(data ?? []);
+    };
+    void loadCategories();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
     if (!addressState) {
       setDistrictOptions([]);
       if (addressDistrict) setAddressDistrict("");
@@ -167,8 +197,23 @@ export function QuickEditForm({
       isActive = false;
     };
   }, [supabase, addressState, addressDistrict]);
+
+  useEffect(() => {
+    if (healthNone) {
+      setHealthHeart(false);
+      setHealthBp(false);
+      setHealthDiabetes(false);
+      setHealthAsthma(false);
+      setOtherActive(false);
+      setCommonMedicalNotes("");
+      clearInput("health_other");
+      clearInput("health_other_meds");
+    }
+  }, [healthNone]);
+
   useEffect(() => {
     if (!otherActive) {
+      clearInput("health_other");
       clearInput("health_other_meds");
     }
   }, [otherActive]);
@@ -193,29 +238,40 @@ export function QuickEditForm({
               <option value="guardian">Guardian</option>
             </Select>
           </Field>
-          <Field label="Father/Husband/Guardian Name" htmlFor="father_name_hi">
-            <TextInput name="father_name_hi" defaultValue={registration.father_name_hi ?? ""} />
+          <Field label="Father/Husband/Guardian Name" htmlFor="father_name_hi" required>
+            <TextInput name="father_name_hi" required defaultValue={registration.father_name_hi ?? ""} />
           </Field>
-          <Field label="Aadhaar" htmlFor="aadhaar_no">
-            <TextInput name="aadhaar_no" defaultValue={registration.aadhaar_no ?? ""} />
+          <Field label="Aadhaar" htmlFor="aadhaar_no" required>
+            <TextInput name="aadhaar_no" required defaultValue={registration.aadhaar_no ?? ""} />
           </Field>
           <Field label="Phone" htmlFor="phone" required>
             <TextInput name="phone" required defaultValue={registration.phone ?? ""} />
           </Field>
-          <Field label="WhatsApp" htmlFor="whatsapp">
-            <TextInput name="whatsapp" defaultValue={registration.whatsapp ?? ""} />
+          <Field label="WhatsApp" htmlFor="whatsapp" required>
+            <TextInput name="whatsapp" required defaultValue={registration.whatsapp ?? ""} />
           </Field>
-          <Field label="Date of Birth" htmlFor="dob">
-            <TextInput type="date" name="dob" defaultValue={formatDate(registration.dob)} />
+          <Field label="Date of Birth" htmlFor="dob" required>
+            <TextInput type="date" name="dob" required defaultValue={formatDate(registration.dob)} />
           </Field>
-          <Field label="Age (years)" htmlFor="age_years">
+          <Field label="Age (years)" htmlFor="age_years" required>
             <TextInput
               type="number"
               name="age_years"
               min={0}
               max={120}
+              required
               defaultValue={registration.age_years ?? ""}
             />
+          </Field>
+          <Field label="Yatri Bucket" htmlFor="category_id">
+            <Select name="category_id" defaultValue={registration.category_id ?? ""}>
+              <option value="">Unassigned</option>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Height (cm)" htmlFor="height_cm">
             <TextInput
@@ -288,20 +344,32 @@ export function QuickEditForm({
             </Field>
           </div>
           {lookupError && <div className="col-span-full text-xs text-rose-500">{lookupError}</div>}
+          {categoryError && <div className="col-span-full text-xs text-rose-500">{categoryError}</div>}
         </div>
       </FormSection>
 
       <FormSection title="Travel & Reservation" description="Primary travel plan and status.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Travel Mode" htmlFor="travel_mode">
-            <Select name="travel_mode" defaultValue={registration.travel_mode ?? ""}>
+          <Field label="Travel Mode" htmlFor="travel_mode" required>
+            <Select
+              name="travel_mode"
+              value={travelMode}
+              onChange={(event) => {
+                const value = event.target.value;
+                setTravelMode(value);
+                if (value === "air") {
+                  setInputValue("train_class", "");
+                }
+              }}
+              required
+            >
               <option value="">Select</option>
               <option value="train">Train</option>
               <option value="air">Air</option>
             </Select>
           </Field>
-          <Field label="Train Class" htmlFor="train_class">
-            <Select name="train_class" defaultValue={trainClassValue}>
+          <Field label="Train Class" htmlFor="train_class" required={travelMode === "train"}>
+            <Select name="train_class" defaultValue={trainClassValue} required={travelMode === "train"} disabled={travelMode === "air"}>
               <option value="">Select</option>
               {hasCustomTrainClass && <option value={trainClassValue}>{trainClassValue}</option>}
               {TRAIN_CLASS_OPTIONS.map((option) => (
@@ -311,8 +379,8 @@ export function QuickEditForm({
               ))}
             </Select>
           </Field>
-          <Field label="Reservation By" htmlFor="reservation_by">
-            <Select name="reservation_by" defaultValue={registration.reservation_by ?? ""}>
+          <Field label="Reservation By" htmlFor="reservation_by" required>
+            <Select name="reservation_by" defaultValue={registration.reservation_by ?? ""} required>
               <option value="">Select</option>
               <option value="self">Self</option>
               <option value="committee">Committee</option>
@@ -329,36 +397,92 @@ export function QuickEditForm({
         </div>
       </FormSection>
 
+      <FormSection title="Accompanying Person" description="Mandatory companion details.">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Name" htmlFor="accompanying_name" required>
+            <TextInput
+              name="accompanying_name"
+              required
+              defaultValue={registration.accompanying_name ?? ""}
+            />
+          </Field>
+          <Field label="Father/Husband Name" htmlFor="accompanying_guardian_name" required>
+            <TextInput
+              name="accompanying_guardian_name"
+              required
+              defaultValue={registration.accompanying_guardian_name ?? ""}
+            />
+          </Field>
+          <Field label="Resident of" htmlFor="accompanying_resident_of" required>
+            <TextInput
+              name="accompanying_resident_of"
+              required
+              defaultValue={registration.accompanying_resident_of ?? ""}
+            />
+          </Field>
+          <Field label="Mobile" htmlFor="accompanying_phone" required>
+            <TextInput
+              name="accompanying_phone"
+              required
+              defaultValue={registration.accompanying_phone ?? ""}
+            />
+          </Field>
+        </div>
+      </FormSection>
+
       <FormSection title="Medical" description="Conditions and medicine notes.">
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <CheckboxRow
+              name="health_none"
+              label="No known conditions"
+              checked={healthNone}
+              onChange={(event) => setHealthNone(event.target.checked)}
+              inputClassName="mt-0"
+            />
             <CheckboxRow
               name="health_heart"
               label="Heart condition"
               checked={healthHeart}
-              onChange={(event) => setHealthHeart(event.target.checked)}
+              onChange={(event) => {
+                setHealthHeart(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
               inputClassName="mt-0"
+              disabled={healthNone}
             />
             <CheckboxRow
               name="health_bp"
               label="Blood Pressure"
               checked={healthBp}
-              onChange={(event) => setHealthBp(event.target.checked)}
+              onChange={(event) => {
+                setHealthBp(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
               inputClassName="mt-0"
+              disabled={healthNone}
             />
             <CheckboxRow
               name="health_diabetes"
               label="Diabetes"
               checked={healthDiabetes}
-              onChange={(event) => setHealthDiabetes(event.target.checked)}
+              onChange={(event) => {
+                setHealthDiabetes(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
               inputClassName="mt-0"
+              disabled={healthNone}
             />
             <CheckboxRow
               name="health_asthma"
               label="Asthma"
               checked={healthAsthma}
-              onChange={(event) => setHealthAsthma(event.target.checked)}
+              onChange={(event) => {
+                setHealthAsthma(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
               inputClassName="mt-0"
+              disabled={healthNone}
             />
           </div>
           <Field label="Medicines / notes" htmlFor="health_common_meds">
@@ -401,15 +525,19 @@ export function QuickEditForm({
           <CheckboxRow
             label="Other condition"
             checked={otherActive}
-            onChange={(event) => setOtherActive(event.target.checked)}
+            onChange={(event) => {
+              setOtherActive(event.target.checked);
+              if (event.target.checked) setHealthNone(false);
+            }}
             className="gap-6 border-t border-[color:var(--border)] pt-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]"
             inputClassName="mt-0"
+            disabled={healthNone}
           >
             <input type="hidden" name="health_other" value={otherActive ? otherLabel : ""} />
             <TextArea
               id="health_other_meds"
               name="health_other_meds"
-              disabled={!otherActive}
+              disabled={!otherActive || healthNone}
               defaultValue={registration.health_other_meds ?? ""}
               placeholder="Other condition notes"
               aria-label="Other condition notes"
@@ -456,11 +584,11 @@ export function QuickEditForm({
         </div>
       </FormSection>
 
-      <FormSection title="Additional Questions" description="Optional category and attendance flags.">
+      <FormSection title="Additional Questions" description="Optional bucket and attendance flags.">
         <div className="grid gap-4 sm:grid-cols-2">
           <CheckboxRow
             name="attended_badarinath_2024"
-            label="Attended Badarinath 2024"
+            label="Part of last organized Badarinath Yatra"
             defaultChecked={registration.attended_badarinath_2024 ?? false}
           />
           <CheckboxRow

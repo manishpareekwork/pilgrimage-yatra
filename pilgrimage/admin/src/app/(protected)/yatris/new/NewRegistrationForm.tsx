@@ -30,12 +30,19 @@ const minimalFieldNames = new Set([
   "address_district",
   "address_city",
   "address_pin",
+  "aadhaar_no",
   "phone",
   "whatsapp",
   "dob",
+  "age_years",
   "travel_mode",
   "train_class",
   "reservation_by",
+  "accompanying_name",
+  "accompanying_guardian_name",
+  "accompanying_resident_of",
+  "accompanying_phone",
+  "health_none",
   "declaration_accepted",
   "declaration_signed_at",
 ]);
@@ -76,6 +83,8 @@ export function NewRegistrationForm({
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const hasOrchestrator = Boolean(orchestratorUrl);
+  const [travelMode, setTravelMode] = useState("train");
+  const [healthNone, setHealthNone] = useState(false);
   const [healthHeart, setHealthHeart] = useState(false);
   const [healthBp, setHealthBp] = useState(false);
   const [healthDiabetes, setHealthDiabetes] = useState(false);
@@ -90,12 +99,15 @@ export function NewRegistrationForm({
   const [formPreview, setFormPreview] = useState<string | null>(null);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [preSubmitError, setPreSubmitError] = useState<string | null>(null);
   const [uploadAttempted, setUploadAttempted] = useState(false);
   const [stateOptions, setStateOptions] = useState<AddressOption[]>([]);
   const [districtOptions, setDistrictOptions] = useState<AddressOption[]>([]);
   const [addressState, setAddressState] = useState("");
   const [addressDistrict, setAddressDistrict] = useState("");
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const showDevTools =
     process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
 
@@ -145,15 +157,16 @@ export function NewRegistrationForm({
   const handleFileChange =
     (kind: "photo" | "form") => (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0] ?? null;
-      if (kind === "photo") {
-        setPhotoFile(file);
-        setPreviewFromFile(file, setPhotoPreview);
-      } else {
-        setFormFile(file);
-        setPreviewFromFile(file, setFormPreview);
-      }
-      event.target.value = "";
-    };
+    if (kind === "photo") {
+      setPhotoFile(file);
+      setPreviewFromFile(file, setPhotoPreview);
+    } else {
+      setFormFile(file);
+      setPreviewFromFile(file, setFormPreview);
+    }
+    setPreSubmitError(null);
+    event.target.value = "";
+  };
 
   const renderUploadSlot = (
     kind: "photo" | "form",
@@ -230,6 +243,26 @@ export function NewRegistrationForm({
   }, [supabase]);
 
   useEffect(() => {
+    let isActive = true;
+    const loadCategories = async () => {
+      const { data, error } = await supabase
+        .from("yatra_categories")
+        .select("id, name")
+        .order("name");
+      if (!isActive) return;
+      if (error) {
+        setCategoryError(error.message);
+        return;
+      }
+      setCategoryOptions(data ?? []);
+    };
+    void loadCategories();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
     if (!addressState) {
       setDistrictOptions([]);
       if (addressDistrict) setAddressDistrict("");
@@ -289,8 +322,13 @@ export function NewRegistrationForm({
     setInputValue("travel_mode", "train");
     setInputValue("train_class", "Sleeper Class (SL)");
     setInputValue("reservation_by", "self");
+    setInputValue("accompanying_name", "अनिल मिश्रा");
+    setInputValue("accompanying_guardian_name", "मोहन मिश्रा");
+    setInputValue("accompanying_resident_of", "दिल्ली");
+    setInputValue("accompanying_phone", `8${uniqueSuffix}`);
     setSignedAtNow();
     setCheckboxValue("declaration_accepted", true);
+    setHealthNone(false);
     setHealthHeart(true);
     setHealthDiabetes(true);
     setCommonMedicalNotes("Aspirin, Metformin");
@@ -354,6 +392,11 @@ export function NewRegistrationForm({
   const uploadSelectedFiles = async (registrationId: string) => {
     if (photoFile) await uploadFile("photo", photoFile, registrationId);
     if (formFile) await uploadFile("form", formFile, registrationId);
+    const { error } = await supabase.rpc("fn_update_registration", {
+      p_id: registrationId,
+      p_patch: { status: "approved" },
+    });
+    if (error) throw error;
   };
 
   useEffect(() => {
@@ -388,11 +431,24 @@ export function NewRegistrationForm({
     };
   }, [router, state?.error, state?.id, photoFile, formFile, hasOrchestrator, uploadAttempted]);
 
-  const commonMedicalActive = healthHeart || healthBp || healthDiabetes || healthAsthma;
+  const commonMedicalActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
 
   useEffect(() => {
     if (!commonMedicalActive) setCommonMedicalNotes("");
   }, [commonMedicalActive]);
+
+  useEffect(() => {
+    if (healthNone) {
+      setHealthHeart(false);
+      setHealthBp(false);
+      setHealthDiabetes(false);
+      setHealthAsthma(false);
+      setOtherActive(false);
+      setCommonMedicalNotes("");
+      clearInput("health_other");
+      clearInput("health_other_meds");
+    }
+  }, [healthNone]);
 
   useEffect(() => {
     if (!otherActive) {
@@ -419,7 +475,22 @@ export function NewRegistrationForm({
   );
 
   return (
-    <form ref={formRef} action={formAction} className="new-registration-form space-y-8">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={(event) => {
+        if (!photoFile) {
+          event.preventDefault();
+          setPreSubmitError("Photo is required before submitting.");
+          return;
+        }
+        if (!hasOrchestrator) {
+          event.preventDefault();
+          setPreSubmitError("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
+        }
+      }}
+      className="new-registration-form space-y-8"
+    >
       <div className="relative">
         <PageHeader
           title="New Registration"
@@ -440,6 +511,11 @@ export function NewRegistrationForm({
               Registration ID: <span className="font-mono">{state.id}</span>
             </div>
           )}
+        </div>
+      )}
+      {preSubmitError && (
+        <div className="rounded-2xl border border-rose-500/40 bg-rose-950/40 px-4 py-3 text-sm text-rose-200">
+          {preSubmitError}
         </div>
       )}
 
@@ -527,11 +603,13 @@ export function NewRegistrationForm({
           <Field
             label="Father/Husband/Guardian Name"
             htmlFor="father_name_hi"
+            required
             error={fieldErrors?.father_name_hi}
           >
             <TextInput
               id="father_name_hi"
               name="father_name_hi"
+              required
               placeholder="पिता/अभिभावक"
               error={hasFieldError("father_name_hi")}
             />
@@ -545,38 +623,51 @@ export function NewRegistrationForm({
               error={hasFieldError("phone")}
             />
           </Field>
-          <Field label="WhatsApp" htmlFor="whatsapp" error={fieldErrors?.whatsapp}>
+          <Field label="WhatsApp" htmlFor="whatsapp" required error={fieldErrors?.whatsapp}>
             <TextInput
               id="whatsapp"
               name="whatsapp"
+              required
               placeholder="+91..."
               error={hasFieldError("whatsapp")}
             />
           </Field>
-          <Field label="Date of Birth" htmlFor="dob" error={fieldErrors?.dob}>
-            <TextInput id="dob" type="date" name="dob" error={hasFieldError("dob")} />
+          <Field label="Date of Birth" htmlFor="dob" required error={fieldErrors?.dob}>
+            <TextInput id="dob" type="date" name="dob" required error={hasFieldError("dob")} />
+          </Field>
+          <Field label="Aadhaar No." htmlFor="aadhaar_no" required error={fieldErrors?.aadhaar_no}>
+            <TextInput
+              id="aadhaar_no"
+              name="aadhaar_no"
+              required
+              placeholder="12-digit Aadhaar"
+              error={hasFieldError("aadhaar_no")}
+            />
+          </Field>
+          <Field label="Age (years)" htmlFor="age_years" required error={fieldErrors?.age_years}>
+            <TextInput
+              id="age_years"
+              type="number"
+              name="age_years"
+              min={0}
+              max={120}
+              required
+              placeholder="e.g., 45"
+              error={hasFieldError("age_years")}
+            />
+          </Field>
+          <Field label="Yatri Bucket" htmlFor="category_id">
+            <Select id="category_id" name="category_id" defaultValue="">
+              <option value="">Unassigned</option>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
           </Field>
           {!minimalMode && (
             <>
-              <Field label="Aadhaar No." htmlFor="aadhaar_no" error={fieldErrors?.aadhaar_no}>
-                <TextInput
-                  id="aadhaar_no"
-                  name="aadhaar_no"
-                  placeholder="12-digit Aadhaar"
-                  error={hasFieldError("aadhaar_no")}
-                />
-              </Field>
-              <Field label="Age (years)" htmlFor="age_years" error={fieldErrors?.age_years}>
-                <TextInput
-                  id="age_years"
-                  type="number"
-                  name="age_years"
-                  min={0}
-                  max={120}
-                  placeholder="e.g., 45"
-                  error={hasFieldError("age_years")}
-                />
-              </Field>
               <Field label="Height (cm)" htmlFor="height_cm" error={fieldErrors?.height_cm}>
                 <TextInput
                   id="height_cm"
@@ -665,24 +756,39 @@ export function NewRegistrationForm({
             </Field>
           </div>
           {lookupError && <div className="col-span-full text-xs text-rose-500">{lookupError}</div>}
+          {categoryError && <div className="col-span-full text-xs text-rose-500">{categoryError}</div>}
         </div>
       </FormSection>
 
       <FormSection title="Travel & Reservation">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Travel Mode" htmlFor="travel_mode" error={fieldErrors?.travel_mode}>
+          <Field label="Travel Mode" htmlFor="travel_mode" required error={fieldErrors?.travel_mode}>
             <Select
               id="travel_mode"
               name="travel_mode"
-              defaultValue="train"
+              value={travelMode}
+              onChange={(event) => {
+                const value = event.target.value;
+                setTravelMode(value);
+                if (value === "air") {
+                  setInputValue("train_class", "");
+                }
+              }}
               error={hasFieldError("travel_mode")}
+              required
             >
               <option value="train">Train</option>
               <option value="air">Air</option>
             </Select>
           </Field>
-          <Field label="Train Class" htmlFor="train_class" error={fieldErrors?.train_class}>
-            <Select id="train_class" name="train_class" error={hasFieldError("train_class")}>
+          <Field label="Train Class" htmlFor="train_class" required={travelMode === "train"} error={fieldErrors?.train_class}>
+            <Select
+              id="train_class"
+              name="train_class"
+              error={hasFieldError("train_class")}
+              disabled={travelMode === "air"}
+              required={travelMode === "train"}
+            >
               <option value="">Select</option>
               {TRAIN_CLASS_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -691,12 +797,13 @@ export function NewRegistrationForm({
               ))}
             </Select>
           </Field>
-          <Field label="Reservation By" htmlFor="reservation_by" error={fieldErrors?.reservation_by}>
+          <Field label="Reservation By" htmlFor="reservation_by" required error={fieldErrors?.reservation_by}>
             <Select
               id="reservation_by"
               name="reservation_by"
               defaultValue=""
               error={hasFieldError("reservation_by")}
+              required
             >
               <option value="">Select</option>
               <option value="self">Self</option>
@@ -706,97 +813,190 @@ export function NewRegistrationForm({
         </div>
       </FormSection>
 
-      {!minimalMode && (
-        <FormSection title="Medical">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <CheckboxRow
-                name="health_heart"
-                label="Heart condition"
-                checked={healthHeart}
-                onChange={(event) => setHealthHeart(event.target.checked)}
-                inputClassName="mt-0"
-              />
-              <CheckboxRow
-                name="health_bp"
-                label="Blood Pressure"
-                checked={healthBp}
-                onChange={(event) => setHealthBp(event.target.checked)}
-                inputClassName="mt-0"
-              />
-              <CheckboxRow
-                name="health_diabetes"
-                label="Diabetes"
-                checked={healthDiabetes}
-                onChange={(event) => setHealthDiabetes(event.target.checked)}
-                inputClassName="mt-0"
-              />
-              <CheckboxRow
-                name="health_asthma"
-                label="Asthma"
-                checked={healthAsthma}
-                onChange={(event) => setHealthAsthma(event.target.checked)}
-                inputClassName="mt-0"
-              />
-            </div>
-            <Field label="Medicines / notes" htmlFor="health_common_meds">
-              <TextArea
-                id="health_common_meds"
-                value={commonMedicalNotes}
-                onChange={(event) => setCommonMedicalNotes(event.target.value)}
-                disabled={!commonMedicalActive}
-                placeholder="Medicines / notes for selected conditions"
-                aria-label="Medicines / notes"
-                rows={3}
-                className="min-h-24"
-              />
-              <input
-                type="hidden"
-                name="health_common_meds"
-                value={commonMedicalActive ? commonMedicalNotes : ""}
-              />
-              <input
-                type="hidden"
-                name="health_heart_meds"
-                value={healthHeart ? commonMedicalNotes : ""}
-              />
-              <input
-                type="hidden"
-                name="health_bp_meds"
-                value={healthBp ? commonMedicalNotes : ""}
-              />
-              <input
-                type="hidden"
-                name="health_diabetes_meds"
-                value={healthDiabetes ? commonMedicalNotes : ""}
-              />
-              <input
-                type="hidden"
-                name="health_asthma_meds"
-                value={healthAsthma ? commonMedicalNotes : ""}
-              />
-            </Field>
+      <FormSection title="Accompanying Person">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+          <Field
+            label="Name"
+            htmlFor="accompanying_name"
+            required
+            error={fieldErrors?.accompanying_name}
+          >
+            <TextInput
+              id="accompanying_name"
+              name="accompanying_name"
+              required
+              placeholder="Accompanying person"
+              error={hasFieldError("accompanying_name")}
+            />
+          </Field>
+          <Field
+            label="Father/Husband Name"
+            htmlFor="accompanying_guardian_name"
+            required
+            error={fieldErrors?.accompanying_guardian_name}
+          >
+            <TextInput
+              id="accompanying_guardian_name"
+              name="accompanying_guardian_name"
+              required
+              placeholder="Guardian name"
+              error={hasFieldError("accompanying_guardian_name")}
+            />
+          </Field>
+          <Field
+            label="Resident of"
+            htmlFor="accompanying_resident_of"
+            required
+            error={fieldErrors?.accompanying_resident_of}
+          >
+            <TextInput
+              id="accompanying_resident_of"
+              name="accompanying_resident_of"
+              required
+              placeholder="City / Village"
+              error={hasFieldError("accompanying_resident_of")}
+            />
+          </Field>
+          <Field
+            label="Mobile"
+            htmlFor="accompanying_phone"
+            required
+            error={fieldErrors?.accompanying_phone}
+          >
+            <TextInput
+              id="accompanying_phone"
+              name="accompanying_phone"
+              required
+              placeholder="+91..."
+              inputMode="numeric"
+              error={hasFieldError("accompanying_phone")}
+            />
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Medical">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <CheckboxRow
-              label="Other condition"
-              checked={otherActive}
-              onChange={(event) => setOtherActive(event.target.checked)}
-              className="gap-6 border-t border-[color:var(--border)] pt-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]"
+              name="health_none"
+              label="No known conditions"
+              checked={healthNone}
+              onChange={(event) => setHealthNone(event.target.checked)}
               inputClassName="mt-0"
-            >
-              <input type="hidden" name="health_other" value={otherActive ? "Other condition" : ""} />
-              <TextArea
-                id="health_other_meds"
-                name="health_other_meds"
-                disabled={!otherActive}
-                placeholder="Other condition notes"
-                aria-label="Other condition notes"
-                rows={2}
-                className="min-h-20"
-              />
-            </CheckboxRow>
+              className={hasFieldError("health_none") ? "rounded-xl border border-red-500/40 p-3" : undefined}
+            />
+            <CheckboxRow
+              name="health_heart"
+              label="Heart condition"
+              checked={healthHeart}
+              onChange={(event) => {
+                setHealthHeart(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
+              inputClassName="mt-0"
+              disabled={healthNone}
+            />
+            <CheckboxRow
+              name="health_bp"
+              label="Blood Pressure"
+              checked={healthBp}
+              onChange={(event) => {
+                setHealthBp(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
+              inputClassName="mt-0"
+              disabled={healthNone}
+            />
+            <CheckboxRow
+              name="health_diabetes"
+              label="Diabetes"
+              checked={healthDiabetes}
+              onChange={(event) => {
+                setHealthDiabetes(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
+              inputClassName="mt-0"
+              disabled={healthNone}
+            />
+            <CheckboxRow
+              name="health_asthma"
+              label="Asthma"
+              checked={healthAsthma}
+              onChange={(event) => {
+                setHealthAsthma(event.target.checked);
+                if (event.target.checked) setHealthNone(false);
+              }}
+              inputClassName="mt-0"
+              disabled={healthNone}
+            />
           </div>
-        </FormSection>
-      )}
+          {hasFieldError("health_none") && (
+            <div className="text-xs text-red-400">
+              {fieldErrors?.health_none ?? "Select a medical condition or 'No known conditions'."}
+            </div>
+          )}
+          <Field label="Medicines / notes" htmlFor="health_common_meds">
+            <TextArea
+              id="health_common_meds"
+              value={commonMedicalNotes}
+              onChange={(event) => setCommonMedicalNotes(event.target.value)}
+              disabled={!commonMedicalActive}
+              placeholder="Medicines / notes for selected conditions"
+              aria-label="Medicines / notes"
+              rows={3}
+              className="min-h-24"
+            />
+            <input
+              type="hidden"
+              name="health_common_meds"
+              value={commonMedicalActive ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_heart_meds"
+              value={healthHeart ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_bp_meds"
+              value={healthBp ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_diabetes_meds"
+              value={healthDiabetes ? commonMedicalNotes : ""}
+            />
+            <input
+              type="hidden"
+              name="health_asthma_meds"
+              value={healthAsthma ? commonMedicalNotes : ""}
+            />
+          </Field>
+          <CheckboxRow
+            label="Other condition"
+            checked={otherActive}
+            onChange={(event) => {
+              setOtherActive(event.target.checked);
+              if (event.target.checked) setHealthNone(false);
+            }}
+            className="gap-6 border-t border-[color:var(--border)] pt-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]"
+            inputClassName="mt-0"
+            disabled={healthNone}
+          >
+            <input type="hidden" name="health_other" value={otherActive ? "Other condition" : ""} />
+            <TextArea
+              id="health_other_meds"
+              name="health_other_meds"
+              disabled={!otherActive || healthNone}
+              placeholder="Other condition notes"
+              aria-label="Other condition notes"
+              rows={2}
+              className="min-h-20"
+            />
+          </CheckboxRow>
+        </div>
+      </FormSection>
 
       {!minimalMode && (
         <FormSection title="Emergency / Companion">
@@ -851,7 +1051,10 @@ export function NewRegistrationForm({
       {!minimalMode && (
         <FormSection title="Additional Questions">
           <div className="grid gap-4 sm:grid-cols-2">
-            <CheckboxRow name="attended_badarinath_2024" label="Attended Badarinath 2024" />
+            <CheckboxRow
+              name="attended_badarinath_2024"
+              label="Part of last organized Badarinath Yatra"
+            />
             <CheckboxRow name="sadhu_sant_category" label="Sadhu/Sant category" />
           </div>
         </FormSection>
@@ -908,25 +1111,6 @@ export function NewRegistrationForm({
           <div className="mt-6 space-y-8">
             <FormSection title="Applicant details">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <Field label="Aadhaar No." htmlFor="aadhaar_no" error={fieldErrors?.aadhaar_no}>
-                  <TextInput
-                    id="aadhaar_no"
-                    name="aadhaar_no"
-                    placeholder="12-digit Aadhaar"
-                    error={hasFieldError("aadhaar_no")}
-                  />
-                </Field>
-                <Field label="Age (years)" htmlFor="age_years" error={fieldErrors?.age_years}>
-                  <TextInput
-                    id="age_years"
-                    type="number"
-                    name="age_years"
-                    min={0}
-                    max={120}
-                    placeholder="e.g., 45"
-                    error={hasFieldError("age_years")}
-                  />
-                </Field>
                 <Field label="Height (cm)" htmlFor="height_cm" error={fieldErrors?.height_cm}>
                   <TextInput
                     id="height_cm"
@@ -947,96 +1131,6 @@ export function NewRegistrationForm({
                     error={hasFieldError("weight_kg")}
                   />
                 </Field>
-              </div>
-            </FormSection>
-
-            <FormSection title="Medical">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-                  <CheckboxRow
-                    name="health_heart"
-                    label="Heart condition"
-                    checked={healthHeart}
-                    onChange={(event) => setHealthHeart(event.target.checked)}
-                    inputClassName="mt-0"
-                  />
-                  <CheckboxRow
-                    name="health_bp"
-                    label="Blood Pressure"
-                    checked={healthBp}
-                    onChange={(event) => setHealthBp(event.target.checked)}
-                    inputClassName="mt-0"
-                  />
-                  <CheckboxRow
-                    name="health_diabetes"
-                    label="Diabetes"
-                    checked={healthDiabetes}
-                    onChange={(event) => setHealthDiabetes(event.target.checked)}
-                    inputClassName="mt-0"
-                  />
-                  <CheckboxRow
-                    name="health_asthma"
-                    label="Asthma"
-                    checked={healthAsthma}
-                    onChange={(event) => setHealthAsthma(event.target.checked)}
-                    inputClassName="mt-0"
-                  />
-                </div>
-                <Field label="Medicines / notes" htmlFor="health_common_meds_optional">
-                  <TextArea
-                    id="health_common_meds_optional"
-                    value={commonMedicalNotes}
-                    onChange={(event) => setCommonMedicalNotes(event.target.value)}
-                    disabled={!commonMedicalActive}
-                    placeholder="Medicines / notes for selected conditions"
-                    aria-label="Medicines / notes"
-                    rows={3}
-                    className="min-h-24"
-                  />
-                  <input
-                    type="hidden"
-                    name="health_common_meds"
-                    value={commonMedicalActive ? commonMedicalNotes : ""}
-                  />
-                  <input
-                    type="hidden"
-                    name="health_heart_meds"
-                    value={healthHeart ? commonMedicalNotes : ""}
-                  />
-                  <input
-                    type="hidden"
-                    name="health_bp_meds"
-                    value={healthBp ? commonMedicalNotes : ""}
-                  />
-                  <input
-                    type="hidden"
-                    name="health_diabetes_meds"
-                    value={healthDiabetes ? commonMedicalNotes : ""}
-                  />
-                  <input
-                    type="hidden"
-                    name="health_asthma_meds"
-                    value={healthAsthma ? commonMedicalNotes : ""}
-                  />
-                </Field>
-                <CheckboxRow
-                  label="Other condition"
-                  checked={otherActive}
-                  onChange={(event) => setOtherActive(event.target.checked)}
-                  className="gap-6 border-t border-[color:var(--border)] pt-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]"
-                  inputClassName="mt-0"
-                >
-                  <input type="hidden" name="health_other" value={otherActive ? "Other condition" : ""} />
-                  <TextArea
-                    id="health_other_meds"
-                    name="health_other_meds"
-                    disabled={!otherActive}
-                    placeholder="Other condition notes"
-                    aria-label="Other condition notes"
-                    rows={2}
-                    className="min-h-20"
-                  />
-                </CheckboxRow>
               </div>
             </FormSection>
 
@@ -1090,7 +1184,10 @@ export function NewRegistrationForm({
 
             <FormSection title="Additional Questions">
               <div className="grid gap-4 sm:grid-cols-2">
-                <CheckboxRow name="attended_badarinath_2024" label="Attended Badarinath 2024" />
+                <CheckboxRow
+                  name="attended_badarinath_2024"
+                  label="Part of last organized Badarinath Yatra"
+                />
                 <CheckboxRow name="sadhu_sant_category" label="Sadhu/Sant category" />
               </div>
             </FormSection>

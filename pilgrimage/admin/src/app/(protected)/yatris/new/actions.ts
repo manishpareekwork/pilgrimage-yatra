@@ -22,6 +22,18 @@ const asNumber = (value: FormDataEntryValue | null) => {
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const datetimeRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
 
+const computeAgeFromDob = (dob: string) => {
+  const date = new Date(dob);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const hasHadBirthday =
+    today.getMonth() > date.getMonth() ||
+    (today.getMonth() === date.getMonth() && today.getDate() >= date.getDate());
+  if (!hasHadBirthday) age -= 1;
+  return age;
+};
+
 type FormInput = {
   receipt_no?: string;
   name_hi: string;
@@ -42,6 +54,8 @@ type FormInput = {
   travel_mode?: string;
   train_class?: string;
   reservation_by?: string;
+  category_id?: string;
+  health_none: boolean;
   health_heart: boolean;
   health_heart_meds?: string;
   health_diabetes: boolean;
@@ -58,6 +72,10 @@ type FormInput = {
   emergency_contact_age_years?: number;
   emergency_contact_address?: string;
   emergency_contact_phone?: string;
+  accompanying_name?: string;
+  accompanying_guardian_name?: string;
+  accompanying_resident_of?: string;
+  accompanying_phone?: string;
   attended_badarinath_2024: boolean;
   sadhu_sant_category: boolean;
   declaration_accepted: boolean;
@@ -101,6 +119,8 @@ const parseFormData = (
     travel_mode: asOptionalString(formData.get("travel_mode")),
     train_class: asOptionalString(formData.get("train_class")),
     reservation_by: asOptionalString(formData.get("reservation_by")),
+    category_id: asOptionalString(formData.get("category_id")),
+    health_none: formData.get("health_none") === "on",
     health_heart: formData.get("health_heart") === "on",
     health_heart_meds: asOptionalString(formData.get("health_heart_meds")),
     health_diabetes: formData.get("health_diabetes") === "on",
@@ -117,6 +137,10 @@ const parseFormData = (
     emergency_contact_age_years: emergencyAgeValue,
     emergency_contact_address: asOptionalString(formData.get("emergency_contact_address")),
     emergency_contact_phone: asOptionalString(formData.get("emergency_contact_phone")),
+    accompanying_name: asOptionalString(formData.get("accompanying_name")),
+    accompanying_guardian_name: asOptionalString(formData.get("accompanying_guardian_name")),
+    accompanying_resident_of: asOptionalString(formData.get("accompanying_resident_of")),
+    accompanying_phone: asOptionalString(formData.get("accompanying_phone")),
     attended_badarinath_2024: formData.get("attended_badarinath_2024") === "on",
     sadhu_sant_category: formData.get("sadhu_sant_category") === "on",
     declaration_accepted: formData.get("declaration_accepted") === "on",
@@ -124,8 +148,21 @@ const parseFormData = (
   };
 
   if (!data.name_hi) fieldErrors.name_hi = "Name is required";
+  if (!data.father_name_hi) fieldErrors.father_name_hi = "Guardian name is required";
   if (!data.address_hi) fieldErrors.address_hi = "Address is required";
+  if (!data.aadhaar_no) fieldErrors.aadhaar_no = "Aadhaar number is required";
   if (!data.phone) fieldErrors.phone = "Phone is required";
+  if (!data.whatsapp) fieldErrors.whatsapp = "WhatsApp number is required";
+  if (!data.dob) fieldErrors.dob = "Date of birth is required";
+  if (data.age_years === undefined) fieldErrors.age_years = "Age is required";
+  if (!data.travel_mode) fieldErrors.travel_mode = "Travel mode is required";
+  if (!data.reservation_by) fieldErrors.reservation_by = "Reservation preference is required";
+  if (!data.accompanying_name) fieldErrors.accompanying_name = "Accompanying person name is required";
+  if (!data.accompanying_guardian_name)
+    fieldErrors.accompanying_guardian_name = "Accompanying guardian name is required";
+  if (!data.accompanying_resident_of)
+    fieldErrors.accompanying_resident_of = "Accompanying resident of is required";
+  if (!data.accompanying_phone) fieldErrors.accompanying_phone = "Accompanying phone is required";
   if (!data.declaration_accepted) fieldErrors.declaration_accepted = "Declaration must be accepted";
   if (data.dob && !dateRegex.test(data.dob)) fieldErrors.dob = "DOB must be YYYY-MM-DD";
   if (data.declaration_signed_at && !datetimeRegex.test(data.declaration_signed_at)) {
@@ -134,11 +171,33 @@ const parseFormData = (
   if (data.age_years !== undefined && (data.age_years < 0 || data.age_years > 120)) {
     fieldErrors.age_years = "Age must be between 0 and 120";
   }
+  if (data.dob && data.age_years !== undefined) {
+    const computedAge = computeAgeFromDob(data.dob);
+    if (computedAge === null) {
+      fieldErrors.dob = "DOB must be a valid date";
+    } else if (Math.abs(computedAge - data.age_years) > 1) {
+      fieldErrors.age_years = "Age does not match DOB";
+    }
+  }
   if (
     data.emergency_contact_age_years !== undefined &&
     (data.emergency_contact_age_years < 0 || data.emergency_contact_age_years > 120)
   ) {
     fieldErrors.emergency_contact_age_years = "Emergency contact age must be between 0 and 120";
+  }
+  if (data.travel_mode === "train" && !data.train_class) {
+    fieldErrors.train_class = "Train class is required";
+  }
+
+  const healthSelected =
+    data.health_none ||
+    data.health_heart ||
+    data.health_bp ||
+    data.health_diabetes ||
+    data.health_asthma ||
+    Boolean(data.health_other);
+  if (!healthSelected) {
+    fieldErrors.health_none = "Select 'No known conditions' or at least one condition";
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -169,7 +228,8 @@ export async function createRegistrationAction(
   }
 
   const input = parsed.data;
-  const commonActive = input.health_heart || input.health_bp || input.health_diabetes || input.health_asthma;
+  const commonActive =
+    !input.health_none && (input.health_heart || input.health_bp || input.health_diabetes || input.health_asthma);
   const createPayload = {
     p_owner: userData.user.id,
     p_created_by: userData.user.id,
@@ -206,24 +266,34 @@ export async function createRegistrationAction(
     phone: input.phone,
     whatsapp: input.whatsapp ?? null,
     travel_mode: input.travel_mode ?? null,
-    train_class: input.train_class ?? null,
+    train_class: input.travel_mode === "air" ? null : input.train_class ?? null,
     reservation_by: input.reservation_by ?? null,
+    category_id: input.category_id ?? null,
+    health_none: input.health_none ?? false,
     health_heart: input.health_heart ?? false,
-    health_heart_meds: input.health_heart ? input.health_heart_meds ?? null : null,
+    health_heart_meds: input.health_none ? null : input.health_heart ? input.health_heart_meds ?? null : null,
     health_diabetes: input.health_diabetes ?? false,
-    health_diabetes_meds: input.health_diabetes ? input.health_diabetes_meds ?? null : null,
+    health_diabetes_meds: input.health_none ? null : input.health_diabetes ? input.health_diabetes_meds ?? null : null,
     health_bp: input.health_bp ?? false,
-    health_bp_meds: input.health_bp ? input.health_bp_meds ?? null : null,
+    health_bp_meds: input.health_none ? null : input.health_bp ? input.health_bp_meds ?? null : null,
     health_asthma: input.health_asthma ?? false,
-    health_asthma_meds: input.health_asthma ? input.health_asthma_meds ?? null : null,
+    health_asthma_meds: input.health_none ? null : input.health_asthma ? input.health_asthma_meds ?? null : null,
     health_common_meds: commonActive ? input.health_common_meds ?? null : null,
-    health_other: input.health_other ?? null,
-    health_other_meds: input.health_other ? input.health_other_meds ?? null : null,
+    health_other: input.health_none ? null : input.health_other ?? null,
+    health_other_meds: input.health_none
+      ? null
+      : input.health_other
+        ? input.health_other_meds ?? null
+        : null,
     emergency_contact_name: input.emergency_contact_name ?? null,
     emergency_contact_father_name: input.emergency_contact_father_name ?? null,
     emergency_contact_age_years: input.emergency_contact_age_years ?? null,
     emergency_contact_address: input.emergency_contact_address ?? null,
     emergency_contact_phone: input.emergency_contact_phone ?? null,
+    accompanying_name: input.accompanying_name ?? null,
+    accompanying_guardian_name: input.accompanying_guardian_name ?? null,
+    accompanying_resident_of: input.accompanying_resident_of ?? null,
+    accompanying_phone: input.accompanying_phone ?? null,
     attended_badarinath_2024: input.attended_badarinath_2024 ?? false,
     sadhu_sant_category: input.sadhu_sant_category ?? false,
     declaration_accepted: input.declaration_accepted,

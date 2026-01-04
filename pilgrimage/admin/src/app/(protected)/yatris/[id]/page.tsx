@@ -190,6 +190,13 @@ export default async function YatriDetail({
                     Reject
                   </button>
                 </form>
+                <Link
+                  href={`/print/id-cards?ids=${registration.id}`}
+                  target="_blank"
+                  className="btn-secondary inline-flex items-center"
+                >
+                  Print ID Card
+                </Link>
                 <Link href="/yatris" className="btn-secondary inline-flex items-center">
                   Back to list
                 </Link>

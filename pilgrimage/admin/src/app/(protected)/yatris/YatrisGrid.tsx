@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
@@ -58,6 +58,7 @@ const DEFAULT_COLUMNS: ColumnConfig = {
     "name_hi",
     "phone",
     "status",
+    "category",
     "travel",
     "uploads",
     "actions",
@@ -96,7 +97,7 @@ const areColumnFiltersEqual = (a: ColumnFilters = {}, b: ColumnFilters = {}) => 
   return aKeys.every((key) => a[key as keyof ColumnFilters] === b[key as keyof ColumnFilters]);
 };
 
-const FILTERABLE_COLUMNS = new Set<string>(["status", "travel", "age_years"]);
+const FILTERABLE_COLUMNS = new Set<string>(["status", "travel", "age_years", "category"]);
 
 const SortIcon = ({ direction }: { direction: "asc" | "desc" }) => (
   <svg
@@ -418,6 +419,9 @@ export function YatrisGrid({
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<Record<string, { path: string; url: string }>>({});
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
   const [dragColumn, setDragColumn] = useState<string | null>(null);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
   const viewsRef = useRef<HTMLDetailsElement>(null);
@@ -508,6 +512,26 @@ export function YatrisGrid({
       isActive = false;
     };
   }, [rows, orchestratorUrl, photoPreviewUrls]);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadCategories = async () => {
+      const { data, error } = await supabase
+        .from("yatra_categories")
+        .select("id, name")
+        .order("name");
+      if (!isActive) return;
+      if (error) {
+        setCategoryError(error.message);
+        return;
+      }
+      setCategoryOptions(data ?? []);
+    };
+    void loadCategories();
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     const stored = typeof window !== "undefined" ? window.localStorage.getItem(COLUMN_STORAGE_KEY) : null;
@@ -647,6 +671,42 @@ export function YatrisGrid({
                   />
                 </svg>
                 Edit
+              </Link>
+              <Link
+                href={`/print/id-cards?ids=${row.id}`}
+                target="_blank"
+                onClick={() => setOpenRowMenuId(null)}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
+              >
+                <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
+                  <rect
+                    x="4"
+                    y="3"
+                    width="12"
+                    height="6"
+                    rx="1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <rect
+                    x="5"
+                    y="11"
+                    width="10"
+                    height="6"
+                    rx="1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M6 7h8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+                Print ID Card
               </Link>
               {canReviewRow && (
                 <Link
@@ -801,6 +861,19 @@ export function YatrisGrid({
     event.target.value = "";
   };
 
+  const updateCategory = useCallback(async (row: YatriRow, categoryId: string) => {
+    setCategoryMessage(null);
+    const { error } = await supabase.rpc("fn_update_registration", {
+      p_id: row.id,
+      p_patch: { category_id: categoryId || null },
+    });
+    if (error) {
+      setCategoryMessage(error.message);
+      return;
+    }
+    router.refresh();
+  }, [router, supabase]);
+
   const columns: Record<string, ColumnDef> = useMemo(() => {
     return {
       created_at: {
@@ -840,6 +913,34 @@ export function YatrisGrid({
           </span>
         ),
         exportValue: (row) => statusLabel(row.status),
+      },
+      category: {
+        id: "category",
+        label: "Bucket",
+        cell: (row) => {
+          if (!categoryOptions.length) {
+            return (
+              <span className="text-[11px] text-[color:var(--muted)]">
+                {row.category?.name || "Unassigned"}
+              </span>
+            );
+          }
+          return (
+            <select
+              className="h-8 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-2 text-[11px] text-[color:var(--ink)]"
+              value={row.category_id ?? ""}
+              onChange={(event) => updateCategory(row, event.target.value)}
+            >
+              <option value="">Unassigned</option>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          );
+        },
+        exportValue: (row) => row.category?.name ?? "",
       },
       travel: {
         id: "travel",
@@ -1001,7 +1102,15 @@ export function YatrisGrid({
         cell: (row) => renderRowActions(row, "center"),
       },
     };
-  }, [renderRowActions, uploadingPhotoId, photoPreviewUrls, orchestratorUrl, onPhotoInputChange]);
+  }, [
+    renderRowActions,
+    uploadingPhotoId,
+    photoPreviewUrls,
+    orchestratorUrl,
+    onPhotoInputChange,
+    categoryOptions,
+    updateCategory,
+  ]);
 
   const orderedColumns = useMemo(() => {
     const all = columnConfig.order.map((id) => columns[id]).filter(Boolean);
@@ -1195,6 +1304,12 @@ export function YatrisGrid({
     const selectedRows = rows.filter((row) => selectedIds.has(row.id));
     if (!selectedRows.length) return;
     exportRows(selectedRows, exportFormat);
+  };
+
+  const printSelected = () => {
+    if (!selectedIds.size) return;
+    const ids = Array.from(selectedIds).join(",");
+    window.open(`/print/id-cards?ids=${ids}`, "_blank", "noopener");
   };
 
   const exportFiltered = async () => {
@@ -1479,13 +1594,22 @@ export function YatrisGrid({
                 </div>
               </details>
               {selectedIds.size > 0 && (
-                <button
-                  type="button"
-                  className="btn-secondary min-h-[36px] w-full sm:w-auto"
-                  onClick={exportSelected}
-                >
-                  Export selected
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                    onClick={exportSelected}
+                  >
+                    Export selected
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                    onClick={printSelected}
+                  >
+                    Print ID Cards
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -1567,6 +1691,18 @@ export function YatrisGrid({
       {uploadMessage && (
         <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
           {uploadMessage}
+        </div>
+      )}
+
+      {categoryMessage && (
+        <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
+          {categoryMessage}
+        </div>
+      )}
+
+      {categoryError && (
+        <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
+          Bucket load failed: {categoryError}
         </div>
       )}
 

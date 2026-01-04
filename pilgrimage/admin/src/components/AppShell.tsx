@@ -7,6 +7,7 @@ type NavItem = {
   href: string;
   label: string;
   requireAdmin?: boolean;
+  requireStaff?: boolean;
 };
 
 export function AppShell({
@@ -23,9 +24,15 @@ export function AppShell({
   const nav: NavItem[] = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/yatris", label: "Yatris" },
+    { href: "/masters", label: "Masters", requireStaff: true },
+    { href: "/groups/train", label: "Groups", requireStaff: true },
+    { href: "/booking-tasks", label: "Bookings", requireStaff: true },
+    { href: "/volunteers", label: "Volunteers", requireStaff: true },
+    { href: "/reports", label: "Reports", requireStaff: true },
     { href: "/users", label: "Users", requireAdmin: true },
   ];
   const isAdmin = role === "admin";
+  const isStaff = role === "admin" || role === "reviewer";
 
   return (
     <div className="app-shell">
@@ -49,7 +56,7 @@ export function AppShell({
           </div>
           <nav className="app-shell__nav-desktop">
             {nav
-              .filter((item) => !item.requireAdmin || isAdmin)
+              .filter((item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff))
               .map((item) => (
                 <Link key={item.href} href={item.href} className="app-shell__nav-link">
                   {item.label}
@@ -64,7 +71,7 @@ export function AppShell({
         <div className="app-shell__nav-mobile">
           <div className="app-shell__nav-mobile-links">
             {nav
-              .filter((item) => !item.requireAdmin || isAdmin)
+              .filter((item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff))
               .map((item) => (
                 <Link key={item.href} href={item.href} className="app-shell__nav-chip">
                   {item.label}

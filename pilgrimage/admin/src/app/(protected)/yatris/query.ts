@@ -9,6 +9,8 @@ export type YatriRow = {
   status: string | null;
   travel_mode: string | null;
   train_class: string | null;
+  category_id: string | null;
+  category?: { id: string; name: string } | null;
   photo_url: string | null;
   form_image_url: string | null;
   receipt_no: string | null;
@@ -31,6 +33,7 @@ export const COLUMN_FILTER_KEYS = [
   "name_hi",
   "phone",
   "status",
+  "category",
   "travel",
   "uploads",
   "receipt_no",
@@ -69,7 +72,7 @@ const SORT_VALUES = new Set(["created_at", "name", "status"]);
 const MISSING_VALUES = new Set(["photo", "form", "any"]);
 
 export const SELECT_COLUMNS =
-  "id,created_at,name_hi,phone,status,travel_mode,train_class,photo_url,form_image_url,receipt_no,aadhaar_no,age_years,dob,reservation_by,emergency_contact_name,emergency_contact_phone,health_heart,health_bp,health_diabetes,health_asthma";
+  "id,created_at,name_hi,phone,status,travel_mode,train_class,category_id,category:yatra_categories(id,name),photo_url,form_image_url,receipt_no,aadhaar_no,age_years,dob,reservation_by,emergency_contact_name,emergency_contact_phone,health_heart,health_bp,health_diabetes,health_asthma";
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -262,6 +265,11 @@ export const applyYatrisFilters = (query: any, filters: YatrisFilters) => {
     next = next.or(
       `emergency_contact_name.ilike.${likeValue},emergency_contact_phone.ilike.${likeValue}`
     );
+  }
+
+  if (columnFilters.category) {
+    const likeValue = `%${columnFilters.category}%`;
+    next = next.or(`category.name.ilike.${likeValue}`);
   }
 
   if (columnFilters.uploads) {
