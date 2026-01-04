@@ -19,6 +19,10 @@ type Member = {
   registration?: { name_hi: string | null; phone: string | null } | null;
 };
 
+type RawMember = Omit<Member, "registration"> & {
+  registration?: { name_hi: string | null; phone: string | null }[] | { name_hi: string | null; phone: string | null } | null;
+};
+
 export function VolunteerAssignmentsClient() {
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -40,7 +44,14 @@ export function VolunteerAssignmentsClient() {
     } else {
       setMessage(null);
       setRoles((rolesRes.data ?? []) as Role[]);
-      setMembers((membersRes.data ?? []) as Member[]);
+      const normalizedMembers = (membersRes.data ?? []).map((member) => {
+        const rawMember = member as RawMember;
+        const registration = Array.isArray(rawMember.registration)
+          ? rawMember.registration[0] ?? null
+          : rawMember.registration ?? null;
+        return { ...rawMember, registration } as Member;
+      });
+      setMembers(normalizedMembers);
     }
     setLoading(false);
   };

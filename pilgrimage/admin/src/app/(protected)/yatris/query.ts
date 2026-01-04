@@ -26,6 +26,10 @@ export type YatriRow = {
   health_asthma: boolean | null;
 };
 
+type RawYatriRow = Omit<YatriRow, "category"> & {
+  category?: { id: string; name: string }[] | { id: string; name: string } | null;
+};
+
 export const COLUMN_FILTER_PREFIX = "cf_";
 
 export const COLUMN_FILTER_KEYS = [
@@ -73,6 +77,15 @@ const MISSING_VALUES = new Set(["photo", "form", "any"]);
 
 export const SELECT_COLUMNS =
   "id,created_at,name_hi,phone,status,travel_mode,train_class,category_id,category:yatra_categories(id,name),photo_url,form_image_url,receipt_no,aadhaar_no,age_years,dob,reservation_by,emergency_contact_name,emergency_contact_phone,health_heart,health_bp,health_diabetes,health_asthma";
+
+export const normalizeYatriRows = (rows: unknown[]): YatriRow[] =>
+  rows.map((row) => {
+    const raw = row as RawYatriRow;
+    const category = Array.isArray(raw.category)
+      ? raw.category[0] ?? null
+      : raw.category ?? null;
+    return { ...raw, category };
+  });
 
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] ?? "" : value ?? "";

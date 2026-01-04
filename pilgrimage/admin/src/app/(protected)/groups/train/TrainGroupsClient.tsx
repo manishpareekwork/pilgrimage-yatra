@@ -38,6 +38,10 @@ type Member = {
   registration?: { id: string; name_hi: string | null; phone: string | null } | null;
 };
 
+type RawMember = Omit<Member, "registration"> & {
+  registration?: { id: string; name_hi: string | null; phone: string | null }[] | { id: string; name_hi: string | null; phone: string | null } | null;
+};
+
 type Group = {
   id: string;
   group_code: string;
@@ -58,6 +62,11 @@ type Group = {
   incharge_registration_id: string | null;
   incharge?: { id: string; name_hi: string | null } | null;
   members?: Member[] | null;
+};
+
+type RawGroup = Omit<Group, "incharge" | "members"> & {
+  incharge?: { id: string; name_hi: string | null }[] | { id: string; name_hi: string | null } | null;
+  members?: RawMember[] | null;
 };
 
 const toCsv = (rows: string[][]) =>
@@ -118,7 +127,20 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
         setGroups([]);
       } else {
         setMessage(null);
-        setGroups((data ?? []) as Group[]);
+        const normalizedGroups = (data ?? []).map((group) => {
+          const rawGroup = group as RawGroup;
+          const incharge = Array.isArray(rawGroup.incharge)
+            ? rawGroup.incharge[0] ?? null
+            : rawGroup.incharge ?? null;
+          const members = (rawGroup.members ?? []).map((member) => {
+            const registration = Array.isArray(member.registration)
+              ? member.registration[0] ?? null
+              : member.registration ?? null;
+            return { ...member, registration };
+          });
+          return { ...rawGroup, incharge, members };
+        });
+        setGroups(normalizedGroups);
       }
       setLoading(false);
     };

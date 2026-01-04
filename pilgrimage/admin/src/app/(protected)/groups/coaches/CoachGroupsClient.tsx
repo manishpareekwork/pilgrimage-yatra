@@ -18,10 +18,23 @@ type MemberRow = {
   registration?: { name_hi: string | null; phone: string | null } | null;
 };
 
+type RawMemberRow = {
+  coach_no: string | null;
+  seat_no: string | null;
+  berth_no: string | null;
+  registration?: { name_hi: string | null; phone: string | null }[] | { name_hi: string | null; phone: string | null } | null;
+};
+
 type CoachIncharge = {
   coach_no: string;
   coach_incharge_registration_id: string | null;
   incharge?: { name_hi: string | null } | null;
+};
+
+type RawCoachIncharge = {
+  coach_no: string;
+  coach_incharge_registration_id: string | null;
+  incharge?: { name_hi: string | null }[] | { name_hi: string | null } | null;
 };
 
 const toCsv = (rows: string[][]) =>
@@ -58,12 +71,18 @@ export function CoachGroupsClient({ trips }: { trips: Trip[] }) {
         setMessage(groupErr.message);
         setCoachMembers({});
       } else {
-        const members = (groups ?? []).flatMap((group) => group.members ?? []);
+        const members = (groups ?? []).flatMap((group) => group.members ?? []) as RawMemberRow[];
+        const normalizedMembers: MemberRow[] = members.map((member) => {
+          const registration = Array.isArray(member.registration)
+            ? member.registration[0] ?? null
+            : member.registration ?? null;
+          return { ...member, registration };
+        });
         const grouped: Record<string, MemberRow[]> = {};
-        members.forEach((member) => {
+        normalizedMembers.forEach((member) => {
           const coach = member.coach_no || "Unassigned";
           if (!grouped[coach]) grouped[coach] = [];
-          grouped[coach].push(member as MemberRow);
+          grouped[coach].push(member);
         });
         setCoachMembers(grouped);
       }
@@ -78,7 +97,15 @@ export function CoachGroupsClient({ trips }: { trips: Trip[] }) {
       } else {
         const mapping: Record<string, CoachIncharge> = {};
         (coaches ?? []).forEach((coach) => {
-          mapping[coach.coach_no] = coach as CoachIncharge;
+          const rawCoach = coach as RawCoachIncharge;
+          const incharge = Array.isArray(rawCoach.incharge)
+            ? rawCoach.incharge[0] ?? null
+            : rawCoach.incharge ?? null;
+          mapping[rawCoach.coach_no] = {
+            coach_no: rawCoach.coach_no,
+            coach_incharge_registration_id: rawCoach.coach_incharge_registration_id,
+            incharge,
+          };
         });
         setCoachIncharges(mapping);
       }

@@ -2,7 +2,7 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import { exportYatrisRows } from "./actions";
 import { YatrisGrid } from "./YatrisGrid";
-import { buildYatrisQuery, parseListParams } from "./query";
+import { buildYatrisQuery, normalizeYatriRows, parseListParams } from "./query";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,7 +32,7 @@ export default async function YatrisPage({
 
   return (
     <YatrisGrid
-      rows={data ?? []}
+      rows={normalizeYatriRows(data ?? [])}
       totalCount={count ?? 0}
       page={listParams.page}
       pageSize={listParams.pageSize}

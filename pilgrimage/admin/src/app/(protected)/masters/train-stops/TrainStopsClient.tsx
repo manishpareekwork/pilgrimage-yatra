@@ -22,6 +22,10 @@ type Stop = {
   station?: { code: string; name: string } | null;
 };
 
+type RawStop = Omit<Stop, "station"> & {
+  station?: { code: string; name: string }[] | { code: string; name: string } | null;
+};
+
 const toTimeValue = (value: string | null) => (value ? value.slice(0, 5) : "");
 
 const parseNumber = (value: FormDataEntryValue | null) => {
@@ -91,7 +95,14 @@ export function TrainStopsClient({
         setStops([]);
       } else {
         setMessage(null);
-        setStops((data ?? []) as Stop[]);
+        const normalizedStops = (data ?? []).map((stop) => {
+          const rawStop = stop as RawStop;
+          const station = Array.isArray(rawStop.station)
+            ? rawStop.station[0] ?? null
+            : rawStop.station ?? null;
+          return { ...rawStop, station } as Stop;
+        });
+        setStops(normalizedStops);
       }
       setLoading(false);
     };

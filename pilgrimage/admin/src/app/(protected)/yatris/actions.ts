@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   buildYatrisQuery,
   normalizeFilters,
+  normalizeYatriRows,
   type YatriRow,
   type YatrisFilters,
 } from "./query";
@@ -39,7 +40,7 @@ export async function exportYatrisRows({ filters, limit = 2000 }: ExportPayload)
   const overLimit = total > cappedLimit;
 
   return {
-    rows: (data ?? []) as YatriRow[],
+    rows: normalizeYatriRows(data ?? []),
     total,
     overLimit,
   };

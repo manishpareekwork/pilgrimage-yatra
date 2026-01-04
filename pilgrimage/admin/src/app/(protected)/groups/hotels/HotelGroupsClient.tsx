@@ -28,9 +28,23 @@ type Stay = {
   registration?: { name_hi: string | null; phone: string | null } | null;
 };
 
+type RawStay = {
+  id: string;
+  room_id: string;
+  registration_id: string;
+  stay_from: string | null;
+  stay_to: string | null;
+  registration?: { name_hi: string | null; phone: string | null }[] | { name_hi: string | null; phone: string | null } | null;
+};
+
 type Incharge = {
   registration_id: string;
   registration?: { name_hi: string | null } | null;
+};
+
+type RawIncharge = {
+  registration_id: string;
+  registration?: { name_hi: string | null }[] | { name_hi: string | null } | null;
 };
 
 const toCsv = (rows: string[][]) =>
@@ -85,17 +99,32 @@ export function HotelGroupsClient() {
       setMessage(null);
       setHotels((hotelRes.data ?? []) as Hotel[]);
       setRooms((roomRes.data ?? []) as Room[]);
-      setStays((stayRes.data ?? []) as Stay[]);
+      const normalizedStays = (stayRes.data ?? []).map((stay) => {
+        const rawStay = stay as RawStay;
+        const registration = Array.isArray(rawStay.registration)
+          ? rawStay.registration[0] ?? null
+          : rawStay.registration ?? null;
+        return { ...rawStay, registration } as Stay;
+      });
+      setStays(normalizedStays);
 
       const hotelIc: Record<string, Incharge> = {};
       (hotelIcRes.data ?? []).forEach((row: any) => {
-        hotelIc[row.hotel_id] = row as Incharge;
+        const rawRow = row as RawIncharge;
+        const registration = Array.isArray(rawRow.registration)
+          ? rawRow.registration[0] ?? null
+          : rawRow.registration ?? null;
+        hotelIc[row.hotel_id] = { ...row, registration } as Incharge;
       });
       setHotelIncharges(hotelIc);
 
       const roomIc: Record<string, Incharge> = {};
       (roomIcRes.data ?? []).forEach((row: any) => {
-        roomIc[row.room_id] = row as Incharge;
+        const rawRow = row as RawIncharge;
+        const registration = Array.isArray(rawRow.registration)
+          ? rawRow.registration[0] ?? null
+          : rawRow.registration ?? null;
+        roomIc[row.room_id] = { ...row, registration } as Incharge;
       });
       setRoomIncharges(roomIc);
     }
