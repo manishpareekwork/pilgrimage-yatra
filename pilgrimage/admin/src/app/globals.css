@@ -403,19 +403,62 @@ a {
   .masters-stations .header-actions .btn-secondary,
   .masters-stations .header-actions .btn-primary,
   .masters-stations .header-actions summary.btn-secondary,
-  .masters-stations details > summary {
-    min-height: 36px !important;
-    padding: 6px 10px !important;
+  .masters-stations details > summary,
+  .masters-trains .header-actions .btn-secondary,
+  .masters-trains .header-actions .btn-primary,
+  .masters-trains .header-actions summary.btn-secondary,
+  .masters-trains details > summary,
+  .masters-buckets .header-actions .btn-secondary,
+  .masters-buckets .header-actions .btn-primary,
+  .masters-buckets .header-actions summary.btn-secondary,
+  .masters-buckets details > summary,
+  .masters-hotels .header-actions .btn-secondary,
+  .masters-hotels .header-actions .btn-primary,
+  .masters-hotels .header-actions summary.btn-secondary,
+  .masters-hotels details > summary,
+  .volunteers-grid .header-actions .btn-secondary,
+  .volunteers-grid .header-actions .btn-primary,
+  .volunteers-grid .header-actions summary.btn-secondary,
+  .volunteers-grid details > summary,
+  .reports-grid .header-actions .btn-secondary,
+  .reports-grid .header-actions .btn-primary,
+  .reports-grid .header-actions summary.btn-secondary,
+  .reports-grid details > summary {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
     font-size: 12px !important;
   }
 
-  .masters-stations .station-action {
-    min-height: 36px !important;
-    padding: 6px 10px !important;
+  .masters-stations .station-action,
+  .masters-trains .master-action,
+  .masters-buckets .master-action,
+  .masters-hotels .master-action,
+  .volunteers-grid .master-action,
+  .reports-grid .master-action {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
     font-size: 12px !important;
   }
 
-  .station-modal {
+  .reports-grid .report-card {
+    border-radius: 8px;
+    padding: 12px !important;
+  }
+
+  .reports-grid .report-panel {
+    border-radius: 8px;
+    padding: 12px !important;
+    background: var(--surface-muted);
+    box-shadow: none;
+  }
+
+  .dashboard-card {
+    border-radius: 8px !important;
+    padding: 12px !important;
+  }
+
+  .station-modal,
+  .master-modal {
     position: fixed;
     inset: 0;
     display: none;
@@ -425,25 +468,33 @@ a {
     z-index: 80;
   }
 
-  .station-modal:target {
+  .station-modal:target,
+  .master-modal:target {
     display: flex;
   }
 
-  .station-modal__overlay {
+  .station-modal__overlay,
+  .master-modal__overlay {
     position: absolute;
     inset: 0;
     background: rgba(15, 23, 42, 0.55);
     backdrop-filter: blur(6px);
   }
 
-  .station-modal__content {
+  .station-modal__content,
+  .master-modal__content {
     position: relative;
     width: min(420px, 92vw);
     max-height: calc(100vh - 48px);
     overflow: auto;
   }
 
-  .station-modal__close {
+  .master-modal__content--wide {
+    width: min(760px, 94vw);
+  }
+
+  .station-modal__close,
+  .master-modal__close {
     position: absolute;
     top: 10px;
     right: 12px;
@@ -460,7 +511,8 @@ a {
     line-height: 1;
   }
 
-  .station-modal__close:hover {
+  .station-modal__close:hover,
+  .master-modal__close:hover {
     background: var(--btn-secondary-hover);
   }
 
@@ -800,6 +852,7 @@ a {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    border-radius: 8px;
   }
 
   .dashboard-hero::before {
@@ -841,9 +894,15 @@ a {
     background: linear-gradient(135deg, var(--accent) 0%, #fb923c 40%, var(--accent-2) 100%);
     color: #0b1120;
     border-radius: 12px;
-    padding: 10px 14px;
+    padding: 10px 16px;
     font-weight: 600;
     box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
+    line-height: 1.2;
   }
 
   .btn-primary--quiet {
@@ -870,10 +929,16 @@ a {
     background: var(--btn-secondary-bg);
     color: var(--btn-secondary-text);
     border-radius: 12px;
-    padding: 10px 14px;
+    padding: 10px 16px;
     font-weight: 600;
     border: 1px solid var(--border);
     transition: background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
+    line-height: 1.2;
   }
 
   .btn-secondary:hover {

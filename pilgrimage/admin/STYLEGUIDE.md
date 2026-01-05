@@ -16,7 +16,7 @@ Typography
 - Body: 14–16px, muted color for supporting text.
 
 Core components
-- `card`: rounded 16px, light border, soft shadow (`var(--shadow-soft)`).
+- `card`: rounded 16px, light border, soft shadow (`var(--shadow-soft)`); use 12px padding for card sections (`p-3`).
 - `pill`: inline badge for status/role chips.
 - `btn-primary`: gradient saffron→sky, white text, rounded 12px.
 - `btn-secondary`: dark ink background, white text, rounded 12px.

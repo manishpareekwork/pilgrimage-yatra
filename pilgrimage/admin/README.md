@@ -21,7 +21,8 @@ Tip: if styles feel stale, delete `.next/` then re-run `npm run dev:webpack`.
 
 ## Routes
 - `/login` email/password auth.
-- `/dashboard` status tiles.
+- `/dashboard` analytics overview and ops KPIs.
+- `/masters` operations hub (yatris, groups, bookings, volunteers, master data).
 - `/yatris`, `/yatris/[id]`, `/yatris/new` Yatri CRUD.
 - `/users` admin-only profile list.
 

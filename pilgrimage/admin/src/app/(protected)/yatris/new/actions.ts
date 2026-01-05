@@ -300,7 +300,7 @@ export async function createRegistrationAction(
     declaration_signed_at: input.declaration_signed_at
       ? new Date(input.declaration_signed_at).toISOString()
       : null,
-    status: "submitted",
+    status: "approved",
   };
 
   const { error: updateError } = await supabase.rpc("fn_update_registration", {

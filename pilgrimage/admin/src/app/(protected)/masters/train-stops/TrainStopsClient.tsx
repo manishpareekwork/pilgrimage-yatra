@@ -207,9 +207,9 @@ export function TrainStopsClient({
         >
           <TextInput name="stop_seq" type="number" min={1} placeholder="Seq" required />
           <TextInput name="station_code" placeholder="Station code" required />
-          <TextInput name="station_name" placeholder="Station name (optional)" />
-          <TextInput name="arrive_time" type="time" placeholder="Arrive" />
-          <TextInput name="depart_time" type="time" placeholder="Depart" />
+          <TextInput name="station_name" placeholder="Station name" required />
+          <TextInput name="arrive_time" type="time" step={60} placeholder="Arrive" required />
+          <TextInput name="depart_time" type="time" step={60} placeholder="Depart" required />
           <TextInput name="day_offset" type="number" min={0} placeholder="Day" />
           <TextInput name="distance_km" type="number" min={0} placeholder="Km" />
           <TextInput name="halt_minutes" type="number" min={0} placeholder="Halt min" />
@@ -278,12 +278,16 @@ export function TrainStopsClient({
               <TextInput
                 name="arrive_time"
                 type="time"
+                step={60}
                 defaultValue={toTimeValue(stop.arrive_time)}
+                required
               />
               <TextInput
                 name="depart_time"
                 type="time"
+                step={60}
                 defaultValue={toTimeValue(stop.depart_time)}
+                required
               />
               <TextInput
                 name="day_offset"

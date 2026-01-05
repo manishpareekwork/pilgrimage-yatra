@@ -23,13 +23,8 @@ export function AppShell({
 }) {
   const nav: NavItem[] = [
     { href: "/dashboard", label: "Dashboard" },
-    { href: "/yatris", label: "Yatris" },
-    { href: "/masters", label: "Masters", requireStaff: true },
-    { href: "/groups/train", label: "Groups", requireStaff: true },
-    { href: "/booking-tasks", label: "Bookings", requireStaff: true },
-    { href: "/volunteers", label: "Volunteers", requireStaff: true },
+    { href: "/masters", label: "Operations", requireStaff: true },
     { href: "/reports", label: "Reports", requireStaff: true },
-    { href: "/users", label: "Users", requireAdmin: true },
   ];
   const isAdmin = role === "admin";
   const isStaff = role === "admin" || role === "reviewer";

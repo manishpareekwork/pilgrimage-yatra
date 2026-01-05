@@ -282,7 +282,7 @@ app.post('/registrations', async (req, res) => {
     const healthDiabetes = toBool(body.health_diabetes);
     const healthAsthma = toBool(body.health_asthma);
     const healthOther = toNullIfBlank(body.health_other);
-    const status = body.status ?? 'submitted';
+    const status = body.status ?? 'approved';
     const patch = {
         receipt_no: toNullIfBlank(body.receipt_no),
         father_name_hi: toNullIfBlank(body.father_name_hi),
@@ -380,7 +380,7 @@ app.post('/process-form', async (req, res) => {
         sadhu_sant_category: false,
         declaration_accepted: true,
         declaration_signed_at: extractedAt,
-        status: 'needs_review',
+        status: 'approved',
     };
     const rawJson = {
         source: 'mock-ocr',

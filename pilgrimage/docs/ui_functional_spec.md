@@ -6,7 +6,7 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ## A) System Overview (brief)
 - Roles: `yatri` (self registrations), `volunteer` (create/edit registrations they created), `reviewer` (read/update all), `admin` (read/update all + manage roles/users).
-- Flow: Registration created (`submitted`) → processing/triage → `needs_review` (OCR/manual) → reviewer/admin sets `approved` or `rejected` (optionally with edits) via `yatra_reviews`.
+- Flow: Registration is stored as `approved` by default on creation; review flow is optional for future OCR triage.
 - Storage: Supabase Storage buckets `forms` (form images) and `photos` (portraits); both private. Access via signed URLs (orchestrator will broker upload/download).
 
 ## B) Screen Inventory
@@ -14,7 +14,8 @@ Note: This document is the current source of truth; older versions are obsolete.
 | App | Screen | Route/Path | Access (roles) | Purpose |
 | --- | --- | --- | --- | --- |
 | Admin | Login | `/login` | Public | Email/password sign-in. |
-| Admin | Dashboard | `/dashboard` | All authenticated | Status counts overview. |
+| Admin | Dashboard | `/dashboard` | All authenticated | Analytics overview and operational KPIs. |
+| Admin | Operations hub | `/masters` | Admin/Reviewer | Entry point for ops + master data modules. |
 | Admin | Yatris list | `/yatris` | All authenticated | List/filter registrations, go to detail. |
 | Admin | Yatri detail | `/yatris/[id]` | All authenticated | View/edit full registration; uploads; approve/reject actions. |
 | Admin | New Yatri | `/yatris/new` | All authenticated | Create full registration aligned to PDF. |
@@ -36,15 +37,15 @@ Note: This document is the current source of truth; older versions are obsolete.
 - Acceptance: Successful login redirects to dashboard; invalid creds show error; multiple rapid submits are throttled.
 
 ### Admin — Dashboard (`/dashboard`)
-- Status: Implemented (verified); layout polish for inner card centering is next.
-- UI Layout: Hero/banner card with total count; four status tiles (submitted, needs_review, approved, rejected).
-- Functional: On load, fetches counts from `yatra_registrations` via server component queries (count only). Shows error banner on RLS/Supabase failure; empty-state CTA to create first registration when zero rows.
-- Data: `yatra_registrations` counts.
+- Status: Implemented (verified); analytics dashboard refresh in place.
+- UI Layout: Banner with range + mode selectors, total registrations pill, KPI cards (registrations, bookings, stays, volunteers), trend chart, and travel-mode split.
+- Functional: Client fetches `/api/admin/dashboard` with `range` + `mode` query params; cards and charts update interactively; approval/review status tiles removed (data assumed approved on entry).
+- Data: `yatra_registrations`, `yatra_booking_tasks`, `yatra_hotels`, `yatra_hotel_rooms`, `yatra_room_stays`, `yatra_co_travel_groups`, `volunteer_roles`, `volunteer_role_members`, `yatra_trips`.
 - Validation: None (read-only).
-- Errors: Friendly banner with Supabase error message on failure.
-- Acceptance: Authenticated users see counts; unauthenticated redirected to login; empty-state CTA appears when no data.
+- Errors: Error banner surfaces API failure; database connection pill reflects API health.
+- Acceptance: Authenticated users see KPIs and charts; range/mode filters refresh data; unauthenticated redirected to login.
 - Aesthetic: Light cards, bold header, consistent spacing; nav present at top.
- - Layout smoke test: Uses shared AppShell (centered container, visible cards) verified 2025-12-23.
+ - Layout smoke test: Uses shared AppShell (centered container, visible cards) verified 2026-01-09.
 
 ### Admin — Yatris List (`/yatris`)
 - Status: Implemented (verified).
@@ -57,6 +58,15 @@ Note: This document is the current source of truth; older versions are obsolete.
 - Aesthetic: Consistent card container with padded controls, responsive table/card layout, and compact actions menu.
  - Layout smoke test: Uses shared AppShell (centered container) verified 2025-12-23.
 
+### Admin — Reports (`/reports`)
+- Status: Implemented (verified).
+- UI Layout: Report picker cards, filter panels (travel/hotel/location), and export controls for CSV + printable PDF.
+- Functional: Filters apply via query params; report data loads from RPCs; exports trigger CSV download or a print-ready PDF view.
+- Data: `fn_report_city_counts`, `fn_report_district_counts`, `fn_report_travel_members`, `fn_report_hotel_stays`, `master_trains`, `yatra_trips`, `yatra_hotels`.
+- Validation: None (read-only).
+- Errors: Error banner on Supabase failures.
+- Acceptance: Report selection, filters, and export outputs are readable and print-ready.
+
 ### Admin — Yatri Detail (`/yatris/[id]`)
 - UI Layout: FormKit header + section cards (Applicant, Travel, Medical, Emergency, Declaration) on a dark theme; status pill + meta (id, created_at) in header; hero thumbnails for photo/form with add buttons; Quick Edit uses FormKit inputs with address subfields (state/district/city+village/PIN) populated from Supabase RPCs (PIN is optional manual input), medical grid + shared notes textarea (heart/bp/diabetes/asthma) and other-condition notes; datetime picker; review actions in header.
 - Functional: Load registration by id. Upload buttons call orchestrator `/sign-url` (upload, buckets photos/forms) with Supabase JWT, PUT file to signed URL, then update `photo_url`/`form_image_url` via `fn_update_registration`; fixed paths `photos/registrations/<id>/photo.jpg` and `forms/registrations/<id>/form.jpg` overwrite on re-upload and log review diff. Quick Edit uses client-side form + server action `updateRegistrationAction` (patched into `fn_update_registration`) respecting meds-clearing rules and declaration required. Approve/Reject server actions call `fn_create_review` and status update.
@@ -67,7 +77,7 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Admin — New Yatri (`/yatris/new`)
 - UI Layout: FormKit page header + section cards. Applicant/Travel/Medical/Emergency/Additional/Declaration sections with address subfields (state/district/city+village/PIN) populated from Supabase RPCs (PIN is optional manual input); medical grid with checkboxes and shared notes textarea for heart/bp/diabetes/asthma plus other-condition notes; DOB uses date input; declaration_signed_at uses datetime-local with a quick "Now" button. Optional photo/form placeholders allow selecting uploads that run after creation when orchestrator is configured. Minimal mode shows core fields and collapses optional sections into a "More details (optional)" accordion. Sticky Save/Cancel actions; top error banner.
-- Functional: Server action uses `fn_create_registration` (minimal) then `fn_update_registration` patch with all fields + status `submitted`; declaration timestamp auto-set when provided/accepted; meds cleared when toggles off; redirects to detail on success.
+- Functional: Server action uses `fn_create_registration` (minimal) then `fn_update_registration` patch with all fields + status `approved`; declaration timestamp auto-set when provided/accepted; meds cleared when toggles off; redirects to detail on success.
 - Data: `yatra_registrations`; storage paths set after creation on detail.
 - Validation: Required name_hi, address_hi, phone, declaration_accepted=true; age/emergency_age 0–120; meds blocked when checkbox false.
 - Errors: Visible inline error message on validation/Supabase failure; partial creation shows ID + error without redirect.
