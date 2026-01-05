@@ -11,7 +11,7 @@ type Body = {
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  const supabase = createRouteHandlerClient({ cookies: (() => cookieStore) as any });
   const { data: userData } = await supabase.auth.getUser();
 
   if (!userData?.user) {

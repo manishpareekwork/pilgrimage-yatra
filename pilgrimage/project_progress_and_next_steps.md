@@ -90,7 +90,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ### 5. Tooling & Docs
 - [ ] Add `.env.template` files for admin/cloud/mobile.
 - [ ] Add CI smoke tests: `npm run lint` in admin, `npm test` for cloud, `flutter analyze` for mobile.
-- [ ] Verify dashboard hero/pill layout + status card spacing in dev and run `npm run build` for admin.
+- [x] Verify dashboard layout + report builder spacing; run `npm run build` for admin and cloud.
 
 ---
 
@@ -122,6 +122,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ## 📝 Update Log
 | Date | Update |
 |------|---------|
+| 2026-01-09 | Analytics dashboard + Operations hub shipped; reports builder cleaned up with 12px padding and print-ready exports; volunteer CRUD moved behind API; default status now approved; admin/cloud builds pass. |
 | 2026-01-02 | Added safe Supabase bootstrap script (non-destructive) and signed download URLs for private photo thumbnails in Yatris grid. |
 | 2026-01-02 | Yatris grid refinement: table spacing, column search, multi-format export (CSV/Excel/PDF), inline photo upload; orchestrator CORS enabled for browser clients. |
 | 2026-01-02 | Yatris grid UI tightened (filters layout, padded table, ellipsis row actions); fixed `/yatris/[id]` load by selecting all columns; resolved create-user cookies async warning; stabilized build (Tailwind PostCSS plugin resolution + `NODE_ENV=production` in build script). |

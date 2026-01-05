@@ -42,7 +42,7 @@ export const requireApiAuth = async (
   options: ApiAuthOptions = {}
 ): Promise<ApiAuthSuccess | ApiAuthFailure> => {
   const cookieStore = await cookies();
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  const supabase = createRouteHandlerClient({ cookies: (() => cookieStore) as any });
   const { data: userData, error } = await supabase.auth.getUser();
 
   if (error || !userData?.user) {
