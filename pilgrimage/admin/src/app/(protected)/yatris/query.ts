@@ -6,7 +6,6 @@ export type YatriRow = {
   updated_at?: string | null;
   name_hi: string | null;
   phone: string | null;
-  status: string | null;
   travel_mode: string | null;
   train_class: string | null;
   category_id: string | null;
@@ -36,7 +35,6 @@ export const COLUMN_FILTER_KEYS = [
   "created_at",
   "name_hi",
   "phone",
-  "status",
   "category",
   "travel",
   "uploads",
@@ -55,12 +53,11 @@ export type ColumnFilters = Partial<Record<ColumnFilterKey, string>>;
 
 export type YatrisListParams = {
   q: string;
-  status: string[];
   travel_mode: string;
   date_from: string;
   date_to: string;
   missing: string;
-  sort: "created_at" | "name" | "status";
+  sort: "created_at" | "name";
   dir: "asc" | "desc";
   columnFilters: ColumnFilters;
   page: number;
@@ -71,12 +68,11 @@ export type YatrisFilters = Omit<YatrisListParams, "page" | "pageSize">;
 
 export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-const STATUS_VALUES = new Set(["submitted", "needs_review", "approved", "rejected"]);
-const SORT_VALUES = new Set(["created_at", "name", "status"]);
+const SORT_VALUES = new Set(["created_at", "name"]);
 const MISSING_VALUES = new Set(["photo", "form", "any"]);
 
 export const SELECT_COLUMNS =
-  "id,created_at,name_hi,phone,status,travel_mode,train_class,category_id,category:yatra_categories(id,name),photo_url,form_image_url,receipt_no,aadhaar_no,age_years,dob,reservation_by,emergency_contact_name,emergency_contact_phone,health_heart,health_bp,health_diabetes,health_asthma";
+  "id,created_at,name_hi,phone,travel_mode,train_class,category_id,category:yatra_categories(id,name),photo_url,form_image_url,receipt_no,aadhaar_no,age_years,dob,reservation_by,emergency_contact_name,emergency_contact_phone,health_heart,health_bp,health_diabetes,health_asthma";
 
 export const normalizeYatriRows = (rows: unknown[]): YatriRow[] =>
   rows.map((row) => {
@@ -132,13 +128,6 @@ export const parseListParams = (
   params: Record<string, string | string[] | undefined>
 ): YatrisListParams => {
   const q = sanitizeSearch(getParam(params.q));
-  const rawStatus = getParam(params.status);
-  const status = rawStatus
-    ? rawStatus
-        .split(",")
-        .map((value) => value.trim())
-        .filter((value) => STATUS_VALUES.has(value))
-    : [];
   const travel_mode = getParam(params.travel_mode);
   const date_from = getParam(params.date_from);
   const date_to = getParam(params.date_to);
@@ -156,7 +145,6 @@ export const parseListParams = (
 
   return {
     q,
-    status,
     travel_mode,
     date_from,
     date_to,
@@ -171,7 +159,6 @@ export const parseListParams = (
 
 export const normalizeFilters = (filters: Partial<YatrisFilters>): YatrisFilters => {
   const q = sanitizeSearch(filters.q ?? "");
-  const status = (filters.status ?? []).filter((value) => STATUS_VALUES.has(value));
   const travel_mode = filters.travel_mode ?? "";
   const date_from = filters.date_from ?? "";
   const date_to = filters.date_to ?? "";
@@ -184,7 +171,6 @@ export const normalizeFilters = (filters: Partial<YatrisFilters>): YatrisFilters
 
   return {
     q,
-    status,
     travel_mode,
     date_from,
     date_to,
@@ -197,10 +183,6 @@ export const normalizeFilters = (filters: Partial<YatrisFilters>): YatrisFilters
 
 export const applyYatrisFilters = (query: any, filters: YatrisFilters) => {
   let next = query;
-
-  if (filters.status.length > 0) {
-    next = next.in("status", filters.status);
-  }
 
   if (filters.travel_mode) {
     next = next.eq("travel_mode", filters.travel_mode);
@@ -261,9 +243,6 @@ export const applyYatrisFilters = (query: any, filters: YatrisFilters) => {
 
   applyIlike("name_hi", columnFilters.name_hi);
   applyIlike("phone", columnFilters.phone);
-  if (columnFilters.status) {
-    applyIlike("status", columnFilters.status.replace(/\s+/g, "_"));
-  }
   applyIlike("receipt_no", columnFilters.receipt_no);
   applyIlike("aadhaar_no", columnFilters.aadhaar_no);
   applyIlike("reservation_by", columnFilters.reservation_by);

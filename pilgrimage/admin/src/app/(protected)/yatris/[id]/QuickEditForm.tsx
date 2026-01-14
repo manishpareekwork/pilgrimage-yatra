@@ -54,7 +54,6 @@ type Registration = {
   sadhu_sant_category?: boolean | null;
   declaration_accepted?: boolean | null;
   declaration_signed_at?: string | null;
-  status?: string | null;
 };
 
 const formatDate = (value?: string | null) => {
@@ -348,7 +347,7 @@ export function QuickEditForm({
         </div>
       </FormSection>
 
-      <FormSection title="Travel & Reservation" description="Primary travel plan and status.">
+      <FormSection title="Travel & Reservation" description="Primary travel plan and reservation details.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Travel Mode" htmlFor="travel_mode" required>
             <Select
@@ -384,14 +383,6 @@ export function QuickEditForm({
               <option value="">Select</option>
               <option value="self">Self</option>
               <option value="committee">Committee</option>
-            </Select>
-          </Field>
-          <Field label="Status" htmlFor="status">
-            <Select name="status" defaultValue={registration.status ?? "submitted"}>
-              <option value="submitted">Submitted</option>
-              <option value="needs_review">Needs Review</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
             </Select>
           </Field>
         </div>

@@ -57,7 +57,6 @@ const DEFAULT_COLUMNS: ColumnConfig = {
     "created_at",
     "name_hi",
     "phone",
-    "status",
     "category",
     "travel",
     "uploads",
@@ -85,8 +84,6 @@ const DEFAULT_COLUMNS: ColumnConfig = {
 
 const DEFAULT_VIEWS: SavedView[] = [
   { name: "Default", params: {} },
-  { name: "Needs Review", params: { status: ["needs_review"] } },
-  { name: "Approved", params: { status: ["approved"] } },
   { name: "Missing Uploads", params: { missing: "any" } },
 ];
 
@@ -97,7 +94,7 @@ const areColumnFiltersEqual = (a: ColumnFilters = {}, b: ColumnFilters = {}) => 
   return aKeys.every((key) => a[key as keyof ColumnFilters] === b[key as keyof ColumnFilters]);
 };
 
-const FILTERABLE_COLUMNS = new Set<string>(["status", "travel", "age_years", "category"]);
+const FILTERABLE_COLUMNS = new Set<string>(["travel", "age_years", "category"]);
 
 const SortIcon = ({ direction }: { direction: "asc" | "desc" }) => (
   <svg
@@ -166,30 +163,11 @@ const healthSummary = (row: YatriRow) => {
   return values.length ? values.join(", ") : "--";
 };
 
-const statusLabel = (status?: string | null) => {
-  if (!status) return "Submitted";
-  return status.replace(/_/g, " ");
-};
-
-const statusClass = (status?: string | null) => {
-  switch (status) {
-    case "approved":
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200";
-    case "rejected":
-      return "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200";
-    case "needs_review":
-      return "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200";
-    default:
-      return "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200";
-  }
-};
-
 const toDateInput = (value: string) => value || "";
 
 const buildSearchParams = (params: YatrisListParams) => {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
-  if (params.status.length) search.set("status", params.status.join(","));
   if (params.travel_mode) search.set("travel_mode", params.travel_mode);
   if (params.date_from) search.set("date_from", params.date_from);
   if (params.date_to) search.set("date_to", params.date_to);
@@ -422,20 +400,20 @@ export function YatrisGrid({
   const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [categoryMessage, setCategoryMessage] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dragColumn, setDragColumn] = useState<string | null>(null);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
   const viewsRef = useRef<HTMLDetailsElement>(null);
   const columnsRef = useRef<HTMLDetailsElement>(null);
-  const statusRef = useRef<HTMLDetailsElement>(null);
   const exportRef = useRef<HTMLDetailsElement>(null);
   const detailRefs: Array<React.RefObject<HTMLDetailsElement | null>> = [
     viewsRef,
     columnsRef,
-    statusRef,
     exportRef,
   ];
 
-  const canReview = currentRole === "admin" || currentRole === "reviewer";
+  const canDelete = currentRole === "admin";
 
   const closeAllDetails = () => {
     detailRefs.forEach((ref) => {
@@ -594,16 +572,7 @@ export function YatrisGrid({
     return () => clearTimeout(timer);
   }, [localFilters.columnFilters, filters.columnFilters]);
 
-  const statusOptions = [
-    { value: "submitted", label: "Submitted" },
-    { value: "needs_review", label: "Needs review" },
-    { value: "approved", label: "Approved" },
-    { value: "rejected", label: "Rejected" },
-  ];
-
   const renderRowActions = (row: YatriRow, align: "center" | "end" = "end") => {
-    const canReviewRow =
-      canReview && (row.status === "needs_review" || row.status === "submitted" || !row.status);
     const isOpen = openRowMenuId === row.id;
     return (
       <div
@@ -708,42 +677,25 @@ export function YatrisGrid({
                 </svg>
                 Print ID Card
               </Link>
-              {canReviewRow && (
-                <Link
-                  href={`/yatris/${row.id}`}
-                  onClick={() => setOpenRowMenuId(null)}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/10"
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(row)}
+                  disabled={deletingId === row.id}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
                     <path
-                      d="M4 10.5l3.5 3.5L16 5.5"
+                      d="M5 6h10M8 6V4h4v2m-5 0v10m6-10v10M4 6h12"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="1.6"
+                      strokeWidth="1.4"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
-                  Approve
-                </Link>
-              )}
-              {canReviewRow && (
-                <Link
-                  href={`/yatris/${row.id}`}
-                  onClick={() => setOpenRowMenuId(null)}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-300 hover:bg-rose-500/10"
-                >
-                  <svg viewBox="0 0 20 20" className="h-4 w-4" aria-hidden="true">
-                    <path
-                      d="M5 5l10 10M15 5L5 15"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  Reject
-                </Link>
+                  {deletingId === row.id ? "Deleting..." : "Delete"}
+                </button>
               )}
               <button
                 type="button"
@@ -874,6 +826,36 @@ export function YatrisGrid({
     router.refresh();
   }, [router, supabase]);
 
+  const handleDelete = useCallback(async (row: YatriRow) => {
+    if (!canDelete) return;
+    const label = row.name_hi ? `"${row.name_hi}"` : "this registration";
+    const confirmed = window.confirm(`Delete ${label}? This removes the registration and linked data.`);
+    if (!confirmed) {
+      setOpenRowMenuId(null);
+      return;
+    }
+    setDeleteMessage(null);
+    setDeletingId(row.id);
+    try {
+      const res = await fetch(`/api/admin/yatris/${row.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Delete failed.");
+      }
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
+      router.refresh();
+    } catch (err) {
+      setDeleteMessage(err instanceof Error ? err.message : "Delete failed.");
+    } finally {
+      setDeletingId(null);
+      setOpenRowMenuId(null);
+    }
+  }, [canDelete, router]);
+
   const columns: Record<string, ColumnDef> = useMemo(() => {
     return {
       created_at: {
@@ -902,17 +884,6 @@ export function YatrisGrid({
         label: "Phone",
         cell: (row) => <span className="text-[12px] text-[color:var(--ink)]">{row.phone || "--"}</span>,
         exportValue: (row) => row.phone ?? "",
-      },
-      status: {
-        id: "status",
-        label: "Status",
-        sortable: true,
-        cell: (row) => (
-          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(row.status)}`}>
-            {statusLabel(row.status)}
-          </span>
-        ),
-        exportValue: (row) => statusLabel(row.status),
       },
       category: {
         id: "category",
@@ -1136,20 +1107,11 @@ export function YatrisGrid({
     });
   };
 
-  const toggleStatus = (value: string) => {
-    const next = localFilters.status.includes(value)
-      ? localFilters.status.filter((status) => status !== value)
-      : [...localFilters.status, value];
-    setLocalFilters({ ...localFilters, status: next });
-    updateParams({ status: next, page: 1 });
-  };
-
   const clearFilters = () => {
     setSearchValue("");
     setLocalFilters({
       ...localFilters,
       q: "",
-      status: [],
       travel_mode: "",
       date_from: "",
       date_to: "",
@@ -1160,7 +1122,6 @@ export function YatrisGrid({
     });
     updateParams({
       q: "",
-      status: [],
       travel_mode: "",
       date_from: "",
       date_to: "",
@@ -1199,7 +1160,6 @@ export function YatrisGrid({
     const mergedFilters: YatrisListParams = {
       ...filters,
       q: view.params.q ?? "",
-      status: view.params.status ?? [],
       travel_mode: view.params.travel_mode ?? "",
       date_from: view.params.date_from ?? "",
       date_to: view.params.date_to ?? "",
@@ -1222,7 +1182,6 @@ export function YatrisGrid({
       name,
       params: {
         q: localFilters.q,
-        status: localFilters.status,
         travel_mode: localFilters.travel_mode,
         date_from: localFilters.date_from,
         date_to: localFilters.date_to,
@@ -1319,7 +1278,6 @@ export function YatrisGrid({
       const result = await exportAction({
         filters: {
           q: localFilters.q,
-          status: localFilters.status,
           travel_mode: localFilters.travel_mode,
           date_from: localFilters.date_from,
           date_to: localFilters.date_to,
@@ -1461,33 +1419,6 @@ export function YatrisGrid({
                 onChange={(event) => setSearchValue(event.target.value)}
               />
             </div>
-            <details
-              ref={statusRef}
-              className="relative z-30 w-full sm:w-44"
-              onToggle={() => {
-                if (statusRef.current?.open) {
-                  openExclusive(statusRef);
-                }
-              }}
-            >
-              <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
-                Status
-              </summary>
-              <div className="absolute left-0 z-50 mt-2 w-56 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                <div className="space-y-2">
-                  {statusOptions.map((option) => (
-                    <label key={option.value} className="flex items-center gap-2 text-sm text-[color:var(--ink)]">
-                      <input
-                        type="checkbox"
-                        checked={localFilters.status.includes(option.value)}
-                        onChange={() => toggleStatus(option.value)}
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </details>
             <div className="w-full sm:w-40">
               <Select
                 value={localFilters.travel_mode}
@@ -1621,16 +1552,6 @@ export function YatrisGrid({
               Search: {localFilters.q}
             </span>
           )}
-          {localFilters.status.map((status) => (
-            <button
-              key={status}
-              type="button"
-              className="rounded-full border border-[color:var(--border)] px-3 py-1"
-              onClick={() => toggleStatus(status)}
-            >
-              Status: {statusLabel(status)} x
-            </button>
-          ))}
           {localFilters.travel_mode && (
             <button
               type="button"
@@ -1697,6 +1618,12 @@ export function YatrisGrid({
       {categoryMessage && (
         <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
           {categoryMessage}
+        </div>
+      )}
+
+      {deleteMessage && (
+        <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
+          {deleteMessage}
         </div>
       )}
 
@@ -1858,9 +1785,6 @@ export function YatrisGrid({
                       <div className="text-base font-semibold text-[color:var(--ink)]">{row.name_hi || "--"}</div>
                       <div className="text-xs text-[color:var(--muted)]">{row.phone || "--"}</div>
                     </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(row.status)}`}>
-                      {statusLabel(row.status)}
-                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
                     <span>Created: {formatDate(row.created_at)}</span>

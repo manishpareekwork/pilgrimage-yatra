@@ -117,7 +117,6 @@ export async function updateRegistrationAction(formData: FormData) {
     declaration_signed_at: declarationSignedAtInput
       ? new Date(declarationSignedAtInput).toISOString()
       : null,
-    status: strOrNull(formData.get("status")),
     category_id: strOrNull(formData.get("category_id")),
   };
 
@@ -131,31 +130,4 @@ export async function updateRegistrationAction(formData: FormData) {
   }
 
   revalidatePath(`/yatris/${id}`);
-}
-
-async function updateStatus(id: string, action: "approve" | "reject") {
-  const supabase = await getActionSupabase();
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData?.user) redirect("/login");
-
-  await supabase.rpc("fn_create_review", {
-    p_registration_id: id,
-    p_action: action,
-    p_diff: {},
-    p_actor: userData.user.id,
-  });
-
-  revalidatePath(`/yatris/${id}`);
-}
-
-export async function approveRegistration(formData: FormData) {
-  const id = (formData.get("id") as string | null)?.trim();
-  if (!id) return;
-  await updateStatus(id, "approve");
-}
-
-export async function rejectRegistration(formData: FormData) {
-  const id = (formData.get("id") as string | null)?.trim();
-  if (!id) return;
-  await updateStatus(id, "reject");
 }

@@ -1,4 +1,3 @@
-import { approveRegistration, rejectRegistration } from "./actions";
 import { QuickEditForm } from "./QuickEditForm";
 import { UploadThumbnails } from "./UploadThumbnails";
 import { getServerSupabase } from "@/lib/supabaseServer";
@@ -11,42 +10,6 @@ const formatDateTime = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString("en-GB");
-};
-
-const formatStatus = (status?: string | null) => {
-  if (!status) return "Submitted";
-  return status.replace(/_/g, " ");
-};
-
-const StatusPill = ({ status, className = "" }: { status?: string | null; className?: string }) => {
-  const base = `inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${className}`.trim();
-  const label = formatStatus(status);
-  switch (status) {
-    case "approved":
-      return (
-        <span className={`${base} bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200`}>
-          {label}
-        </span>
-      );
-    case "rejected":
-      return (
-        <span className={`${base} bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200`}>
-          {label}
-        </span>
-      );
-    case "needs_review":
-      return (
-        <span className={`${base} bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200`}>
-          {label}
-        </span>
-      );
-    default:
-      return (
-        <span className={`${base} bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200`}>
-          {label}
-        </span>
-      );
-  }
 };
 
 export const dynamic = "force-dynamic";
@@ -172,24 +135,6 @@ export default async function YatriDetail({
                 <button type="submit" form="quick-edit-form" className="btn-primary inline-flex items-center">
                   Save changes
                 </button>
-                <form action={approveRegistration}>
-                  <input type="hidden" name="id" value={registration.id} />
-                  <button
-                    type="submit"
-                    className="btn-secondary inline-flex items-center text-emerald-600 dark:text-emerald-300"
-                  >
-                    Approve
-                  </button>
-                </form>
-                <form action={rejectRegistration}>
-                  <input type="hidden" name="id" value={registration.id} />
-                  <button
-                    type="submit"
-                    className="btn-secondary inline-flex items-center text-rose-600 dark:text-rose-300"
-                  >
-                    Reject
-                  </button>
-                </form>
                 <Link
                   href={`/print/id-cards?ids=${registration.id}`}
                   target="_blank"
@@ -213,7 +158,6 @@ export default async function YatriDetail({
           </div>
         </div>
         <div className="detail-meta flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
-          <StatusPill status={registration.status} className="detail-pill" />
           <span className="detail-pill detail-pill--neutral">ID: {registration.id}</span>
           <span className="detail-pill detail-pill--neutral">Created: {formatDateTime(registration.created_at)}</span>
         </div>
