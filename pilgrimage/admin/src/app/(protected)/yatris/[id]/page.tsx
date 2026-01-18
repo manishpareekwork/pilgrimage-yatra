@@ -3,10 +3,14 @@ import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FormSection } from "@/components/ui";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
+
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export default async function YatriDetail({
   params,
@@ -24,16 +28,70 @@ export default async function YatriDetail({
   if (!userData?.user) redirect("/login");
 
   const user = userData.user;
-  const currentRole =
-    (user.app_metadata as Record<string, unknown> | null)?.role ||
-    (user.user_metadata as Record<string, unknown> | null)?.role ||
-    "yatri";
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const { data: registration, error } = await supabase
+  const currentRole =
+    (profile?.role as string | undefined) ||
+    ((user.app_metadata as Record<string, unknown> | null)?.role as string | undefined) ||
+    "yatri";
+  const isStaff = currentRole === "admin" || currentRole === "reviewer";
+
+  const trimmedId = id?.trim();
+  if (!trimmedId || !isUuid(trimmedId)) {
+    return (
+      <FormSection title="Registration not found">
+        <div className="space-y-3 text-sm text-[color:var(--muted)]">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 dark:text-amber-200">
+            We could not find a registration with this ID.
+          </div>
+          <dl className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-[color:var(--subtle)]">Registration ID</dt>
+              <dd className="font-semibold text-[color:var(--ink)] break-all">{trimmedId || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-[color:var(--subtle)]">Signed in as</dt>
+              <dd className="font-semibold text-[color:var(--ink)]">
+                {user.email || "—"} · {String(currentRole || "—")}
+              </dd>
+            </div>
+          </dl>
+          <Link href="/yatris" className="btn-secondary inline-flex items-center">
+            Back to Yatris
+          </Link>
+        </div>
+      </FormSection>
+    );
+  }
+
+  let { data: registration, error } = await supabase
     .from("yatra_registrations")
     .select("*")
-    .eq("id", id)
+    .eq("id", trimmedId)
     .maybeSingle();
+
+  if (error && isStaff) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey) {
+      const adminClient = createClient(supabaseUrl, serviceKey, {
+        auth: { persistSession: false },
+      });
+      const { data: adminRegistration, error: adminError } = await adminClient
+        .from("yatra_registrations")
+        .select("*")
+        .eq("id", trimmedId)
+        .maybeSingle();
+      if (!adminError) {
+        registration = adminRegistration;
+        error = null;
+      }
+    }
+  }
 
   const isDev = process.env.NODE_ENV !== "production";
   const isNotFound = !registration && (!error || error.code === "PGRST116");
@@ -48,7 +106,7 @@ export default async function YatriDetail({
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
               <dt className="text-[color:var(--subtle)]">Registration ID</dt>
-              <dd className="font-semibold text-[color:var(--ink)] break-all">{id}</dd>
+              <dd className="font-semibold text-[color:var(--ink)] break-all">{trimmedId}</dd>
             </div>
             <div>
               <dt className="text-[color:var(--subtle)]">Signed in as</dt>
@@ -87,7 +145,7 @@ export default async function YatriDetail({
           <dl className="grid gap-2 sm:grid-cols-2">
             <div>
               <dt className="text-[color:var(--subtle)]">Registration ID</dt>
-              <dd className="font-semibold text-[color:var(--ink)] break-all">{id}</dd>
+              <dd className="font-semibold text-[color:var(--ink)] break-all">{trimmedId}</dd>
             </div>
             <div>
               <dt className="text-[color:var(--subtle)]">Signed in as</dt>
