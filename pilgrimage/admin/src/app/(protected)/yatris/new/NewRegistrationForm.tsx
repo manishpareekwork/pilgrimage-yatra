@@ -546,7 +546,7 @@ export function NewRegistrationForm({
     if (!state?.id || state?.error || uploadAttempted) return;
     setUploadAttempted(true);
     if (!photoFile && !formFile) {
-      router.push(`/yatris/${state.id}?created=1`);
+      router.push("/yatris");
       return;
     }
     if (!hasOrchestrator) {
@@ -559,7 +559,7 @@ export function NewRegistrationForm({
       setUploadError(null);
       try {
         await uploadSelectedFiles(state.id as string);
-        if (isActive) router.push(`/yatris/${state.id}?created=1`);
+        if (isActive) router.push("/yatris");
       } catch (err) {
         if (isActive) {
           setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -1118,7 +1118,13 @@ export function NewRegistrationForm({
               <option value="air">Air</option>
             </Select>
           </Field>
-          <Field label="Train Class" htmlFor="train_class" required={travelMode === "train"} error={fieldErrors?.train_class}>
+          <Field
+            label="Train Class"
+            htmlFor="train_class"
+            required={travelMode === "train"}
+            error={fieldErrors?.train_class}
+            className={travelMode === "air" ? "hidden" : undefined}
+          >
             <Select
               id="train_class"
               name="train_class"

@@ -164,7 +164,8 @@ export function QuickEditForm({
 }) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const supabase = useMemo(() => getBrowserSupabase(), []);
-  const [travelMode, setTravelMode] = useState(registration.travel_mode ?? "");
+  const initialTravelMode = registration.travel_mode ?? (registration.train_class ? "train" : "");
+  const [travelMode, setTravelMode] = useState(initialTravelMode);
   const [healthNone, setHealthNone] = useState(Boolean(registration.health_none));
   const [healthHeart, setHealthHeart] = useState(Boolean(registration.health_heart));
   const [healthBp, setHealthBp] = useState(Boolean(registration.health_bp));
@@ -604,7 +605,12 @@ export function QuickEditForm({
               <option value="air">Air</option>
             </Select>
           </Field>
-          <Field label="Train Class" htmlFor="train_class" required={travelMode === "train"}>
+          <Field
+            label="Train Class"
+            htmlFor="train_class"
+            required={travelMode === "train"}
+            className={travelMode === "air" ? "hidden" : undefined}
+          >
             <Select
               id="train_class"
               name="train_class"
