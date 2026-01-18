@@ -274,17 +274,6 @@ const parseFormData = (
     fieldErrors.train_class = "Train class is required";
   }
 
-  const healthSelected =
-    data.health_none ||
-    data.health_heart ||
-    data.health_bp ||
-    data.health_diabetes ||
-    data.health_asthma ||
-    Boolean(data.health_other);
-  if (!healthSelected) {
-    fieldErrors.health_none = "Select 'No known conditions' or at least one condition";
-  }
-
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "Please correct the highlighted fields.", fieldErrors };
   }

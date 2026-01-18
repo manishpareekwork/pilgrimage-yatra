@@ -49,32 +49,13 @@ const requiredFieldNames = new Set([
   "whatsapp",
   "dob",
   "age_years",
+  "travel_mode",
+  "train_class",
+  "reservation_by",
   "accompanying_name",
   "accompanying_guardian_name",
   "accompanying_resident_of",
   "accompanying_phone",
-  "emergency_contact_name",
-  "emergency_contact_father_name",
-  "emergency_contact_age_years",
-  "emergency_contact_address",
-  "emergency_contact_phone",
-  "travel_mode",
-  "train_class",
-  "reservation_by",
-  "health_none",
-  "health_heart",
-  "health_heart_meds",
-  "health_bp",
-  "health_bp_meds",
-  "health_diabetes",
-  "health_diabetes_meds",
-  "health_asthma",
-  "health_asthma_meds",
-  "health_common_meds",
-  "health_other",
-  "health_other_meds",
-  "attended_badarinath_2024",
-  "sadhu_sant_category",
   "declaration_accepted",
   "declaration_signed_at",
 ]);
@@ -146,7 +127,7 @@ export function NewRegistrationForm({
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const hasOrchestrator = Boolean(orchestratorUrl);
-  const [travelMode, setTravelMode] = useState("train");
+  const [travelMode, setTravelMode] = useState("");
   const [healthNone, setHealthNone] = useState(false);
   const [healthHeart, setHealthHeart] = useState(false);
   const [healthBp, setHealthBp] = useState(false);
@@ -575,8 +556,6 @@ export function NewRegistrationForm({
   }, [router, state?.error, state?.id, photoFile, formFile, hasOrchestrator, uploadAttempted]);
 
   const commonMedicalActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
-  const hasHealthSelection =
-    healthNone || healthHeart || healthBp || healthDiabetes || healthAsthma || otherActive;
   const canUploadSelectedFiles = hasOrchestrator || (!photoFile && !formFile);
   const showReceiptsSection = !showRequiredOnly || receipts.length > 0;
 
@@ -626,14 +605,6 @@ export function NewRegistrationForm({
     const nativeValid = form.checkValidity();
     if (!nativeValid) return { valid: false, nativeValid };
 
-    if (!hasHealthSelection) {
-      return {
-        valid: false,
-        nativeValid,
-        message: "Select a medical condition or 'No known conditions'.",
-      };
-    }
-
     const dobValue = (form.elements.namedItem("dob") as HTMLInputElement | null)?.value ?? "";
     const ageValue = (form.elements.namedItem("age_years") as HTMLInputElement | null)?.value ?? "";
     if (dobValue && ageValue) {
@@ -653,7 +624,7 @@ export function NewRegistrationForm({
     }
 
     return { valid: true, nativeValid };
-  }, [canUploadSelectedFiles, hasHealthSelection]);
+  }, [canUploadSelectedFiles]);
 
   const updateFormValidity = React.useCallback(() => {
     setIsFormValid(getClientValidation().valid);
@@ -1061,10 +1032,18 @@ export function NewRegistrationForm({
               error={hasFieldError("accompanying_phone")}
             />
           </Field>
-          <Field label="Emergency Contact Name" htmlFor="emergency_contact_name">
+          <Field
+            label="Emergency Contact Name"
+            htmlFor="emergency_contact_name"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput id="emergency_contact_name" name="emergency_contact_name" />
           </Field>
-          <Field label="Emergency Contact Father/Guardian" htmlFor="emergency_contact_father_name">
+          <Field
+            label="Emergency Contact Father/Guardian"
+            htmlFor="emergency_contact_father_name"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_father_name"
               name="emergency_contact_father_name"
@@ -1074,6 +1053,7 @@ export function NewRegistrationForm({
             label="Emergency Contact Age (years)"
             htmlFor="emergency_contact_age_years"
             error={fieldErrors?.emergency_contact_age_years}
+            className={showRequiredOnly ? "hidden" : undefined}
           >
             <TextInput
               id="emergency_contact_age_years"
@@ -1085,7 +1065,11 @@ export function NewRegistrationForm({
               error={hasFieldError("emergency_contact_age_years")}
             />
           </Field>
-          <Field label="Emergency Contact Phone" htmlFor="emergency_contact_phone">
+          <Field
+            label="Emergency Contact Phone"
+            htmlFor="emergency_contact_phone"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_phone"
               name="emergency_contact_phone"
@@ -1095,7 +1079,7 @@ export function NewRegistrationForm({
           <Field
             label="Emergency Contact Address"
             htmlFor="emergency_contact_address"
-            className="sm:col-span-2 xl:col-span-3"
+            className={showRequiredOnly ? "hidden" : "sm:col-span-2 xl:col-span-3"}
           >
             <TextArea
               id="emergency_contact_address"
@@ -1117,13 +1101,14 @@ export function NewRegistrationForm({
               onChange={(event) => {
                 const value = event.target.value;
                 setTravelMode(value);
-                if (value === "air") {
+                if (value !== "train") {
                   setInputValue("train_class", "");
                 }
               }}
               error={hasFieldError("travel_mode")}
               required
             >
+              <option value="">Select</option>
               <option value="train">Train</option>
               <option value="air">Air</option>
             </Select>
@@ -1133,13 +1118,13 @@ export function NewRegistrationForm({
             htmlFor="train_class"
             required={travelMode === "train"}
             error={fieldErrors?.train_class}
-            className={travelMode === "air" ? "hidden" : undefined}
+            className={travelMode === "train" ? undefined : "hidden"}
           >
             <Select
               id="train_class"
               name="train_class"
               error={hasFieldError("train_class")}
-              disabled={travelMode === "air"}
+              disabled={travelMode !== "train"}
               required={travelMode === "train"}
             >
               <option value="">Select</option>
@@ -1176,7 +1161,7 @@ export function NewRegistrationForm({
         </div>
       </FormSection>
 
-      <FormSection title="Medical">
+      <FormSection title="Medical" className={showRequiredOnly ? "hidden" : undefined}>
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <CheckboxRow
@@ -1469,7 +1454,7 @@ export function NewRegistrationForm({
         </FormSection>
       )}
 
-      <FormSection title="Additional Details">
+      <FormSection title="Additional Details" className={showRequiredOnly ? "hidden" : undefined}>
         <div className="grid gap-4 sm:grid-cols-2">
           <CheckboxRow
             name="attended_badarinath_2024"

@@ -243,6 +243,11 @@ export function QuickEditForm({
   }, [initialTravelMode]);
 
   useEffect(() => {
+    setAddressState(registration.address_state ?? "");
+    setAddressDistrict(registration.address_district ?? "");
+  }, [registration.address_state, registration.address_district]);
+
+  useEffect(() => {
     let isActive = true;
     const loadStates = async () => {
       try {
@@ -550,21 +555,33 @@ export function QuickEditForm({
               defaultValue={registration.accompanying_phone ?? ""}
             />
           </Field>
-          <Field label="Emergency Contact Name" htmlFor="emergency_contact_name">
+          <Field
+            label="Emergency Contact Name"
+            htmlFor="emergency_contact_name"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_name"
               name="emergency_contact_name"
               defaultValue={registration.emergency_contact_name ?? ""}
             />
           </Field>
-          <Field label="Emergency Contact Father/Guardian" htmlFor="emergency_contact_father_name">
+          <Field
+            label="Emergency Contact Father/Guardian"
+            htmlFor="emergency_contact_father_name"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_father_name"
               name="emergency_contact_father_name"
               defaultValue={registration.emergency_contact_father_name ?? ""}
             />
           </Field>
-          <Field label="Emergency Contact Age (years)" htmlFor="emergency_contact_age_years">
+          <Field
+            label="Emergency Contact Age (years)"
+            htmlFor="emergency_contact_age_years"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_age_years"
               type="number"
@@ -574,14 +591,22 @@ export function QuickEditForm({
               defaultValue={registration.emergency_contact_age_years ?? ""}
             />
           </Field>
-          <Field label="Emergency Contact Phone" htmlFor="emergency_contact_phone">
+          <Field
+            label="Emergency Contact Phone"
+            htmlFor="emergency_contact_phone"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <TextInput
               id="emergency_contact_phone"
               name="emergency_contact_phone"
               defaultValue={registration.emergency_contact_phone ?? ""}
             />
           </Field>
-          <Field label="Emergency Contact Address" htmlFor="emergency_contact_address" className="sm:col-span-2 xl:col-span-3">
+          <Field
+            label="Emergency Contact Address"
+            htmlFor="emergency_contact_address"
+            className={showRequiredOnly ? "hidden" : "sm:col-span-2 xl:col-span-3"}
+          >
             <TextArea
               id="emergency_contact_address"
               name="emergency_contact_address"
@@ -602,7 +627,7 @@ export function QuickEditForm({
               onChange={(event) => {
                 const value = event.target.value;
                 setTravelMode(value);
-                if (value === "air") {
+                if (value !== "train") {
                   setInputValue("train_class", "");
                 }
               }}
@@ -617,14 +642,14 @@ export function QuickEditForm({
             label="Train Class"
             htmlFor="train_class"
             required={resolvedTravelMode === "train"}
-            className={resolvedTravelMode === "air" ? "hidden" : undefined}
+            className={resolvedTravelMode === "train" ? undefined : "hidden"}
           >
             <Select
               id="train_class"
               name="train_class"
               defaultValue={trainClassValue}
               required={resolvedTravelMode === "train"}
-              disabled={resolvedTravelMode === "air"}
+              disabled={resolvedTravelMode !== "train"}
             >
               <option value="">Select</option>
               {hasCustomTrainClass && <option value={trainClassValue}>{trainClassValue}</option>}
@@ -655,7 +680,11 @@ export function QuickEditForm({
         </div>
       </FormSection>
 
-      <FormSection title="Medical" description="Conditions and medicine notes.">
+      <FormSection
+        title="Medical"
+        description="Conditions and medicine notes."
+        className={showRequiredOnly ? "hidden" : undefined}
+      >
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <CheckboxRow
@@ -946,7 +975,11 @@ export function QuickEditForm({
         </FormSection>
       )}
 
-      <FormSection title="Additional Details" description="Optional bucket and attendance flags.">
+      <FormSection
+        title="Additional Details"
+        description="Optional bucket and attendance flags."
+        className={showRequiredOnly ? "hidden" : undefined}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <CheckboxRow
             name="attended_badarinath_2024"
