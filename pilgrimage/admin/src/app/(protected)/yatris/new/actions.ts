@@ -34,6 +34,71 @@ const computeAgeFromDob = (dob: string) => {
   return age;
 };
 
+type ReceiptInput = {
+  receipt_no: string;
+  amount: number;
+  payment_mode: string;
+  receipt_date: string;
+};
+
+const parseReceipts = (formData: FormData, fieldErrors: Record<string, string>) => {
+  const readAll = (key: string) =>
+    formData
+      .getAll(key)
+      .map((value) => value.toString().trim());
+
+  const receiptNumbers = readAll("receipt_number");
+  const amounts = readAll("receipt_amount");
+  const modes = readAll("receipt_mode");
+  const dates = readAll("receipt_date");
+  const rowCount = Math.max(receiptNumbers.length, amounts.length, modes.length, dates.length);
+
+  if (rowCount === 0) return [] as ReceiptInput[];
+
+  if (
+    receiptNumbers.length !== rowCount ||
+    amounts.length !== rowCount ||
+    modes.length !== rowCount ||
+    dates.length !== rowCount
+  ) {
+    fieldErrors.receipts = "Receipts are incomplete.";
+    return [] as ReceiptInput[];
+  }
+
+  const receipts: ReceiptInput[] = [];
+  for (let i = 0; i < rowCount; i += 1) {
+    const receiptNo = receiptNumbers[i];
+    const amountRaw = amounts[i];
+    const mode = modes[i];
+    const date = dates[i];
+
+    if (!receiptNo || !amountRaw || !mode || !date) {
+      fieldErrors.receipts = "All receipt fields are required.";
+      continue;
+    }
+
+    const amount = Number(amountRaw);
+    if (!Number.isFinite(amount)) {
+      fieldErrors.receipts = "Receipt amount must be a number.";
+      continue;
+    }
+
+    if (!dateRegex.test(date)) {
+      fieldErrors.receipts = "Receipt date must be YYYY-MM-DD.";
+      continue;
+    }
+
+    receipts.push({
+      receipt_no: receiptNo,
+      amount,
+      payment_mode: mode,
+      receipt_date: date,
+    });
+  }
+
+  return receipts;
+};
+
 type FormInput = {
   receipt_no?: string;
   name_hi: string;
@@ -55,6 +120,7 @@ type FormInput = {
   train_class?: string;
   reservation_by?: string;
   category_id?: string;
+  group_id?: string;
   health_none: boolean;
   health_heart: boolean;
   health_heart_meds?: string;
@@ -67,6 +133,11 @@ type FormInput = {
   health_common_meds?: string;
   health_other?: string;
   health_other_meds?: string;
+  blood_group?: string;
+  medical_conditions?: string;
+  medical_allergies?: string;
+  medical_medications?: string;
+  medical_emergency_notes?: string;
   emergency_contact_name?: string;
   emergency_contact_father_name?: string;
   emergency_contact_age_years?: number;
@@ -80,12 +151,14 @@ type FormInput = {
   sadhu_sant_category: boolean;
   declaration_accepted: boolean;
   declaration_signed_at?: string;
+  receipts?: ReceiptInput[];
 };
 
 const parseFormData = (
   formData: FormData
 ): { data?: FormInput; error?: string; fieldErrors?: Record<string, string> } => {
   const fieldErrors: Record<string, string> = {};
+  const receipts = parseReceipts(formData, fieldErrors);
   const ageYears = asNumber(formData.get("age_years"));
   const ageValue = typeof ageYears === "string" ? undefined : ageYears;
   if (typeof ageYears === "string") fieldErrors.age_years = "Age must be a number";
@@ -99,8 +172,10 @@ const parseFormData = (
   const weightValue = typeof weightKg === "string" ? undefined : weightKg;
   if (typeof weightKg === "string") fieldErrors.weight_kg = "Weight must be a number";
 
+  const primaryReceiptNo = receipts[0]?.receipt_no ?? asOptionalString(formData.get("receipt_no"));
+
   const data: FormInput = {
-    receipt_no: asOptionalString(formData.get("receipt_no")),
+    receipt_no: primaryReceiptNo,
     name_hi: asOptionalString(formData.get("name_hi")) || "",
     guardian_relation: asOptionalString(formData.get("guardian_relation")),
     father_name_hi: asOptionalString(formData.get("father_name_hi")),
@@ -120,6 +195,7 @@ const parseFormData = (
     train_class: asOptionalString(formData.get("train_class")),
     reservation_by: asOptionalString(formData.get("reservation_by")),
     category_id: asOptionalString(formData.get("category_id")),
+    group_id: asOptionalString(formData.get("group_id")),
     health_none: formData.get("health_none") === "on",
     health_heart: formData.get("health_heart") === "on",
     health_heart_meds: asOptionalString(formData.get("health_heart_meds")),
@@ -132,6 +208,11 @@ const parseFormData = (
     health_common_meds: asOptionalString(formData.get("health_common_meds")),
     health_other: asOptionalString(formData.get("health_other")),
     health_other_meds: asOptionalString(formData.get("health_other_meds")),
+    blood_group: asOptionalString(formData.get("blood_group")),
+    medical_conditions: asOptionalString(formData.get("medical_conditions")),
+    medical_allergies: asOptionalString(formData.get("medical_allergies")),
+    medical_medications: asOptionalString(formData.get("medical_medications")),
+    medical_emergency_notes: asOptionalString(formData.get("medical_emergency_notes")),
     emergency_contact_name: asOptionalString(formData.get("emergency_contact_name")),
     emergency_contact_father_name: asOptionalString(formData.get("emergency_contact_father_name")),
     emergency_contact_age_years: emergencyAgeValue,
@@ -145,6 +226,7 @@ const parseFormData = (
     sadhu_sant_category: formData.get("sadhu_sant_category") === "on",
     declaration_accepted: formData.get("declaration_accepted") === "on",
     declaration_signed_at: asOptionalString(formData.get("declaration_signed_at")),
+    receipts,
   };
 
   if (!data.name_hi) fieldErrors.name_hi = "Name is required";
@@ -228,8 +310,13 @@ export async function createRegistrationAction(
   }
 
   const input = parsed.data;
-  const commonActive =
-    !input.health_none && (input.health_heart || input.health_bp || input.health_diabetes || input.health_asthma);
+  const healthNone = input.health_none ?? false;
+  const healthHeart = healthNone ? false : input.health_heart ?? false;
+  const healthBp = healthNone ? false : input.health_bp ?? false;
+  const healthDiabetes = healthNone ? false : input.health_diabetes ?? false;
+  const healthAsthma = healthNone ? false : input.health_asthma ?? false;
+  const healthOther = healthNone ? null : input.health_other ?? null;
+  const commonActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
   const createPayload = {
     p_owner: userData.user.id,
     p_created_by: userData.user.id,
@@ -240,6 +327,12 @@ export async function createRegistrationAction(
     p_declaration_signed_at: input.declaration_signed_at
       ? new Date(input.declaration_signed_at).toISOString()
       : null,
+    p_health_none: healthNone,
+    p_health_heart: healthHeart,
+    p_health_bp: healthBp,
+    p_health_diabetes: healthDiabetes,
+    p_health_asthma: healthAsthma,
+    p_health_other: healthOther,
   };
 
   const { data: newId, error: createError } = await supabase.rpc("fn_create_registration", createPayload);
@@ -269,22 +362,30 @@ export async function createRegistrationAction(
     train_class: input.travel_mode === "air" ? null : input.train_class ?? null,
     reservation_by: input.reservation_by ?? null,
     category_id: input.category_id ?? null,
-    health_none: input.health_none ?? false,
-    health_heart: input.health_heart ?? false,
-    health_heart_meds: input.health_none ? null : input.health_heart ? input.health_heart_meds ?? null : null,
-    health_diabetes: input.health_diabetes ?? false,
-    health_diabetes_meds: input.health_none ? null : input.health_diabetes ? input.health_diabetes_meds ?? null : null,
-    health_bp: input.health_bp ?? false,
-    health_bp_meds: input.health_none ? null : input.health_bp ? input.health_bp_meds ?? null : null,
-    health_asthma: input.health_asthma ?? false,
-    health_asthma_meds: input.health_none ? null : input.health_asthma ? input.health_asthma_meds ?? null : null,
+    group_id: input.group_id ?? null,
+    health_none: healthNone,
+    health_heart: healthHeart,
+    health_heart_meds: healthNone ? null : healthHeart ? input.health_heart_meds ?? null : null,
+    health_diabetes: healthDiabetes,
+    health_diabetes_meds: healthNone ? null : healthDiabetes ? input.health_diabetes_meds ?? null : null,
+    health_bp: healthBp,
+    health_bp_meds: healthNone ? null : healthBp ? input.health_bp_meds ?? null : null,
+    health_asthma: healthAsthma,
+    health_asthma_meds: healthNone ? null : healthAsthma ? input.health_asthma_meds ?? null : null,
     health_common_meds: commonActive ? input.health_common_meds ?? null : null,
-    health_other: input.health_none ? null : input.health_other ?? null,
-    health_other_meds: input.health_none
+    health_other: healthOther,
+    health_other_meds: healthNone
       ? null
-      : input.health_other
+      : healthOther
         ? input.health_other_meds ?? null
         : null,
+    // TODO: Persist medical details, receipts, and group assignment once backend fields exist.
+    blood_group: input.blood_group ?? null,
+    medical_conditions: input.medical_conditions ?? null,
+    medical_allergies: input.medical_allergies ?? null,
+    medical_medications: input.medical_medications ?? null,
+    medical_emergency_notes: input.medical_emergency_notes ?? null,
+    receipts: input.receipts && input.receipts.length > 0 ? input.receipts : null,
     emergency_contact_name: input.emergency_contact_name ?? null,
     emergency_contact_father_name: input.emergency_contact_father_name ?? null,
     emergency_contact_age_years: input.emergency_contact_age_years ?? null,

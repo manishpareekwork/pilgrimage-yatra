@@ -1,16 +1,8 @@
-import { QuickEditForm } from "./QuickEditForm";
-import { UploadThumbnails } from "./UploadThumbnails";
+import { YatriDetailClient } from "./YatriDetailClient";
 import { getServerSupabase } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { FormSection, PageHeader } from "@/components/ui";
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-GB");
-};
+import { FormSection } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -124,54 +116,10 @@ export default async function YatriDetail({
   const created = createdValue === "1";
 
   return (
-    <div className="yatri-detail space-y-6">
-      <div className="space-y-2">
-        <div className="relative">
-          <PageHeader
-            className="relative z-30 overflow-visible yatris-hero yatri-detail-hero"
-            title={registration.name_hi || "Registration"}
-            actions={
-              <div className="header-actions flex flex-wrap items-center gap-2">
-                <button type="submit" form="quick-edit-form" className="btn-primary inline-flex items-center">
-                  Save changes
-                </button>
-                <Link
-                  href={`/print/id-cards?ids=${registration.id}`}
-                  target="_blank"
-                  className="btn-secondary inline-flex items-center"
-                >
-                  Print ID Card
-                </Link>
-                <Link href="/yatris" className="btn-secondary inline-flex items-center">
-                  Back to list
-                </Link>
-              </div>
-            }
-          />
-          <div className="detail-thumbs">
-            <UploadThumbnails
-              registrationId={registration.id}
-              photoPath={registration.photo_url}
-              formPath={registration.form_image_url}
-              orchestratorUrl={orchestratorUrl}
-            />
-          </div>
-        </div>
-        <div className="detail-meta flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
-          <span className="detail-pill detail-pill--neutral">ID: {registration.id}</span>
-          <span className="detail-pill detail-pill--neutral">Created: {formatDateTime(registration.created_at)}</span>
-        </div>
-      </div>
-
-      {created && (
-        <div className="card border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-200">
-          Registration created.
-        </div>
-      )}
-
-      <div className="space-y-6">
-        <QuickEditForm registration={registration} formId="quick-edit-form" />
-      </div>
-    </div>
+    <YatriDetailClient
+      registration={registration}
+      orchestratorUrl={orchestratorUrl}
+      created={created}
+    />
   );
 }

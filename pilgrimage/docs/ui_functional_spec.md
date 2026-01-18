@@ -77,9 +77,9 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Admin — New Yatri (`/yatris/new`)
 - UI Layout: FormKit page header + section cards. Applicant/Travel/Medical/Emergency/Additional/Declaration sections with address subfields (state/district/city+village/PIN) populated from Supabase RPCs (PIN is optional manual input); medical grid with checkboxes and shared notes textarea for heart/bp/diabetes/asthma plus other-condition notes; DOB uses date input; declaration_signed_at uses datetime-local with a quick "Now" button. Optional photo/form placeholders allow selecting uploads that run after creation when orchestrator is configured. Minimal mode shows core fields and collapses optional sections into a "More details (optional)" accordion. Sticky Save/Cancel actions; top error banner.
-- Functional: Server action uses `fn_create_registration` (minimal) then `fn_update_registration` patch with all fields + status `approved`; declaration timestamp auto-set when provided/accepted; meds cleared when toggles off; redirects to detail on success.
+- Functional: Server action uses `fn_create_registration` (minimal + health flags) then `fn_update_registration` patch with all fields + status `approved`; declaration timestamp auto-set when provided/accepted; meds cleared when toggles off; redirects to detail on success.
 - Data: `yatra_registrations`; storage paths set after creation on detail.
-- Validation: Required name_hi, address_hi, phone, declaration_accepted=true; age/emergency_age 0–120; meds blocked when checkbox false.
+- Validation: Required name_hi, address_hi, phone, declaration_accepted=true; health selection required (no known conditions or a condition); age/emergency_age 0–120; meds blocked when checkbox false.
 - Errors: Visible inline error message on validation/Supabase failure; partial creation shows ID + error without redirect.
 - Acceptance: Creation succeeds and redirects; required fields enforced; meds enable/disable behaves per checkbox; unauthorized redirects to login.
 
@@ -109,9 +109,9 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Mobile — Registration Form (`/registration`)
 - UI Layout: Full PDF form including receipt_no, name/father/address (required), aadhaar, phone/whatsapp, DOB/age/height/weight, travel_mode dropdown, train_class, reservation_by dropdown, medical switches with meds textfields disabled/cleared when off, other condition+meds toggle, emergency contact (name/father/age/address/phone), additional questions, required declaration checkbox, optional form photo preview, “Extract & Fill (mock)” button, bottom submit.
-- Functional: Two-step submit. Step 1 creates minimal row via `fn_create_registration` (owner/created_by, required fields, declaration timestamp) with status `submitted`. Step 2 (optional) uploads form image to `forms/registrations/<id>/form.jpg` (upsert). Step 3 patches all fields + `form_image_url` via `fn_update_registration` (includes meds clearing, status submitted). Mock extract fills sample data for new fields.
+- Functional: Two-step submit. Step 1 creates minimal row via `fn_create_registration` (owner/created_by, required fields, declaration timestamp, health flags) with status `submitted`. Step 2 (optional) uploads form image to `forms/registrations/<id>/form.jpg` (upsert). Step 3 patches all fields + `form_image_url` via `fn_update_registration` (includes meds clearing, status submitted). Mock extract fills sample data for new fields.
 - Data: `yatra_registrations`; Storage `forms`; mock OCR filler (no orchestrator).
-- Validation: Required: name, address, phone, declaration accepted. Age/emergency age bounded; meds disabled when switch off; travel defaults train/self but editable.
+- Validation: Required: name, address, phone, declaration accepted, health selection. Age/emergency age bounded; meds disabled when switch off; travel defaults train/self but editable.
 - Errors: Upload failure noted in message (registration still saved); camera failure uses snackbar.
 - Acceptance: Valid submission inserts row; optional image stored at fixed path; fields persist and match Admin detail readout.
 

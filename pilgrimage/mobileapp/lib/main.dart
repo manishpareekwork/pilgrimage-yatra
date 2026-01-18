@@ -568,6 +568,18 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     // Step 1: create registration first
     late final String registrationId;
     final signedAtIso = DateTime.now().toIso8601String();
+    final hasOtherCondition = _otherActive && _healthOther.text.trim().isNotEmpty;
+    final healthNone =
+        !(_healthHeart || _healthBp || _healthDiabetes || _healthAsthma || hasOtherCondition);
+    final healthHeartValue = healthNone ? false : _healthHeart;
+    final healthBpValue = healthNone ? false : _healthBp;
+    final healthDiabetesValue = healthNone ? false : _healthDiabetes;
+    final healthAsthmaValue = healthNone ? false : _healthAsthma;
+    final healthOtherValue = healthNone
+        ? null
+        : hasOtherCondition
+            ? _healthOther.text.trim()
+            : null;
     try {
       final result = await supabase.rpc('fn_create_registration', params: {
         'p_owner': user.id,
@@ -577,6 +589,12 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
         'p_phone': _phone.text.trim(),
         'p_declaration_accepted': _declarationAccepted,
         'p_declaration_signed_at': signedAtIso,
+        'p_health_none': healthNone,
+        'p_health_heart': healthHeartValue,
+        'p_health_bp': healthBpValue,
+        'p_health_diabetes': healthDiabetesValue,
+        'p_health_asthma': healthAsthmaValue,
+        'p_health_other': healthOtherValue,
       });
       final createdId = result as String?;
       if (createdId == null) {
@@ -645,20 +663,25 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       'travel_mode': _travelMode,
       'train_class': _trainClass.text.trim().isEmpty ? null : _trainClass.text.trim(),
       'reservation_by': _reservationBy.isEmpty ? null : _reservationBy,
-      'health_heart': _healthHeart,
+      'health_none': healthNone,
+      'health_heart': healthHeartValue,
       'health_heart_meds':
-          _healthHeart ? (_healthHeartMeds.text.trim().isEmpty ? null : _healthHeartMeds.text.trim()) : null,
-      'health_bp': _healthBp,
-      'health_bp_meds': _healthBp ? (_healthBpMeds.text.trim().isEmpty ? null : _healthBpMeds.text.trim()) : null,
-      'health_diabetes': _healthDiabetes,
+          healthHeartValue ? (_healthHeartMeds.text.trim().isEmpty ? null : _healthHeartMeds.text.trim()) : null,
+      'health_bp': healthBpValue,
+      'health_bp_meds': healthBpValue ? (_healthBpMeds.text.trim().isEmpty ? null : _healthBpMeds.text.trim()) : null,
+      'health_diabetes': healthDiabetesValue,
       'health_diabetes_meds':
-          _healthDiabetes ? (_healthDiabetesMeds.text.trim().isEmpty ? null : _healthDiabetesMeds.text.trim()) : null,
-      'health_asthma': _healthAsthma,
+          healthDiabetesValue
+              ? (_healthDiabetesMeds.text.trim().isEmpty ? null : _healthDiabetesMeds.text.trim())
+              : null,
+      'health_asthma': healthAsthmaValue,
       'health_asthma_meds':
-          _healthAsthma ? (_healthAsthmaMeds.text.trim().isEmpty ? null : _healthAsthmaMeds.text.trim()) : null,
-      'health_other': _otherActive ? (_healthOther.text.trim().isEmpty ? null : _healthOther.text.trim()) : null,
+          healthAsthmaValue ? (_healthAsthmaMeds.text.trim().isEmpty ? null : _healthAsthmaMeds.text.trim()) : null,
+      'health_other': healthOtherValue,
       'health_other_meds':
-          _otherActive ? (_healthOtherMeds.text.trim().isEmpty ? null : _healthOtherMeds.text.trim()) : null,
+          healthOtherValue != null
+              ? (_healthOtherMeds.text.trim().isEmpty ? null : _healthOtherMeds.text.trim())
+              : null,
       'emergency_contact_name': _emergencyName.text.trim().isEmpty ? null : _emergencyName.text.trim(),
       'emergency_contact_father_name': _emergencyFather.text.trim().isEmpty ? null : _emergencyFather.text.trim(),
       'emergency_contact_age_years':

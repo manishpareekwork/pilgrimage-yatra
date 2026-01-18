@@ -21,7 +21,7 @@ _Scope:_ Monorepo for Pilgrimage Yatra 2025 with Supabase backend, Cloud Run orc
 - **Enums:** `user_role ('yatri','volunteer','reviewer','admin')`, `reg_status ('submitted','needs_review','approved','rejected')`, `travel_mode ('train','air')`.
 - **Tables:**
   - `public.profiles`: `id uuid PK -> auth.users`, `role user_role default 'yatri'`, `name_hi`, `phone`, `created_at`.
-  - `public.yatra_registrations`: `id uuid PK default gen_random_uuid()`, `owner uuid`, `created_by uuid`, `name_hi text not null`, `father_name_hi text`, `address_hi text`, `phone`, `whatsapp`, `travel_mode travel_mode`, `train_class text`, `health_bp bool`, `health_diabetes bool`, `health_other text`, `emergency_contact_name text`, `emergency_contact_phone text`, `photo_url text`, `form_image_url text`, `status reg_status default 'submitted'`, `ocr_confidence numeric`, `raw_json jsonb`, `created_at timestamptz default now()`.
+  - `public.yatra_registrations`: `id uuid PK default gen_random_uuid()`, `owner uuid`, `created_by uuid`, `name_hi text not null`, `father_name_hi text`, `address_hi text`, `phone`, `whatsapp`, `travel_mode travel_mode`, `train_class text`, `health_none bool`, `health_heart bool`, `health_bp bool`, `health_diabetes bool`, `health_asthma bool`, `health_other text`, `emergency_contact_name text`, `emergency_contact_phone text`, `photo_url text`, `form_image_url text`, `status reg_status default 'submitted'`, `ocr_confidence numeric`, `raw_json jsonb`, `created_at timestamptz default now()`.
   - `public.yatra_reviews`: `id uuid PK default gen_random_uuid()`, `registration_id uuid FK -> yatra_registrations`, `action text check in ('approve','reject','edit')`, `diff jsonb`, `actor uuid`, `created_at timestamptz default now()`.
 - **Indexes:** profiles(created_at); registrations on owner, created_by, status; partial unique on phone where not null.
 - **RLS (summary):**
@@ -29,7 +29,7 @@ _Scope:_ Monorepo for Pilgrimage Yatra 2025 with Supabase backend, Cloud Run orc
   - registrations: yatri CRUD own (`owner = auth.uid()`); volunteers CRUD created rows if role in `volunteer|reviewer|admin`; reviewers/admins can select/update all.
   - reviews: staff insert/select all; yatri can select rows for their registrations.
 - **Functions:**
-  - `fn_create_registration(owner, created_by, name_hi, father_name_hi, address_hi, phone, whatsapp, travel_mode, train_class, health_bp, health_diabetes, health_other, emergency_contact_name, emergency_contact_phone, photo_url, form_image_url) returns uuid`.
+  - `fn_create_registration(owner, created_by, name_hi, address_hi, phone, declaration_accepted, declaration_signed_at, health_none, health_heart, health_bp, health_diabetes, health_asthma, health_other) returns uuid`.
   - `fn_update_registration(id, patch jsonb)`.
   - `fn_create_review(registration_id, action, diff, actor) returns uuid` (auto-updates status on approve/reject).
   - `admin_set_user_role(user, role)` (SECURITY DEFINER, revoke PUBLIC).

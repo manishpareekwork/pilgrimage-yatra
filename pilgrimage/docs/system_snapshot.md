@@ -25,6 +25,7 @@
 | travel_mode | enum travel_mode | no | train / air |
 | train_class | text | no | coach/class |
 | reservation_by | enum reservation_by | no | self / committee |
+| health_none | boolean | no (default false) | no known conditions flag |
 | health_heart | boolean | no (default false) | heart condition flag |
 | health_heart_meds | text | no | cleared if health_heart=false |
 | health_bp | boolean | no (default false) | blood pressure flag |
@@ -52,7 +53,7 @@
 | raw_json | jsonb | no | OCR/raw payload |
 | created_at | timestamptz | yes | default now() |
 
-Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_status` (submitted, needs_review, approved, rejected). Meds columns are nulled automatically in fn_update_registration when the flag is false; health_common_meds is set when provided and cleared when all medical flags are false.
+Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_status` (submitted, needs_review, approved, rejected). Meds columns are nulled automatically in fn_update_registration when the flag is false; health_common_meds is set when provided and cleared when all medical flags are false. Health choice requires `health_none=true` or at least one medical flag/other condition.
 
 ## Field Mapping (PDF → DB → Admin UI → Mobile UI → Validation)
 | PDF Field | DB Column | Admin UI | Mobile UI | Validation |
@@ -77,6 +78,7 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 | Travel Mode | travel_mode | Travel select | Travel select | Optional enum |
 | Train Class | train_class | Travel text | Travel text | Optional |
 | Reservation By | reservation_by | Travel select | Travel select | Optional enum |
+| No known conditions | health_none | Checkbox | Switch | Required: either this or another medical condition |
 | Heart condition + meds | health_heart / health_heart_meds | Checkbox + meds (disabled when unchecked) | Switch + meds (disabled when off) | Meds cleared when unchecked |
 | Blood Pressure + meds | health_bp / health_bp_meds | Checkbox + meds | Switch + meds | Meds cleared when unchecked |
 | Diabetes + meds | health_diabetes / health_diabetes_meds | Checkbox + meds | Switch + meds | Meds cleared when unchecked |
@@ -98,21 +100,21 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 - `/login` — Auth with Supabase password sign-in.
 - `/dashboard` — Counts from `yatra_registrations` (no RPCs).
 - `/yatris` — List/filter registrations (status + search).
-- `/yatris/new` — Full PDF-aligned form; uses `fn_create_registration` (minimal) then `fn_update_registration` with all fields; status forced to `submitted`; declaration required.
+- `/yatris/new` — Full PDF-aligned form; uses `fn_create_registration` (minimal + health flags) then `fn_update_registration` with all fields; health selection required; declaration required.
 - `/yatris/[id]` — Editable view for all fields; quick edit uses `fn_update_registration`; uploads use `/sign-url` (photos/forms) then `fn_update_registration`; review actions call `fn_create_review`.
 - `/users` — Admin-only (unchanged).
 
 ## Mobile Routes & Supabase Calls
 - `/login` — Supabase password sign-in.
 - `/home` — Nav hub; role-based buttons.
-- `/registration` — Full PDF form; validates name/address/phone/declaration; calls `fn_create_registration` (minimal), optional upload to `forms/registrations/<id>/form.jpg`, then `fn_update_registration` with all fields + `form_image_url`.
+- `/registration` — Full PDF form; validates name/address/phone/declaration; calls `fn_create_registration` (minimal + health flags), optional upload to `forms/registrations/<id>/form.jpg`, then `fn_update_registration` with all fields + `form_image_url`.
 - `/admin/list` — Admin/reviewer list filtered by status (select all columns).
 - `/admin/detail/:id` — Read-only detail for all fields including medical, emergency, reservation, declaration, and storage paths.
 
 ## Orchestrator Endpoints
 - `POST /sign-url` — `{bucket, object, action(upload|download), expiresIn}` → `{signedUrl, bucket, object, expiresAt}` (requires Supabase JWT).
-- `POST /registrations` — Requires `owner`, `created_by`, `name_hi`, `address_hi`, `phone`, `declaration_accepted=true`; creates via `fn_create_registration`, patches via `fn_update_registration` (accepts all PDF fields, photo/form paths, status).
-- `POST /process-form` (mock OCR) — Input: `{registrationId?, owner?, created_by?, storagePath}`; creates minimal registration if `registrationId` missing; patches via `fn_update_registration` with structured mock data (medical flags/meds, emergency, reservation, additional questions), sets `form_image_url=storagePath`, `status=needs_review`, and `raw_json` with medical breakdown.
+- `POST /registrations` — Requires `owner`, `created_by`, `name_hi`, `address_hi`, `phone`, `declaration_accepted=true`; creates via `fn_create_registration` (includes health flags/health_none), patches via `fn_update_registration` (accepts all PDF fields, photo/form paths, status).
+- `POST /process-form` (mock OCR) — Input: `{registrationId?, owner?, created_by?, storagePath}`; creates minimal registration if `registrationId` missing (includes health flags); patches via `fn_update_registration` with structured mock data (medical flags/meds, emergency, reservation, additional questions), sets `form_image_url=storagePath`, `status=needs_review`, and `raw_json` with medical breakdown.
 
 ## Known Gaps / TODOs
 - OCR remains mock; real Document AI integration pending.
@@ -121,8 +123,8 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 - No DB-level NOT NULL on address/phone to avoid breaking legacy rows; UI enforces required fields.
 
 ## Manual Test Checklist
-1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` + `20251231_address_components.sql` + `20251231_address_lookup_tables.sql` to Supabase; verify age CHECK constraints. Seed address lookup CSVs (states/districts; PIN table optional) via `supabase/scripts/seed_address_lookup.sql`.
-2. Admin `/yatris/new`: enter all PDF fields, ensure declaration required, submit -> redirect to detail; status=`submitted`.
+1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` + `20251231_address_components.sql` + `20251231_address_lookup_tables.sql` + `20260105_operational_requirements.sql` + `20260110_health_choice_create_registration.sql` to Supabase; verify age and health-choice CHECK constraints. Seed address lookup CSVs (states/districts; PIN table optional) via `supabase/scripts/seed_address_lookup.sql`.
+2. Admin `/yatris/new`: enter all PDF fields, select a medical choice (or No known conditions), ensure declaration required, submit -> redirect to detail; status=`submitted`.
 3. Admin `/yatris/[id]`: toggle each medical checkbox off/on and confirm meds inputs disable/clear; save; re-open to verify persisted. Update declaration timestamp and status.
 4. Admin uploads: upload photo and form image; confirm paths `photos/registrations/<id>/photo.jpg` and `forms/registrations/<id>/form.jpg` and checklist ticks.
 5. Mobile `/registration`: required fields + declaration, optional image upload; verify form_image_url stored and status submitted.

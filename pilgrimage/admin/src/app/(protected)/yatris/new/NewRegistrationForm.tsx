@@ -20,29 +20,61 @@ import { listDistricts, listStates, type AddressOption } from "@/lib/addressLook
 
 const initialState: ActionState = { error: null, id: null, fieldErrors: null };
 
-const minimalFieldNames = new Set([
-  "receipt_no",
+type ReceiptDraft = {
+  id: string;
+  receipt_number: string;
+  amount: string;
+  payment_mode: string;
+  receipt_date: string;
+};
+
+const createReceiptDraft = (overrides?: Partial<ReceiptDraft>): ReceiptDraft => ({
+  id: `receipt_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+  receipt_number: "",
+  amount: "",
+  payment_mode: "",
+  receipt_date: "",
+  ...overrides,
+});
+
+const requiredFieldNames = new Set([
   "name_hi",
-  "guardian_relation",
   "father_name_hi",
   "address_hi",
   "address_state",
   "address_district",
   "address_city",
-  "address_pin",
   "aadhaar_no",
   "phone",
   "whatsapp",
   "dob",
   "age_years",
-  "travel_mode",
-  "train_class",
-  "reservation_by",
   "accompanying_name",
   "accompanying_guardian_name",
   "accompanying_resident_of",
   "accompanying_phone",
+  "emergency_contact_name",
+  "emergency_contact_father_name",
+  "emergency_contact_age_years",
+  "emergency_contact_address",
+  "emergency_contact_phone",
+  "travel_mode",
+  "train_class",
+  "reservation_by",
   "health_none",
+  "health_heart",
+  "health_heart_meds",
+  "health_bp",
+  "health_bp_meds",
+  "health_diabetes",
+  "health_diabetes_meds",
+  "health_asthma",
+  "health_asthma_meds",
+  "health_common_meds",
+  "health_other",
+  "health_other_meds",
+  "attended_badarinath_2024",
+  "sadhu_sant_category",
   "declaration_accepted",
   "declaration_signed_at",
 ]);
@@ -55,11 +87,42 @@ const formatDateTimeLocal = (date: Date) => {
   )}:${pad(date.getMinutes())}`;
 };
 
-function SubmitButton({ pending, className }: { pending: boolean; className?: string }) {
+const computeAgeFromDob = (dob: string) => {
+  const date = new Date(dob);
+  if (Number.isNaN(date.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - date.getFullYear();
+  const hasHadBirthday =
+    today.getMonth() > date.getMonth() ||
+    (today.getMonth() === date.getMonth() && today.getDate() >= date.getDate());
+  if (!hasHadBirthday) age -= 1;
+  return age;
+};
+
+const RECEIPT_PAYMENT_OPTIONS = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "card", label: "Card" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "cheque", label: "Cheque" },
+] as const;
+
+const BLOOD_GROUP_OPTIONS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+
+function SubmitButton({
+  pending,
+  disabled,
+  className,
+}: {
+  pending: boolean;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const isDisabled = pending || disabled;
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={isDisabled}
       className={[
         "btn-primary disabled:opacity-70",
         className,
@@ -91,8 +154,9 @@ export function NewRegistrationForm({
   const [healthAsthma, setHealthAsthma] = useState(false);
   const [commonMedicalNotes, setCommonMedicalNotes] = useState("");
   const [otherActive, setOtherActive] = useState(false);
-  const [minimalMode, setMinimalMode] = useState(false);
-  const [optionalOpen, setOptionalOpen] = useState(false);
+  const [showRequiredOnly, setShowRequiredOnly] = useState(false);
+  const [receipts, setReceipts] = useState<ReceiptDraft[]>([]);
+  const [activeReceiptId, setActiveReceiptId] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [formFile, setFormFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -100,6 +164,7 @@ export function NewRegistrationForm({
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [preSubmitError, setPreSubmitError] = useState<string | null>(null);
+  const [isFormValid, setIsFormValid] = useState(false);
   const [uploadAttempted, setUploadAttempted] = useState(false);
   const [stateOptions, setStateOptions] = useState<AddressOption[]>([]);
   const [districtOptions, setDistrictOptions] = useState<AddressOption[]>([]);
@@ -108,8 +173,6 @@ export function NewRegistrationForm({
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
-  const showDevTools =
-    process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === "true";
 
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as
@@ -157,25 +220,29 @@ export function NewRegistrationForm({
   const handleFileChange =
     (kind: "photo" | "form") => (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0] ?? null;
-    if (kind === "photo") {
-      setPhotoFile(file);
-      setPreviewFromFile(file, setPhotoPreview);
-    } else {
-      setFormFile(file);
-      setPreviewFromFile(file, setFormPreview);
-    }
-    setPreSubmitError(null);
-    event.target.value = "";
-  };
+      if (kind === "photo") {
+        setPhotoFile(file);
+        setPreviewFromFile(file, setPhotoPreview);
+      } else {
+        setFormFile(file);
+        setPreviewFromFile(file, setFormPreview);
+      }
+      setPreSubmitError(null);
+    };
 
   const renderUploadSlot = (
     kind: "photo" | "form",
     label: string,
     file: File | null,
-    previewUrl: string | null
+    previewUrl: string | null,
+    placeholderOverride?: string
   ) => {
     const isDisabled = isPending || uploadingFiles;
-    const placeholderText = uploadingFiles ? "Uploading" : file ? "Selected" : `Add ${label}`;
+    const placeholderText = uploadingFiles
+      ? "Uploading"
+      : file
+        ? "Selected"
+        : placeholderOverride ?? `Add ${label}`;
     const accept =
       kind === "photo" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf";
 
@@ -222,6 +289,33 @@ export function NewRegistrationForm({
         />
       </label>
     );
+  };
+
+  const addReceipt = () => {
+    const draft = createReceiptDraft();
+    setReceipts((prev) => [...prev, draft]);
+    setActiveReceiptId(draft.id);
+    requestAnimationFrame(() => {
+      document.getElementById(`receipt-${draft.id}-number`)?.focus();
+    });
+  };
+
+  const updateReceipt = (id: string, field: keyof ReceiptDraft, value: string) => {
+    setReceipts((prev) =>
+      prev.map((receipt) => (receipt.id === id ? { ...receipt, [field]: value } : receipt))
+    );
+  };
+
+  const removeReceipt = (id: string) => {
+    setReceipts((prev) => prev.filter((receipt) => receipt.id !== id));
+    setActiveReceiptId((prev) => (prev === id ? null : prev));
+  };
+
+  const editReceipt = (id: string) => {
+    setActiveReceiptId(id);
+    requestAnimationFrame(() => {
+      document.getElementById(`receipt-${id}-number`)?.focus();
+    });
   };
 
   useEffect(() => {
@@ -297,41 +391,90 @@ export function NewRegistrationForm({
     };
   }, [formPreview]);
 
-  const fillSampleData = () => {
+  const fillTestData = () => {
+    const randomFrom = <T,>(items: readonly T[]) => items[Math.floor(Math.random() * items.length)];
+    const firstNames = ["Anil", "Sunita", "Ravi", "Meera", "Deepak", "Neha", "Arjun", "Kiran", "Pooja", "Rahul"];
+    const lastNames = ["Sharma", "Verma", "Singh", "Gupta", "Patel", "Khan", "Yadav", "Mehta", "Nair", "Iyer"];
+    const states = ["Delhi", "Uttarakhand", "Uttar Pradesh", "Rajasthan", "Maharashtra", "Madhya Pradesh", "Bihar"];
+    const cities = ["New Delhi", "Dehradun", "Lucknow", "Jaipur", "Pune", "Bhopal", "Patna", "Varanasi"];
+    const guardians = ["father", "husband", "guardian"] as const;
+    const reservation = ["self", "committee"] as const;
+    const travelModes = ["train", "air"] as const;
     const uniqueSuffix = String(Date.now()).slice(-9).padStart(9, "0");
     const uniquePhone = `9${uniqueSuffix}`;
+    const guardianRelation = randomFrom(guardians);
+    const reservationBy = randomFrom(reservation);
+    const travelModeValue = randomFrom(travelModes);
+    const stateValue = stateOptions.length > 0 ? randomFrom(stateOptions).id : randomFrom(states);
+    const cityValue = randomFrom(cities);
+    const dob = new Date();
+    const ageSeed = 20 + Math.floor(Math.random() * 35);
+    dob.setFullYear(dob.getFullYear() - ageSeed);
+    dob.setMonth(Math.floor(Math.random() * 12));
+    dob.setDate(Math.floor(Math.random() * 28) + 1);
+    const dobValue = dob.toISOString().slice(0, 10);
+    const computedAge = computeAgeFromDob(dobValue);
+    const ageValue = computedAge ?? ageSeed;
+    const aadhaarDigits = `${Math.floor(100000000000 + Math.random() * 900000000000)}`;
+    const aadhaarValue = `${aadhaarDigits.slice(0, 4)} ${aadhaarDigits.slice(4, 8)} ${aadhaarDigits.slice(8, 12)}`;
 
-    setInputValue("receipt_no", `REC-${uniqueSuffix.slice(-5)}`);
-    setInputValue("name_hi", "मनिष दीपक");
-    setInputValue("guardian_relation", "father");
-    setInputValue("father_name_hi", "दीपक");
-    setInputValue("address_hi", "राम लीला मैदान, दिल्ली");
-    setInputValue("address_state", "Delhi");
-    setInputValue("address_district", "New Delhi");
-    setInputValue("address_city", "New Delhi");
-    setInputValue("address_pin", "110001");
-    setAddressState("Delhi");
-    setAddressDistrict("New Delhi");
-    setInputValue("aadhaar_no", "1234 5678 9012");
+    const receiptDraft = createReceiptDraft({
+      receipt_number: `REC-${uniqueSuffix.slice(-5)}`,
+      amount: String(2000 + Math.floor(Math.random() * 5000)),
+      payment_mode: "cash",
+      receipt_date: new Date().toISOString().slice(0, 10),
+    });
+    setReceipts([receiptDraft]);
+    setActiveReceiptId(receiptDraft.id);
+    setInputValue("name_hi", `${randomFrom(firstNames)} ${randomFrom(lastNames)}`);
+    setInputValue("guardian_relation", guardianRelation);
+    setInputValue("father_name_hi", `${randomFrom(firstNames)} ${randomFrom(lastNames)}`);
+    setInputValue("address_hi", `${cityValue} main road, sector ${Math.floor(Math.random() * 30) + 1}`);
+    setAddressState(stateValue);
+    setAddressDistrict(cityValue);
+    setInputValue("address_city", cityValue);
+    setInputValue("address_pin", `${Math.floor(100000 + Math.random() * 900000)}`);
+    setInputValue("aadhaar_no", aadhaarValue);
     setInputValue("phone", uniquePhone);
     setInputValue("whatsapp", uniquePhone);
-    setInputValue("dob", "1988-04-12");
-    setInputValue("age_years", "36");
-    setInputValue("height_cm", "168.5");
-    setInputValue("weight_kg", "66.2");
-    setInputValue("travel_mode", "train");
-    setInputValue("train_class", "Sleeper Class (SL)");
-    setInputValue("reservation_by", "self");
-    setInputValue("accompanying_name", "अनिल मिश्रा");
-    setInputValue("accompanying_guardian_name", "मोहन मिश्रा");
-    setInputValue("accompanying_resident_of", "दिल्ली");
+    setInputValue("dob", dobValue);
+    setInputValue("age_years", String(ageValue));
+    setInputValue("height_cm", (160 + Math.random() * 20).toFixed(1));
+    setInputValue("weight_kg", (55 + Math.random() * 20).toFixed(1));
+    setTravelMode(travelModeValue);
+    setInputValue("travel_mode", travelModeValue);
+    setInputValue("train_class", travelModeValue === "train" ? randomFrom(TRAIN_CLASS_OPTIONS) : "");
+    setInputValue("reservation_by", reservationBy);
+    setInputValue("accompanying_name", `${randomFrom(firstNames)} ${randomFrom(lastNames)}`);
+    setInputValue("accompanying_guardian_name", `${randomFrom(firstNames)} ${randomFrom(lastNames)}`);
+    setInputValue("accompanying_resident_of", cityValue);
     setInputValue("accompanying_phone", `8${uniqueSuffix}`);
     setSignedAtNow();
     setCheckboxValue("declaration_accepted", true);
-    setHealthNone(false);
-    setHealthHeart(true);
-    setHealthDiabetes(true);
-    setCommonMedicalNotes("Aspirin, Metformin");
+    const healthRoll = Math.random();
+    if (healthRoll < 0.6) {
+      setHealthNone(true);
+      setHealthHeart(false);
+      setHealthBp(false);
+      setHealthDiabetes(false);
+      setHealthAsthma(false);
+      setOtherActive(false);
+      setCommonMedicalNotes("");
+    } else {
+      setHealthNone(false);
+      setHealthHeart(false);
+      setHealthBp(false);
+      setHealthDiabetes(false);
+      setHealthAsthma(false);
+      setOtherActive(false);
+      const pick = randomFrom(["heart", "bp", "diabetes", "asthma"] as const);
+      if (pick === "heart") setHealthHeart(true);
+      if (pick === "bp") setHealthBp(true);
+      if (pick === "diabetes") setHealthDiabetes(true);
+      if (pick === "asthma") setHealthAsthma(true);
+      setCommonMedicalNotes("General meds");
+    }
+    setPreSubmitError(null);
   };
 
   const signUrl = async (action: "upload" | "download", bucket: "forms" | "photos", object: string) => {
@@ -432,6 +575,10 @@ export function NewRegistrationForm({
   }, [router, state?.error, state?.id, photoFile, formFile, hasOrchestrator, uploadAttempted]);
 
   const commonMedicalActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
+  const hasHealthSelection =
+    healthNone || healthHeart || healthBp || healthDiabetes || healthAsthma || otherActive;
+  const canUploadSelectedFiles = hasOrchestrator || (!photoFile && !formFile);
+  const showReceiptsSection = !showRequiredOnly || receipts.length > 0;
 
   useEffect(() => {
     if (!commonMedicalActive) setCommonMedicalNotes("");
@@ -462,44 +609,124 @@ export function NewRegistrationForm({
     addressDistrict && !districtOptions.some((option) => option.id === addressDistrict)
   );
 
-  useEffect(() => {
-    if (!minimalMode) setOptionalOpen(false);
-  }, [minimalMode]);
-
   const fieldErrors = state?.fieldErrors ?? undefined;
   const hasFieldError = (name: string) => Boolean(fieldErrors?.[name]);
-  const hasOptionalErrors = Boolean(
-    minimalMode &&
+  const hasHiddenErrors = Boolean(
+    showRequiredOnly &&
       fieldErrors &&
-      Object.keys(fieldErrors).some((key) => !minimalFieldNames.has(key))
+      Object.keys(fieldErrors).some((key) =>
+        key === "receipts" ? !showReceiptsSection : !requiredFieldNames.has(key)
+      )
   );
+  const getClientValidation = React.useCallback(() => {
+    const form = formRef.current;
+    if (!form) {
+      return { valid: false, nativeValid: false, message: "Unable to validate form." };
+    }
+    const nativeValid = form.checkValidity();
+    if (!nativeValid) return { valid: false, nativeValid };
+
+    if (!hasHealthSelection) {
+      return {
+        valid: false,
+        nativeValid,
+        message: "Select a medical condition or 'No known conditions'.",
+      };
+    }
+
+    const dobValue = (form.elements.namedItem("dob") as HTMLInputElement | null)?.value ?? "";
+    const ageValue = (form.elements.namedItem("age_years") as HTMLInputElement | null)?.value ?? "";
+    if (dobValue && ageValue) {
+      const ageNumber = Number(ageValue);
+      const computedAge = computeAgeFromDob(dobValue);
+      if (!Number.isFinite(ageNumber) || computedAge === null || Math.abs(computedAge - ageNumber) > 1) {
+        return { valid: false, nativeValid, message: "Age does not match DOB." };
+      }
+    }
+
+    if (!canUploadSelectedFiles) {
+      return {
+        valid: false,
+        nativeValid,
+        message: "Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.",
+      };
+    }
+
+    return { valid: true, nativeValid };
+  }, [canUploadSelectedFiles, hasHealthSelection]);
+
+  const updateFormValidity = React.useCallback(() => {
+    setIsFormValid(getClientValidation().valid);
+  }, [getClientValidation]);
+
+  useEffect(() => {
+    updateFormValidity();
+  }, [updateFormValidity]);
+
+  useEffect(() => {
+    updateFormValidity();
+  }, [travelMode, updateFormValidity]);
+
+  const handleFormChange = () => {
+    if (preSubmitError) setPreSubmitError(null);
+    updateFormValidity();
+  };
 
   return (
     <form
       ref={formRef}
       action={formAction}
+      onInput={handleFormChange}
+      onChange={handleFormChange}
       onSubmit={(event) => {
-        if (!photoFile) {
+        const { valid, nativeValid, message } = getClientValidation();
+        if (!valid) {
           event.preventDefault();
-          setPreSubmitError("Photo is required before submitting.");
+          if (!nativeValid) formRef.current?.reportValidity();
+          if (message) setPreSubmitError(message);
           return;
         }
-        if (!hasOrchestrator) {
-          event.preventDefault();
-          setPreSubmitError("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
-        }
+        setPreSubmitError(null);
       }}
       className="new-registration-form space-y-8"
     >
+      <input type="hidden" name="group_id" value="" />
       <div className="relative">
         <PageHeader
           title="New Registration"
-          subtitle="Complete required details and save to continue."
+          subtitle="Complete required details and save to continue. Photo is optional."
+          actions={
+            <button
+              type="button"
+              onClick={() => {
+                fillTestData();
+                updateFormValidity();
+              }}
+              className="btn-secondary text-xs font-semibold uppercase tracking-[0.2em]"
+            >
+              Fill Test Data
+            </button>
+          }
           className="new-registration-hero"
         />
         <div className="detail-thumbs">
-          {renderUploadSlot("photo", "Photo", photoFile, photoPreview)}
-          {renderUploadSlot("form", "Form", formFile, formPreview)}
+          {renderUploadSlot("photo", "Photo", photoFile, photoPreview, "Add Photo (optional)")}
+          <div className="flex min-w-[200px] flex-col gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-xs text-[color:var(--muted)] shadow-sm">
+            <label className="flex items-center gap-2 text-xs font-semibold text-[color:var(--ink)]">
+              <input
+                type="checkbox"
+                checked={showRequiredOnly}
+                onChange={(event) => setShowRequiredOnly(event.target.checked)}
+                className="h-4 w-4 rounded border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--accent)] focus:ring-[color:var(--accent)]"
+              />
+              <span>Show required fields only</span>
+            </label>
+            {hasHiddenErrors && (
+              <span className="text-[11px] text-amber-600">
+                Optional fields are hidden. Turn this off to review highlighted fields.
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -519,36 +746,25 @@ export function NewRegistrationForm({
         </div>
       )}
 
-      {showDevTools && (
-        <details className="card p-4">
-          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-            Advanced tools
-          </summary>
-          <div className="mt-4 space-y-4">
-            <label className="flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-2 text-xs font-semibold text-[color:var(--muted)]">
-              <input
-                type="checkbox"
-                checked={minimalMode}
-                onChange={(event) => setMinimalMode(event.target.checked)}
-                className="h-4 w-4 rounded border-slate-700/60 bg-slate-950/40 text-orange-400 focus:ring-orange-400"
-              />
-              Minimal mode
-            </label>
-            <div className="flex flex-wrap items-center gap-4">
-              <button
-                type="button"
-                onClick={fillSampleData}
-                disabled={isPending}
-                className="rounded-xl border border-slate-700/60 px-3 py-2 text-sm text-slate-200 hover:border-slate-500 disabled:opacity-60"
-              >
-                Fill Sample Data
-              </button>
-            </div>
-          </div>
-        </details>
-      )}
+      <div className="card p-4 sm:p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field
+            label="Registration ID"
+            htmlFor="registration_id"
+            helperText={state?.id ? "Read-only" : "Generated after save"}
+          >
+            <TextInput
+              id="registration_id"
+              value={state?.id ?? ""}
+              placeholder="Will be generated after save"
+              readOnly
+              className="font-mono text-xs"
+            />
+          </Field>
+        </div>
+      </div>
 
-      {!hasOrchestrator && (
+      {!hasOrchestrator && (photoFile || formFile) && (
         <div className="text-xs text-amber-600">Set NEXT_PUBLIC_ORCHESTRATOR_URL to enable uploads.</div>
       )}
       {uploadingFiles && (
@@ -569,16 +785,8 @@ export function NewRegistrationForm({
       )}
 
       <FormSection title="Applicant">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Receipt No." htmlFor="receipt_no" error={fieldErrors?.receipt_no}>
-            <TextInput
-              id="receipt_no"
-              name="receipt_no"
-              placeholder="Optional receipt"
-              error={hasFieldError("receipt_no")}
-            />
-          </Field>
-          <Field label="Name (Hindi allowed)" htmlFor="name_hi" required error={fieldErrors?.name_hi}>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <Field label="Name" htmlFor="name_hi" required error={fieldErrors?.name_hi}>
             <TextInput
               id="name_hi"
               name="name_hi"
@@ -587,7 +795,21 @@ export function NewRegistrationForm({
               error={hasFieldError("name_hi")}
             />
           </Field>
-          <Field label="Guardian Relation" htmlFor="guardian_relation" error={fieldErrors?.guardian_relation}>
+          <Field label="Father's Name" htmlFor="father_name_hi" required error={fieldErrors?.father_name_hi}>
+            <TextInput
+              id="father_name_hi"
+              name="father_name_hi"
+              required
+              placeholder="पिता/अभिभावक"
+              error={hasFieldError("father_name_hi")}
+            />
+          </Field>
+          <Field
+            label="Guardian Relation"
+            htmlFor="guardian_relation"
+            error={fieldErrors?.guardian_relation}
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
             <Select
               id="guardian_relation"
               name="guardian_relation"
@@ -601,101 +823,11 @@ export function NewRegistrationForm({
             </Select>
           </Field>
           <Field
-            label="Father/Husband/Guardian Name"
-            htmlFor="father_name_hi"
-            required
-            error={fieldErrors?.father_name_hi}
-          >
-            <TextInput
-              id="father_name_hi"
-              name="father_name_hi"
-              required
-              placeholder="पिता/अभिभावक"
-              error={hasFieldError("father_name_hi")}
-            />
-          </Field>
-          <Field label="Phone" htmlFor="phone" required error={fieldErrors?.phone}>
-            <TextInput
-              id="phone"
-              name="phone"
-              required
-              placeholder="+91..."
-              error={hasFieldError("phone")}
-            />
-          </Field>
-          <Field label="WhatsApp" htmlFor="whatsapp" required error={fieldErrors?.whatsapp}>
-            <TextInput
-              id="whatsapp"
-              name="whatsapp"
-              required
-              placeholder="+91..."
-              error={hasFieldError("whatsapp")}
-            />
-          </Field>
-          <Field label="Date of Birth" htmlFor="dob" required error={fieldErrors?.dob}>
-            <TextInput id="dob" type="date" name="dob" required error={hasFieldError("dob")} />
-          </Field>
-          <Field label="Aadhaar No." htmlFor="aadhaar_no" required error={fieldErrors?.aadhaar_no}>
-            <TextInput
-              id="aadhaar_no"
-              name="aadhaar_no"
-              required
-              placeholder="12-digit Aadhaar"
-              error={hasFieldError("aadhaar_no")}
-            />
-          </Field>
-          <Field label="Age (years)" htmlFor="age_years" required error={fieldErrors?.age_years}>
-            <TextInput
-              id="age_years"
-              type="number"
-              name="age_years"
-              min={0}
-              max={120}
-              required
-              placeholder="e.g., 45"
-              error={hasFieldError("age_years")}
-            />
-          </Field>
-          <Field label="Yatri Bucket" htmlFor="category_id">
-            <Select id="category_id" name="category_id" defaultValue="">
-              <option value="">Unassigned</option>
-              {categoryOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {!minimalMode && (
-            <>
-              <Field label="Height (cm)" htmlFor="height_cm" error={fieldErrors?.height_cm}>
-                <TextInput
-                  id="height_cm"
-                  type="number"
-                  name="height_cm"
-                  step="0.1"
-                  placeholder="e.g., 168.5"
-                  error={hasFieldError("height_cm")}
-                />
-              </Field>
-              <Field label="Weight (kg)" htmlFor="weight_kg" error={fieldErrors?.weight_kg}>
-                <TextInput
-                  id="weight_kg"
-                  type="number"
-                  name="weight_kg"
-                  step="0.1"
-                  placeholder="e.g., 65.2"
-                  error={hasFieldError("weight_kg")}
-                />
-              </Field>
-            </>
-          )}
-          <Field
             label="Address"
             htmlFor="address_hi"
             required
             error={fieldErrors?.address_hi}
-            className="col-span-full"
+            className="sm:col-span-2 xl:col-span-3 max-w-2xl"
           >
             <TextArea
               id="address_hi"
@@ -706,7 +838,7 @@ export function NewRegistrationForm({
               error={hasFieldError("address_hi")}
             />
           </Field>
-          <div className="col-span-full grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2 xl:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="State" htmlFor="address_state">
               <Select
                 id="address_state"
@@ -746,7 +878,11 @@ export function NewRegistrationForm({
             <Field label="City / Village" htmlFor="address_city">
               <TextInput id="address_city" name="address_city" placeholder="City or village" />
             </Field>
-            <Field label="PIN code" htmlFor="address_pin">
+            <Field
+              label="PIN code"
+              htmlFor="address_pin"
+              className={showRequiredOnly ? "hidden" : undefined}
+            >
               <TextInput
                 id="address_pin"
                 name="address_pin"
@@ -755,12 +891,213 @@ export function NewRegistrationForm({
               />
             </Field>
           </div>
+          <Field label="Aadhaar Card Number" htmlFor="aadhaar_no" required error={fieldErrors?.aadhaar_no}>
+            <TextInput
+              id="aadhaar_no"
+              name="aadhaar_no"
+              required
+              placeholder="12-digit Aadhaar"
+              error={hasFieldError("aadhaar_no")}
+            />
+          </Field>
+          <Field label="Mobile Number" htmlFor="phone" required error={fieldErrors?.phone}>
+            <TextInput
+              id="phone"
+              name="phone"
+              required
+              placeholder="+91..."
+              error={hasFieldError("phone")}
+            />
+          </Field>
+          <Field label="WhatsApp Number" htmlFor="whatsapp" required error={fieldErrors?.whatsapp}>
+            <TextInput
+              id="whatsapp"
+              name="whatsapp"
+              required
+              placeholder="+91..."
+              error={hasFieldError("whatsapp")}
+            />
+          </Field>
+          <Field label="Date of Birth" htmlFor="dob" required error={fieldErrors?.dob}>
+            <TextInput
+              id="dob"
+              type="date"
+              name="dob"
+              required
+              error={hasFieldError("dob")}
+              onChange={(event) => {
+                const computedAge = computeAgeFromDob(event.target.value);
+                setInputValue("age_years", computedAge === null ? "" : String(computedAge));
+              }}
+            />
+          </Field>
+          <Field label="Age (years)" htmlFor="age_years" required error={fieldErrors?.age_years}>
+            <TextInput
+              id="age_years"
+              type="number"
+              name="age_years"
+              min={0}
+              max={120}
+              required
+              placeholder="e.g., 45"
+              error={hasFieldError("age_years")}
+            />
+          </Field>
+          <Field
+            label="Height (cm)"
+            htmlFor="height_cm"
+            error={fieldErrors?.height_cm}
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
+            <TextInput
+              id="height_cm"
+              type="number"
+              name="height_cm"
+              step="0.1"
+              placeholder="e.g., 168.5"
+              error={hasFieldError("height_cm")}
+            />
+          </Field>
+          <Field
+            label="Weight (kg)"
+            htmlFor="weight_kg"
+            error={fieldErrors?.weight_kg}
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
+            <TextInput
+              id="weight_kg"
+              type="number"
+              name="weight_kg"
+              step="0.1"
+              placeholder="e.g., 65.2"
+              error={hasFieldError("weight_kg")}
+            />
+          </Field>
+          <Field
+            label="Yatri Bucket"
+            htmlFor="category_id"
+            className={showRequiredOnly ? "hidden" : undefined}
+          >
+            <Select id="category_id" name="category_id" defaultValue="">
+              <option value="">Unassigned</option>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
           {lookupError && <div className="col-span-full text-xs text-rose-500">{lookupError}</div>}
           {categoryError && <div className="col-span-full text-xs text-rose-500">{categoryError}</div>}
         </div>
       </FormSection>
 
-      <FormSection title="Travel & Reservation">
+      <FormSection title="Emergency / Companion Details" description="Required companion details and optional emergency contact.">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <Field
+            label="Companion Name"
+            htmlFor="accompanying_name"
+            required
+            error={fieldErrors?.accompanying_name}
+          >
+            <TextInput
+              id="accompanying_name"
+              name="accompanying_name"
+              required
+              placeholder="Accompanying person"
+              error={hasFieldError("accompanying_name")}
+            />
+          </Field>
+          <Field
+            label="Companion Father/Guardian"
+            htmlFor="accompanying_guardian_name"
+            required
+            error={fieldErrors?.accompanying_guardian_name}
+          >
+            <TextInput
+              id="accompanying_guardian_name"
+              name="accompanying_guardian_name"
+              required
+              placeholder="Guardian name"
+              error={hasFieldError("accompanying_guardian_name")}
+            />
+          </Field>
+          <Field
+            label="Companion Resident of"
+            htmlFor="accompanying_resident_of"
+            required
+            error={fieldErrors?.accompanying_resident_of}
+          >
+            <TextInput
+              id="accompanying_resident_of"
+              name="accompanying_resident_of"
+              required
+              placeholder="City / Village"
+              error={hasFieldError("accompanying_resident_of")}
+            />
+          </Field>
+          <Field
+            label="Companion Mobile"
+            htmlFor="accompanying_phone"
+            required
+            error={fieldErrors?.accompanying_phone}
+          >
+            <TextInput
+              id="accompanying_phone"
+              name="accompanying_phone"
+              required
+              placeholder="+91..."
+              inputMode="numeric"
+              error={hasFieldError("accompanying_phone")}
+            />
+          </Field>
+          <Field label="Emergency Contact Name" htmlFor="emergency_contact_name">
+            <TextInput id="emergency_contact_name" name="emergency_contact_name" />
+          </Field>
+          <Field label="Emergency Contact Father/Guardian" htmlFor="emergency_contact_father_name">
+            <TextInput
+              id="emergency_contact_father_name"
+              name="emergency_contact_father_name"
+            />
+          </Field>
+          <Field
+            label="Emergency Contact Age (years)"
+            htmlFor="emergency_contact_age_years"
+            error={fieldErrors?.emergency_contact_age_years}
+          >
+            <TextInput
+              id="emergency_contact_age_years"
+              type="number"
+              name="emergency_contact_age_years"
+              min={0}
+              max={120}
+              placeholder="Optional"
+              error={hasFieldError("emergency_contact_age_years")}
+            />
+          </Field>
+          <Field label="Emergency Contact Phone" htmlFor="emergency_contact_phone">
+            <TextInput
+              id="emergency_contact_phone"
+              name="emergency_contact_phone"
+              placeholder="+91..."
+            />
+          </Field>
+          <Field
+            label="Emergency Contact Address"
+            htmlFor="emergency_contact_address"
+            className="sm:col-span-2 xl:col-span-3"
+          >
+            <TextArea
+              id="emergency_contact_address"
+              name="emergency_contact_address"
+              rows={2}
+              placeholder="Companion address"
+            />
+          </Field>
+        </div>
+      </FormSection>
+
+      <FormSection title="Travel Details">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Travel Mode" htmlFor="travel_mode" required error={fieldErrors?.travel_mode}>
             <Select
@@ -810,67 +1147,15 @@ export function NewRegistrationForm({
               <option value="committee">Committee</option>
             </Select>
           </Field>
-        </div>
-      </FormSection>
-
-      <FormSection title="Accompanying Person">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <Field
-            label="Name"
-            htmlFor="accompanying_name"
-            required
-            error={fieldErrors?.accompanying_name}
+            label="Group"
+            htmlFor="group_id"
+            helperText="Coming soon"
+            className={showRequiredOnly ? "hidden" : undefined}
           >
-            <TextInput
-              id="accompanying_name"
-              name="accompanying_name"
-              required
-              placeholder="Accompanying person"
-              error={hasFieldError("accompanying_name")}
-            />
-          </Field>
-          <Field
-            label="Father/Husband Name"
-            htmlFor="accompanying_guardian_name"
-            required
-            error={fieldErrors?.accompanying_guardian_name}
-          >
-            <TextInput
-              id="accompanying_guardian_name"
-              name="accompanying_guardian_name"
-              required
-              placeholder="Guardian name"
-              error={hasFieldError("accompanying_guardian_name")}
-            />
-          </Field>
-          <Field
-            label="Resident of"
-            htmlFor="accompanying_resident_of"
-            required
-            error={fieldErrors?.accompanying_resident_of}
-          >
-            <TextInput
-              id="accompanying_resident_of"
-              name="accompanying_resident_of"
-              required
-              placeholder="City / Village"
-              error={hasFieldError("accompanying_resident_of")}
-            />
-          </Field>
-          <Field
-            label="Mobile"
-            htmlFor="accompanying_phone"
-            required
-            error={fieldErrors?.accompanying_phone}
-          >
-            <TextInput
-              id="accompanying_phone"
-              name="accompanying_phone"
-              required
-              placeholder="+91..."
-              inputMode="numeric"
-              error={hasFieldError("accompanying_phone")}
-            />
+            <Select id="group_id" name="group_id" disabled defaultValue="">
+              <option value="">Unassigned</option>
+            </Select>
           </Field>
         </div>
       </FormSection>
@@ -998,67 +1283,185 @@ export function NewRegistrationForm({
         </div>
       </FormSection>
 
-      {!minimalMode && (
-        <FormSection title="Emergency / Companion">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <Field label="Name" htmlFor="emergency_contact_name">
-              <TextInput id="emergency_contact_name" name="emergency_contact_name" />
-            </Field>
-            <Field label="Father/Guardian" htmlFor="emergency_contact_father_name">
-              <TextInput
-                id="emergency_contact_father_name"
-                name="emergency_contact_father_name"
-              />
-            </Field>
-            <Field
-              label="Age (years)"
-              htmlFor="emergency_contact_age_years"
-              error={fieldErrors?.emergency_contact_age_years}
+      <FormSection
+        title="Medical Details"
+        description="Optional medical notes and background."
+        className={showRequiredOnly ? "hidden" : undefined}
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Field label="Blood Group" htmlFor="blood_group">
+            <Select id="blood_group" name="blood_group" defaultValue="">
+              <option value="">Select</option>
+              {BLOOD_GROUP_OPTIONS.map((group) => (
+                <option key={group} value={group}>
+                  {group}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Existing Conditions" htmlFor="medical_conditions" className="sm:col-span-2 xl:col-span-3">
+            <TextArea
+              id="medical_conditions"
+              name="medical_conditions"
+              rows={2}
+              placeholder="Existing conditions"
+            />
+          </Field>
+          <Field label="Allergies" htmlFor="medical_allergies" className="sm:col-span-2 xl:col-span-3">
+            <TextArea
+              id="medical_allergies"
+              name="medical_allergies"
+              rows={2}
+              placeholder="Allergies"
+            />
+          </Field>
+          <Field label="Medications" htmlFor="medical_medications" className="sm:col-span-2 xl:col-span-3">
+            <TextArea
+              id="medical_medications"
+              name="medical_medications"
+              rows={2}
+              placeholder="Current medications"
+            />
+          </Field>
+          <Field label="Emergency Notes" htmlFor="medical_emergency_notes" className="sm:col-span-2 xl:col-span-3">
+            <TextArea
+              id="medical_emergency_notes"
+              name="medical_emergency_notes"
+              rows={2}
+              placeholder="Emergency notes"
+            />
+          </Field>
+        </div>
+      </FormSection>
+
+      {showReceiptsSection && (
+        <FormSection
+          title="Receipts"
+          description="Add one or more payment receipts."
+          actions={
+            <button
+              type="button"
+              onClick={addReceipt}
+              disabled={isPending}
+              className="btn-secondary text-xs font-semibold uppercase tracking-[0.2em]"
             >
-              <TextInput
-                id="emergency_contact_age_years"
-                type="number"
-                name="emergency_contact_age_years"
-                min={0}
-                max={120}
-                placeholder="Optional"
-                error={hasFieldError("emergency_contact_age_years")}
-              />
-            </Field>
-            <Field label="Phone" htmlFor="emergency_contact_phone">
-              <TextInput
-                id="emergency_contact_phone"
-                name="emergency_contact_phone"
-                placeholder="+91..."
-              />
-            </Field>
-            <Field
-              label="Address"
-              htmlFor="emergency_contact_address"
-              className="sm:col-span-2"
-            >
-              <TextArea
-                id="emergency_contact_address"
-                name="emergency_contact_address"
-                rows={2}
-                placeholder="Companion address"
-              />
-            </Field>
-          </div>
+              Add Receipt
+            </button>
+          }
+        >
+          {receipts.length === 0 ? (
+            <div className="text-xs text-[color:var(--muted)]">No receipts added yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {receipts.map((receipt, index) => {
+                const isActive = activeReceiptId === receipt.id;
+                return (
+                  <div
+                    key={receipt.id}
+                    className={[
+                      "rounded-2xl border p-4",
+                      isActive ? "border-[color:var(--accent)] shadow-sm" : "border-[color:var(--border)]",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                        Receipt {index + 1}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editReceipt(receipt.id)}
+                          className="btn-secondary text-xs"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeReceipt(receipt.id)}
+                          className="btn-secondary text-xs"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <Field label="Receipt Number" htmlFor={`receipt-${receipt.id}-number`} required>
+                        <TextInput
+                          id={`receipt-${receipt.id}-number`}
+                          name="receipt_number"
+                          required
+                          value={receipt.receipt_number}
+                          onChange={(event) =>
+                            updateReceipt(receipt.id, "receipt_number", event.target.value)
+                          }
+                        />
+                      </Field>
+                      <Field label="Amount" htmlFor={`receipt-${receipt.id}-amount`} required>
+                        <TextInput
+                          id={`receipt-${receipt.id}-amount`}
+                          name="receipt_amount"
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          required
+                          value={receipt.amount}
+                          onChange={(event) => updateReceipt(receipt.id, "amount", event.target.value)}
+                        />
+                      </Field>
+                      <Field label="Mode of Payment" htmlFor={`receipt-${receipt.id}-mode`} required>
+                        <Select
+                          id={`receipt-${receipt.id}-mode`}
+                          name="receipt_mode"
+                          required
+                          value={receipt.payment_mode}
+                          onChange={(event) =>
+                            updateReceipt(receipt.id, "payment_mode", event.target.value)
+                          }
+                        >
+                          <option value="">Select</option>
+                          {RECEIPT_PAYMENT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                      <Field label="Date" htmlFor={`receipt-${receipt.id}-date`} required>
+                        <TextInput
+                          id={`receipt-${receipt.id}-date`}
+                          name="receipt_date"
+                          type="date"
+                          required
+                          value={receipt.receipt_date}
+                          onChange={(event) =>
+                            updateReceipt(receipt.id, "receipt_date", event.target.value)
+                          }
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {fieldErrors?.receipts && (
+            <div className="text-xs text-rose-500">{fieldErrors.receipts}</div>
+          )}
         </FormSection>
       )}
 
-      {!minimalMode && (
-        <FormSection title="Additional Questions">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <CheckboxRow
-              name="attended_badarinath_2024"
-              label="Part of last organized Badarinath Yatra"
-            />
-            <CheckboxRow name="sadhu_sant_category" label="Sadhu/Sant category" />
-          </div>
-        </FormSection>
-      )}
+      <FormSection title="Additional Details">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CheckboxRow
+            name="attended_badarinath_2024"
+            label="Part of last organized Badarinath Yatra"
+          />
+          <CheckboxRow name="sadhu_sant_category" label="Sadhu/Sant category" />
+        </div>
+      </FormSection>
 
       <FormSection title="Declaration">
         <div className="space-y-5 text-sm text-[color:var(--muted)]">
@@ -1099,102 +1502,6 @@ export function NewRegistrationForm({
         </div>
       </FormSection>
 
-      {minimalMode && (
-        <details
-          className="rounded-2xl border border-[color:var(--border)] p-6"
-          open={optionalOpen || hasOptionalErrors}
-          onToggle={(event) => setOptionalOpen(event.currentTarget.open)}
-        >
-          <summary className="cursor-pointer text-sm font-semibold text-[color:var(--ink)]">
-            Show more
-          </summary>
-          <div className="mt-6 space-y-8">
-            <FormSection title="Applicant details">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <Field label="Height (cm)" htmlFor="height_cm" error={fieldErrors?.height_cm}>
-                  <TextInput
-                    id="height_cm"
-                    type="number"
-                    name="height_cm"
-                    step="0.1"
-                    placeholder="e.g., 168.5"
-                    error={hasFieldError("height_cm")}
-                  />
-                </Field>
-                <Field label="Weight (kg)" htmlFor="weight_kg" error={fieldErrors?.weight_kg}>
-                  <TextInput
-                    id="weight_kg"
-                    type="number"
-                    name="weight_kg"
-                    step="0.1"
-                    placeholder="e.g., 65.2"
-                    error={hasFieldError("weight_kg")}
-                  />
-                </Field>
-              </div>
-            </FormSection>
-
-            <FormSection title="Emergency / Companion">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <Field label="Name" htmlFor="emergency_contact_name">
-                  <TextInput id="emergency_contact_name" name="emergency_contact_name" />
-                </Field>
-                <Field label="Father/Guardian" htmlFor="emergency_contact_father_name">
-                  <TextInput
-                    id="emergency_contact_father_name"
-                    name="emergency_contact_father_name"
-                  />
-                </Field>
-                <Field
-                  label="Age (years)"
-                  htmlFor="emergency_contact_age_years"
-                  error={fieldErrors?.emergency_contact_age_years}
-                >
-                  <TextInput
-                    id="emergency_contact_age_years"
-                    type="number"
-                    name="emergency_contact_age_years"
-                    min={0}
-                    max={120}
-                    placeholder="Optional"
-                    error={hasFieldError("emergency_contact_age_years")}
-                  />
-                </Field>
-                <Field label="Phone" htmlFor="emergency_contact_phone">
-                  <TextInput
-                    id="emergency_contact_phone"
-                    name="emergency_contact_phone"
-                    placeholder="+91..."
-                  />
-                </Field>
-                <Field
-                  label="Address"
-                  htmlFor="emergency_contact_address"
-                  className="sm:col-span-2"
-                >
-                  <TextArea
-                    id="emergency_contact_address"
-                    name="emergency_contact_address"
-                    rows={2}
-                    placeholder="Companion address"
-                  />
-                </Field>
-              </div>
-            </FormSection>
-
-            <FormSection title="Additional Questions">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <CheckboxRow
-                  name="attended_badarinath_2024"
-                  label="Part of last organized Badarinath Yatra"
-                />
-                <CheckboxRow name="sadhu_sant_category" label="Sadhu/Sant category" />
-              </div>
-            </FormSection>
-          </div>
-        </details>
-      )}
-
       {state?.id && state?.error && (
         <Link
           href={`/yatris/${state.id}`}
@@ -1214,7 +1521,11 @@ export function NewRegistrationForm({
               Cancel
             </Link>
             <div className="w-full sm:w-auto">
-              <SubmitButton pending={isPending} className="w-full sm:w-auto" />
+              <SubmitButton
+                pending={isPending}
+                disabled={!isFormValid}
+                className="w-full sm:w-auto"
+              />
             </div>
           </div>
         </div>

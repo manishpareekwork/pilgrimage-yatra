@@ -346,6 +346,17 @@ app.post('/registrations', async (req: Request, res: Response) => {
   }
 
   const signedAt = (typeof body.declaration_signed_at === 'string' && body.declaration_signed_at) || new Date().toISOString();
+  const healthHeart = toBool(body.health_heart);
+  const healthBp = toBool(body.health_bp);
+  const healthDiabetes = toBool(body.health_diabetes);
+  const healthAsthma = toBool(body.health_asthma);
+  const healthOther = toNullIfBlank(body.health_other);
+  const healthNone = !(healthHeart || healthBp || healthDiabetes || healthAsthma || Boolean(healthOther));
+  const healthHeartValue = healthNone ? false : healthHeart;
+  const healthBpValue = healthNone ? false : healthBp;
+  const healthDiabetesValue = healthNone ? false : healthDiabetes;
+  const healthAsthmaValue = healthNone ? false : healthAsthma;
+  const healthOtherValue = healthNone ? null : healthOther;
   const { data: newId, error: createError } = await supabase!.rpc(
     'fn_create_registration',
     {
@@ -356,6 +367,12 @@ app.post('/registrations', async (req: Request, res: Response) => {
       p_phone: phone,
       p_declaration_accepted: true,
       p_declaration_signed_at: signedAt,
+      p_health_none: healthNone,
+      p_health_heart: healthHeartValue,
+      p_health_bp: healthBpValue,
+      p_health_diabetes: healthDiabetesValue,
+      p_health_asthma: healthAsthmaValue,
+      p_health_other: healthOtherValue,
     } as any
   );
 
@@ -363,11 +380,6 @@ app.post('/registrations', async (req: Request, res: Response) => {
     return res.status(400).json({ error: createError?.message || 'Failed to create registration' });
   }
 
-  const healthHeart = toBool(body.health_heart);
-  const healthBp = toBool(body.health_bp);
-  const healthDiabetes = toBool(body.health_diabetes);
-  const healthAsthma = toBool(body.health_asthma);
-  const healthOther = toNullIfBlank(body.health_other);
   const status = (body.status as string) ?? 'approved';
 
   const patch = {
@@ -384,16 +396,17 @@ app.post('/registrations', async (req: Request, res: Response) => {
     travel_mode: toNullIfBlank(body.travel_mode),
     train_class: toNullIfBlank(body.train_class),
     reservation_by: toNullIfBlank(body.reservation_by),
-    health_heart: healthHeart,
-    health_heart_meds: healthHeart ? toNullIfBlank(body.health_heart_meds) : null,
-    health_bp: healthBp,
-    health_bp_meds: healthBp ? toNullIfBlank(body.health_bp_meds) : null,
-    health_diabetes: healthDiabetes,
-    health_diabetes_meds: healthDiabetes ? toNullIfBlank(body.health_diabetes_meds) : null,
-    health_asthma: healthAsthma,
-    health_asthma_meds: healthAsthma ? toNullIfBlank(body.health_asthma_meds) : null,
-    health_other: healthOther,
-    health_other_meds: healthOther ? toNullIfBlank(body.health_other_meds) : null,
+    health_none: healthNone,
+    health_heart: healthHeartValue,
+    health_heart_meds: healthHeartValue ? toNullIfBlank(body.health_heart_meds) : null,
+    health_bp: healthBpValue,
+    health_bp_meds: healthBpValue ? toNullIfBlank(body.health_bp_meds) : null,
+    health_diabetes: healthDiabetesValue,
+    health_diabetes_meds: healthDiabetesValue ? toNullIfBlank(body.health_diabetes_meds) : null,
+    health_asthma: healthAsthmaValue,
+    health_asthma_meds: healthAsthmaValue ? toNullIfBlank(body.health_asthma_meds) : null,
+    health_other: healthOtherValue,
+    health_other_meds: healthOtherValue ? toNullIfBlank(body.health_other_meds) : null,
     emergency_contact_name: toNullIfBlank(body.emergency_contact_name),
     emergency_contact_father_name: toNullIfBlank(body.emergency_contact_father_name),
     emergency_contact_age_years: toNullIfBlank(body.emergency_contact_age_years),
@@ -437,6 +450,13 @@ app.post('/process-form', async (req: Request, res: Response) => {
     other: { flag: true, condition: 'Allergy', meds: 'Cetirizine' },
   };
 
+  const mockHealthNone = !(
+    mockMedical.heart.flag ||
+    mockMedical.bp.flag ||
+    mockMedical.diabetes.flag ||
+    mockMedical.asthma.flag ||
+    Boolean(mockMedical.other.condition)
+  );
   const mockPatch = {
     receipt_no: 'R-MOCK-001',
     name_hi: 'राम कुमार',
@@ -452,6 +472,7 @@ app.post('/process-form', async (req: Request, res: Response) => {
     travel_mode: 'train',
     train_class: 'III AC',
     reservation_by: 'committee',
+    health_none: mockHealthNone,
     health_heart: mockMedical.heart.flag,
     health_heart_meds: mockMedical.heart.meds,
     health_bp: mockMedical.bp.flag,
@@ -460,8 +481,8 @@ app.post('/process-form', async (req: Request, res: Response) => {
     health_diabetes_meds: mockMedical.diabetes.meds,
     health_asthma: mockMedical.asthma.flag,
     health_asthma_meds: mockMedical.asthma.meds,
-    health_other: mockMedical.other.condition,
-    health_other_meds: mockMedical.other.meds,
+    health_other: mockHealthNone ? null : mockMedical.other.condition,
+    health_other_meds: mockHealthNone ? null : mockMedical.other.meds,
     emergency_contact_name: 'मोहन',
     emergency_contact_father_name: 'शिव',
     emergency_contact_age_years: 42,
@@ -508,6 +529,12 @@ app.post('/process-form', async (req: Request, res: Response) => {
         p_phone: mockPatch.phone,
         p_declaration_accepted: true,
         p_declaration_signed_at: mockPatch.declaration_signed_at,
+        p_health_none: mockHealthNone,
+        p_health_heart: mockHealthNone ? false : mockMedical.heart.flag,
+        p_health_bp: mockHealthNone ? false : mockMedical.bp.flag,
+        p_health_diabetes: mockHealthNone ? false : mockMedical.diabetes.flag,
+        p_health_asthma: mockHealthNone ? false : mockMedical.asthma.flag,
+        p_health_other: mockHealthNone ? null : mockMedical.other.condition,
       } as any
     );
     if (createError || !newId) {

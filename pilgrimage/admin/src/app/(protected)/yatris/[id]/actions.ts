@@ -31,6 +31,63 @@ const computeAgeFromDob = (dob: string) => {
   return age;
 };
 
+type ReceiptInput = {
+  receipt_no: string;
+  amount: number;
+  payment_mode: string;
+  receipt_date: string;
+};
+
+const parseReceipts = (formData: FormData) => {
+  const readAll = (key: string) =>
+    formData
+      .getAll(key)
+      .map((value) => value.toString().trim());
+
+  const receiptNumbers = readAll("receipt_number");
+  const amounts = readAll("receipt_amount");
+  const modes = readAll("receipt_mode");
+  const dates = readAll("receipt_date");
+  const rowCount = Math.max(receiptNumbers.length, amounts.length, modes.length, dates.length);
+
+  if (rowCount === 0) return [] as ReceiptInput[];
+  if (
+    receiptNumbers.length !== rowCount ||
+    amounts.length !== rowCount ||
+    modes.length !== rowCount ||
+    dates.length !== rowCount
+  ) {
+    throw new Error("Receipts are incomplete.");
+  }
+
+  const receipts: ReceiptInput[] = [];
+  for (let i = 0; i < rowCount; i += 1) {
+    const receiptNo = receiptNumbers[i];
+    const amountRaw = amounts[i];
+    const mode = modes[i];
+    const date = dates[i];
+
+    if (!receiptNo || !amountRaw || !mode || !date) {
+      throw new Error("All receipt fields are required.");
+    }
+    const amount = Number(amountRaw);
+    if (!Number.isFinite(amount)) {
+      throw new Error("Receipt amount must be a number.");
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new Error("Receipt date must be YYYY-MM-DD.");
+    }
+    receipts.push({
+      receipt_no: receiptNo,
+      amount,
+      payment_mode: mode,
+      receipt_date: date,
+    });
+  }
+
+  return receipts;
+};
+
 export async function updateRegistrationAction(formData: FormData) {
   const id = (formData.get("id") as string | null)?.trim();
   if (!id) return;
@@ -54,6 +111,8 @@ export async function updateRegistrationAction(formData: FormData) {
   const travelMode = strOrNull(formData.get("travel_mode"));
   const dobValue = strOrNull(formData.get("dob"));
   const ageValue = numOrNull(formData.get("age_years"));
+  const receipts = parseReceipts(formData);
+  const primaryReceiptNo = receipts[0]?.receipt_no ?? strOrNull(formData.get("receipt_no"));
 
   if (dobValue && ageValue !== null) {
     const computed = computeAgeFromDob(dobValue);
@@ -63,7 +122,7 @@ export async function updateRegistrationAction(formData: FormData) {
   }
 
   const patch = {
-    receipt_no: strOrNull(formData.get("receipt_no")),
+    receipt_no: primaryReceiptNo,
     name_hi: strOrNull(formData.get("name_hi")),
     guardian_relation: strOrNull(formData.get("guardian_relation")),
     father_name_hi: strOrNull(formData.get("father_name_hi")),
@@ -118,6 +177,14 @@ export async function updateRegistrationAction(formData: FormData) {
       ? new Date(declarationSignedAtInput).toISOString()
       : null,
     category_id: strOrNull(formData.get("category_id")),
+    group_id: strOrNull(formData.get("group_id")),
+    // TODO: Persist medical details, receipts, and group assignment once backend fields exist.
+    blood_group: strOrNull(formData.get("blood_group")),
+    medical_conditions: strOrNull(formData.get("medical_conditions")),
+    medical_allergies: strOrNull(formData.get("medical_allergies")),
+    medical_medications: strOrNull(formData.get("medical_medications")),
+    medical_emergency_notes: strOrNull(formData.get("medical_emergency_notes")),
+    receipts: receipts.length > 0 ? receipts : null,
   };
 
   const { error } = await supabase.rpc("fn_update_registration", {

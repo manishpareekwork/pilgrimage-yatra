@@ -1,25 +1,19 @@
 export const TRAIN_CLASS_OPTIONS = [
-  "Air-Conditioned Executive Chair Class (EC)",
-  "Air-Conditioned First Class (1AC)",
-  "Air-Conditioned Two-Tier Class (2AC)",
-  "Air-Conditioned Three-Tier Class (3AC)",
-  "First Class (FC)",
-  "AC Chair Class (CC)",
-  "Sleeper Class (SL)",
-  "Second Sitting Class (2S)",
-  "Unreserved/General Class (Gen)",
+  "2AC | Air Conditioned 2 Tier Class",
+  "3AC | Air Conditioned 3 Tier Class",
+  "SL | Sleeper Class",
 ] as const;
 
 const TRAIN_CLASS_ALIASES: Array<[RegExp, (typeof TRAIN_CLASS_OPTIONS)[number]]> = [
-  [/^(ec|executive\s*chair)/i, "Air-Conditioned Executive Chair Class (EC)"],
-  [/^(1\s*ac|first\s*ac|ac\s*first)/i, "Air-Conditioned First Class (1AC)"],
-  [/^(2\s*ac|second\s*ac|ac\s*2|ii\s*ac)/i, "Air-Conditioned Two-Tier Class (2AC)"],
-  [/^(3\s*ac|third\s*ac|ac\s*3|iii\s*ac)/i, "Air-Conditioned Three-Tier Class (3AC)"],
-  [/^(fc|first\s*class)$/i, "First Class (FC)"],
-  [/^(cc|chair\s*class|ac\s*chair)/i, "AC Chair Class (CC)"],
-  [/^(sl|sleeper)/i, "Sleeper Class (SL)"],
-  [/^(2\s*s|second\s*sitting)/i, "Second Sitting Class (2S)"],
-  [/^(gen|general|unreserved)/i, "Unreserved/General Class (Gen)"],
+  [
+    /(2\s*ac|second\s*ac|ac\s*2|ii\s*ac|air[-\s]*conditioned\s*two[-\s]*tier)/i,
+    "2AC | Air Conditioned 2 Tier Class",
+  ],
+  [
+    /(3\s*ac|third\s*ac|ac\s*3|iii\s*ac|air[-\s]*conditioned\s*three[-\s]*tier)/i,
+    "3AC | Air Conditioned 3 Tier Class",
+  ],
+  [/(sl|sleeper)/i, "SL | Sleeper Class"],
 ];
 
 export const normalizeTrainClass = (value?: string | null) => {

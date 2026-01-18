@@ -45,7 +45,7 @@ Stored in `auth.users.raw_app_meta_data.role` and mirrored to `public.profiles.r
 - `public.profiles`  
   - `id uuid PK` (FK `auth.users.id`), `role user_role default 'yatri'`, `name_hi text`, `phone text`, `created_at timestamptz`
 - `public.yatra_registrations`  
-  - `id uuid PK`, `owner uuid`, `created_by uuid`, `name_hi text not null`, `address_hi text`, `phone text`, `whatsapp text`, `travel_mode travel_mode`, `health_bp bool`, `health_diabetes bool`, `photo_url text`, `form_image_url text`, `status reg_status default 'submitted'`, `ocr_confidence numeric`, `raw_json jsonb`, `created_at timestamptz`
+  - `id uuid PK`, `owner uuid`, `created_by uuid`, `name_hi text not null`, `address_hi text`, `phone text`, `whatsapp text`, `travel_mode travel_mode`, `health_none bool`, `health_heart bool`, `health_bp bool`, `health_diabetes bool`, `health_asthma bool`, `health_other text`, `photo_url text`, `form_image_url text`, `status reg_status default 'submitted'`, `ocr_confidence numeric`, `raw_json jsonb`, `created_at timestamptz`
 - `public.yatra_reviews`  
   - `id uuid PK`, `registration_id uuid` (FK), `action text in ('approve','reject','edit')`, `diff jsonb`, `actor uuid`, `created_at timestamptz`
 
@@ -59,7 +59,7 @@ Stored in `auth.users.raw_app_meta_data.role` and mirrored to `public.profiles.r
   - Read if owner of linked registration or staff; insert staff only (`reviewer|admin`).
 
 ### 3.4 Helper Functions
-- `public.fn_create_registration(...) returns uuid`
+- `public.fn_create_registration(...) returns uuid` (accepts health flags/health_none to satisfy health-choice check)
 - `public.fn_update_registration(p_id uuid, p_patch jsonb)`
 - `public.fn_create_review(reg_id uuid, action text, diff jsonb, actor uuid) returns uuid`
 - `public.admin_set_user_role(p_user uuid, p_role user_role)` (SECURITY DEFINER)
