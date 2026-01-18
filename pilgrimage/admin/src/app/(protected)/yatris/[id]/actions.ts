@@ -186,10 +186,10 @@ export async function updateRegistrationAction(formData: FormData) {
     receipts: receipts.length > 0 ? receipts : null,
   };
 
-  const { error } = await supabase.rpc("fn_update_registration", {
-    p_id: id,
-    p_patch: patch,
-  });
+  const { error } = await supabase
+    .from("yatra_registrations")
+    .update(patch)
+    .eq("id", id);
 
   if (error) {
     throw new Error(error.message);

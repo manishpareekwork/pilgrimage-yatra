@@ -395,10 +395,10 @@ export async function createRegistrationAction(
     status: "approved",
   };
 
-  const { error: updateError } = await supabase.rpc("fn_update_registration", {
-    p_id: newId as string,
-    p_patch: patch,
-  });
+  const { error: updateError } = await supabase
+    .from("yatra_registrations")
+    .update(patch)
+    .eq("id", newId as string);
 
   if (updateError) {
     return {
