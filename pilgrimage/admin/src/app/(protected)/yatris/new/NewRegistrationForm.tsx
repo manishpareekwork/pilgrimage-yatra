@@ -839,15 +839,17 @@ export function NewRegistrationForm({
             />
           </Field>
           <div className="sm:col-span-2 xl:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Field label="State" htmlFor="address_state">
+            <Field label="State" htmlFor="address_state" required error={fieldErrors?.address_state}>
               <Select
                 id="address_state"
                 name="address_state"
+                required
                 value={addressState}
                 onChange={(event) => {
                   setAddressState(event.target.value);
                   setAddressDistrict("");
                 }}
+                error={hasFieldError("address_state")}
               >
                 <option value="">Select</option>
                 {hasCustomState && <option value={addressState}>{addressState}</option>}
@@ -858,13 +860,15 @@ export function NewRegistrationForm({
                 ))}
               </Select>
             </Field>
-            <Field label="District" htmlFor="address_district">
+            <Field label="District" htmlFor="address_district" required error={fieldErrors?.address_district}>
               <Select
                 id="address_district"
                 name="address_district"
+                required
                 value={addressDistrict}
                 onChange={(event) => setAddressDistrict(event.target.value)}
                 disabled={!addressState}
+                error={hasFieldError("address_district")}
               >
                 <option value="">Select</option>
                 {hasCustomDistrict && <option value={addressDistrict}>{addressDistrict}</option>}
@@ -875,8 +879,14 @@ export function NewRegistrationForm({
                 ))}
               </Select>
             </Field>
-            <Field label="City / Village" htmlFor="address_city">
-              <TextInput id="address_city" name="address_city" placeholder="City or village" />
+            <Field label="City / Village" htmlFor="address_city" required error={fieldErrors?.address_city}>
+              <TextInput
+                id="address_city"
+                name="address_city"
+                required
+                placeholder="City or village"
+                error={hasFieldError("address_city")}
+              />
             </Field>
             <Field
               label="PIN code"
@@ -1475,7 +1485,12 @@ export function NewRegistrationForm({
             I declare that the information provided is correct and I agree to comply with the Yatra
             guidelines.
           </p>
-          <Field label="Declaration acceptance" htmlFor="declaration_accepted" error={fieldErrors?.declaration_accepted}>
+          <Field
+            label="Declaration acceptance"
+            htmlFor="declaration_accepted"
+            required
+            error={fieldErrors?.declaration_accepted}
+          >
             <label className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
               <input
                 id="declaration_accepted"

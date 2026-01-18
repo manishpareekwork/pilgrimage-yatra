@@ -17,7 +17,7 @@ _Scope:_ Monorepo for Pilgrimage Yatra 2025 with Supabase backend, Cloud Run orc
 - **Orchestrator base:** Render deployment `https://pilgrimage-yatra.onrender.com` (override via `NEXT_PUBLIC_ORCHESTRATOR_URL` / `ORCHESTRATOR_URL`).
 - Roles stored in `auth.users.raw_app_meta_data.role` and mirrored to `public.profiles.role`.
 
-## 3. Database (see `supabase/pilgrimage_bootstrap.sql`)
+## 3. Database (see `supabase/pilgrimage.sql`)
 - **Enums:** `user_role ('yatri','volunteer','reviewer','admin')`, `reg_status ('submitted','needs_review','approved','rejected')`, `travel_mode ('train','air')`.
 - **Tables:**
   - `public.profiles`: `id uuid PK -> auth.users`, `role user_role default 'yatri'`, `name_hi`, `phone`, `created_at`.

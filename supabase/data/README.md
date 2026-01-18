@@ -11,7 +11,7 @@ Notes:
 - Use stable IDs (for example state codes) so re-seeding can upsert cleanly.
 
 Run:
-  psql "$SUPABASE_DB_URL" -f supabase/scripts/seed_address_lookup.sql
+  Supabase SQL editor: supabase/pilgrimage.sql (includes address lookup seeds)
 
 ## Address lookup build pipeline
 
@@ -27,8 +27,4 @@ This generates:
 
 The build script may also emit `address_pincodes.csv`, but the pincode table is removed and the file is unused.
 
-Then seed with:
-
-```
-psql "$SUPABASE_DB_URL" -f supabase/scripts/seed_address_lookup.sql
-```
+Then re-run `supabase/pilgrimage.sql` in Supabase SQL editor to refresh the seed data.

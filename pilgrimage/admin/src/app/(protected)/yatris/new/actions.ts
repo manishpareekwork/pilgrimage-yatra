@@ -232,6 +232,9 @@ const parseFormData = (
   if (!data.name_hi) fieldErrors.name_hi = "Name is required";
   if (!data.father_name_hi) fieldErrors.father_name_hi = "Guardian name is required";
   if (!data.address_hi) fieldErrors.address_hi = "Address is required";
+  if (!data.address_state) fieldErrors.address_state = "State is required";
+  if (!data.address_district) fieldErrors.address_district = "District is required";
+  if (!data.address_city) fieldErrors.address_city = "City/Village is required";
   if (!data.aadhaar_no) fieldErrors.aadhaar_no = "Aadhaar number is required";
   if (!data.phone) fieldErrors.phone = "Phone is required";
   if (!data.whatsapp) fieldErrors.whatsapp = "WhatsApp number is required";
@@ -379,7 +382,6 @@ export async function createRegistrationAction(
       : healthOther
         ? input.health_other_meds ?? null
         : null,
-    // TODO: Persist medical details, receipts, and group assignment once backend fields exist.
     blood_group: input.blood_group ?? null,
     medical_conditions: input.medical_conditions ?? null,
     medical_allergies: input.medical_allergies ?? null,

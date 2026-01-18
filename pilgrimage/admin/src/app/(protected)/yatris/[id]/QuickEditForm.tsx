@@ -166,6 +166,7 @@ export function QuickEditForm({
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const initialTravelMode = registration.travel_mode ?? (registration.train_class ? "train" : "");
   const [travelMode, setTravelMode] = useState(initialTravelMode);
+  const resolvedTravelMode = travelMode || initialTravelMode;
   const [healthNone, setHealthNone] = useState(Boolean(registration.health_none));
   const [healthHeart, setHealthHeart] = useState(Boolean(registration.health_heart));
   const [healthBp, setHealthBp] = useState(Boolean(registration.health_bp));
@@ -236,6 +237,10 @@ export function QuickEditForm({
   useEffect(() => {
     if (!commonMedicalActive) setCommonMedicalNotes("");
   }, [commonMedicalActive]);
+
+  useEffect(() => {
+    setTravelMode(initialTravelMode);
+  }, [initialTravelMode]);
 
   useEffect(() => {
     let isActive = true;
@@ -372,10 +377,11 @@ export function QuickEditForm({
             />
           </Field>
           <div className="sm:col-span-2 xl:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Field label="State" htmlFor="address_state">
+            <Field label="State" htmlFor="address_state" required>
               <Select
                 id="address_state"
                 name="address_state"
+                required
                 value={addressState}
                 onChange={(event) => {
                   setAddressState(event.target.value);
@@ -391,10 +397,11 @@ export function QuickEditForm({
                 ))}
               </Select>
             </Field>
-            <Field label="District" htmlFor="address_district">
+            <Field label="District" htmlFor="address_district" required>
               <Select
                 id="address_district"
                 name="address_district"
+                required
                 value={addressDistrict}
                 onChange={(event) => setAddressDistrict(event.target.value)}
                 disabled={!addressState}
@@ -408,10 +415,11 @@ export function QuickEditForm({
                 ))}
               </Select>
             </Field>
-            <Field label="City / Village" htmlFor="address_city">
+            <Field label="City / Village" htmlFor="address_city" required>
               <TextInput
                 id="address_city"
                 name="address_city"
+                required
                 defaultValue={registration.address_city ?? ""}
                 placeholder="City or village"
               />
@@ -590,7 +598,7 @@ export function QuickEditForm({
             <Select
               id="travel_mode"
               name="travel_mode"
-              value={travelMode}
+              value={resolvedTravelMode}
               onChange={(event) => {
                 const value = event.target.value;
                 setTravelMode(value);
@@ -608,15 +616,15 @@ export function QuickEditForm({
           <Field
             label="Train Class"
             htmlFor="train_class"
-            required={travelMode === "train"}
-            className={travelMode === "air" ? "hidden" : undefined}
+            required={resolvedTravelMode === "train"}
+            className={resolvedTravelMode === "air" ? "hidden" : undefined}
           >
             <Select
               id="train_class"
               name="train_class"
               defaultValue={trainClassValue}
-              required={travelMode === "train"}
-              disabled={travelMode === "air"}
+              required={resolvedTravelMode === "train"}
+              disabled={resolvedTravelMode === "air"}
             >
               <option value="">Select</option>
               {hasCustomTrainClass && <option value={trainClassValue}>{trainClassValue}</option>}
@@ -959,7 +967,7 @@ export function QuickEditForm({
             I declare that the information provided is correct and I agree to comply with the Yatra
             guidelines.
           </p>
-          <Field label="Declaration acceptance" htmlFor="declaration_accepted">
+          <Field label="Declaration acceptance" htmlFor="declaration_accepted" required>
             <label className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
               <input
                 id="declaration_accepted"

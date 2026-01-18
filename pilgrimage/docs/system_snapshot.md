@@ -123,7 +123,7 @@ Enums: `travel_mode` (train, air), `reservation_by` (self, committee), `reg_stat
 - No DB-level NOT NULL on address/phone to avoid breaking legacy rows; UI enforces required fields.
 
 ## Manual Test Checklist
-1. Apply migrations `20251229_registration_alignment.sql` + `20251230_health_common_meds.sql` + `20251231_address_components.sql` + `20251231_address_lookup_tables.sql` + `20260105_operational_requirements.sql` + `20260110_health_choice_create_registration.sql` to Supabase; verify age and health-choice CHECK constraints. Seed address lookup CSVs (states/districts; PIN table optional) via `supabase/scripts/seed_address_lookup.sql`.
+1. Run `supabase/pilgrimage.sql` in Supabase SQL editor; it applies schema, migrations, and address lookup seeds in one pass.
 2. Admin `/yatris/new`: enter all PDF fields, select a medical choice (or No known conditions), ensure declaration required, submit -> redirect to detail; status=`submitted`.
 3. Admin `/yatris/[id]`: toggle each medical checkbox off/on and confirm meds inputs disable/clear; save; re-open to verify persisted. Update declaration timestamp and status.
 4. Admin uploads: upload photo and form image; confirm paths `photos/registrations/<id>/photo.jpg` and `forms/registrations/<id>/form.jpg` and checklist ticks.

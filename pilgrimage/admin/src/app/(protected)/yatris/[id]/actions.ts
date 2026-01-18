@@ -178,7 +178,6 @@ export async function updateRegistrationAction(formData: FormData) {
       : null,
     category_id: strOrNull(formData.get("category_id")),
     group_id: strOrNull(formData.get("group_id")),
-    // TODO: Persist medical details, receipts, and group assignment once backend fields exist.
     blood_group: strOrNull(formData.get("blood_group")),
     medical_conditions: strOrNull(formData.get("medical_conditions")),
     medical_allergies: strOrNull(formData.get("medical_allergies")),

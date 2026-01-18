@@ -30,9 +30,9 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Task | Status | Notes |
 |------|---------|-------|
 | Project Creation | ✅ | `pilgrimage-yatra` in Mumbai region. |
-| Schema Setup | ✅ | `pilgrimage_bootstrap.sql` refreshed with travel_mode + reservation_by enums, full PDF registration columns, helper RPCs, RLS (migration `20251229_registration_alignment.sql`); added safe re-runnable `pilgrimage_bootstrap_safe.sql`. |
+| Schema Setup | ✅ | `supabase/pilgrimage.sql` consolidates schema, RLS, RPCs, and all migrations into a single safe re-runnable file. |
 | Buckets | ✅ | `forms` and `photos` created (private) with staff read policy. |
-| Address Lookup Tables | ✅ | `address_states` + `address_districts` with RPCs; seed pipeline in `supabase/scripts/build_address_lookup.py` + `seed_address_lookup.sql` (pincode table removed). |
+| Address Lookup Tables | ✅ | `address_states` + `address_districts` with RPCs; CSVs live in `supabase/data/` and seed data is embedded in `supabase/pilgrimage.sql` (pincode table removed). |
 | First Admin User | ⚙️ Pending | Create Auth user → run `select public.admin_set_user_role('<uuid>'::uuid, 'admin');` |
 | Review/Volunteer Roles | ⚙️ Pending | To assign once reviewers onboarded. |
 | Testing Data | ⚙️ Pending | Insert sample registration for UI testing. |
@@ -67,7 +67,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ### 1. Supabase Ops
 - [ ] Create admin/reviewer/volunteer auth users and set roles via `admin_set_user_role`.
 - [ ] Seed 3–5 test registrations for UI flows.
-- [ ] Run address lookup seed for states/districts once DB connection is confirmed.
+- [ ] Run `supabase/pilgrimage.sql` in Supabase SQL editor (includes address lookup seeds).
 
 ### 2. Cloud API Middleware (Render: https://pilgrimage-yatra.onrender.com)
 - [x] Scaffold Node.js + TypeScript Express service (`/healthz`, `/registrations`, `/process-form` mock).
@@ -109,7 +109,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ## 🗂️ Reference Assets in Repo
 | Path | Description |
 |------|-------------|
-| `supabase/pilgrimage_bootstrap.sql` | Full schema + policies. |
+| `supabase/pilgrimage.sql` | Full schema + policies + migrations + address lookup seeds. |
 | `infra/zone-map-v1.json` | OCR coordinate zones. |
 | `infra/thresholds.json` | Confidence thresholds. |
 | `admin/` | Next.js admin panel scaffold. |
@@ -123,11 +123,11 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Date | Update |
 |------|---------|
 | 2026-01-09 | Analytics dashboard + Operations hub shipped; reports builder cleaned up with 12px padding and print-ready exports; volunteer CRUD moved behind API; default status now approved; admin/cloud builds pass. |
-| 2026-01-02 | Added safe Supabase bootstrap script (non-destructive) and signed download URLs for private photo thumbnails in Yatris grid. |
+| 2026-01-02 | Consolidated Supabase schema into single safe SQL file and signed download URLs for private photo thumbnails in Yatris grid. |
 | 2026-01-02 | Yatris grid refinement: table spacing, column search, multi-format export (CSV/Excel/PDF), inline photo upload; orchestrator CORS enabled for browser clients. |
 | 2026-01-02 | Yatris grid UI tightened (filters layout, padded table, ellipsis row actions); fixed `/yatris/[id]` load by selecting all columns; resolved create-user cookies async warning; stabilized build (Tailwind PostCSS plugin resolution + `NODE_ENV=production` in build script). |
 | 2026-01-02 | Address lookup pipeline added: scripts to generate `address_states.csv` + `address_districts.csv` from raw PIN dataset and seed Supabase tables. |
-| 2026-01-02 | Generated address CSVs from the raw PIN dataset; pending Supabase DB connection string to run `seed_address_lookup.sql`. |
+| 2026-01-02 | Generated address CSVs from the raw PIN dataset; seeds now embedded in `supabase/pilgrimage.sql`. |
 | 2026-01-02 | PIN lookup disabled in admin forms; PIN entry is manual/optional and no longer auto-fills from pincode table. |
 | 2026-01-02 | Address inputs simplified: City/Village combined into one field, Tehsil removed from admin forms. |
 | 2026-01-02 | Dropped `address_pincodes` + `fn_lookup_pincode`, removed address_village/address_tehsil columns via migration; updated bootstraps and seed docs. |
@@ -148,7 +148,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | 2025-12-29 | New Yatri registration flow hardened (zod validation, inline error, owner/created_by set, redirect to detail) and upload checklist added on detail page. |
 | **2025-12-23** | Fixed Admin layout regression: restored Tailwind globals + shared AppShell; dashboard cards visible; pages centered; docs noted as source of truth. |
 | **2025-12-23** | Admin UI cards/layout refreshed (nav/header, empty states, buttons) and docs marked as current source of truth with implemented statuses. |
-| **2025-12-23** | Dashboard counts fixed with error handling/empty-state CTA; Yatris list now shows empty-state CTA and stable filters; nav/buttons standardized; added Supabase seed script (`supabase/scripts/seed.sql`) with 5 demo rows. |
+| **2025-12-23** | Dashboard counts fixed with error handling/empty-state CTA; Yatris list now shows empty-state CTA and stable filters; nav/buttons standardized; added demo seed rows (later consolidated into `supabase/pilgrimage.sql`). |
 | **2025-12-22** | Resolved Next.js cookie access error in admin (await cookies before passing to Supabase helper) to fix `/yatris/new` and protected layout rendering. |
 | **2025-12-22** | Fixed admin Supabase server client cookie handling (await cookies) to resolve Next.js sync cookies error on `/yatris/new`. |
 | **2025-12-22** | Fixed async `searchParams` handling on `/yatris` to comply with Next.js dynamic API rules (filters/search now stable). |

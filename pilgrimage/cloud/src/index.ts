@@ -55,6 +55,33 @@ const toNullIfBlank = (value: unknown) => {
   return value;
 };
 
+const toReceipts = (value: unknown) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const pickReceiptNumber = (receipts: unknown[] | null) => {
+  if (!receipts || receipts.length === 0) return null;
+  const first = receipts[0];
+  if (!first || typeof first !== 'object') return null;
+  const receiptNo = typeof (first as { receipt_no?: unknown }).receipt_no === 'string'
+    ? String((first as { receipt_no?: unknown }).receipt_no).trim()
+    : '';
+  if (receiptNo) return receiptNo;
+  const receiptNumber = typeof (first as { receipt_number?: unknown }).receipt_number === 'string'
+    ? String((first as { receipt_number?: unknown }).receipt_number).trim()
+    : '';
+  return receiptNumber || null;
+};
+
 function respondError(res: Response, status: number, code: ErrorCode, message: string, details?: unknown) {
   return res.status(status).json({ error: { code, message, details } });
 }
@@ -381,12 +408,19 @@ app.post('/registrations', async (req: Request, res: Response) => {
   }
 
   const status = (body.status as string) ?? 'approved';
+  const receipts = toReceipts(body.receipts);
+  const receiptNo = (toNullIfBlank(body.receipt_no) as string | null) ?? pickReceiptNumber(receipts);
 
   const patch = {
-    receipt_no: toNullIfBlank(body.receipt_no),
+    receipt_no: receiptNo,
+    guardian_relation: toNullIfBlank(body.guardian_relation),
     father_name_hi: toNullIfBlank(body.father_name_hi),
     aadhaar_no: toNullIfBlank(body.aadhaar_no),
     address_hi,
+    address_state: toNullIfBlank(body.address_state),
+    address_district: toNullIfBlank(body.address_district),
+    address_city: toNullIfBlank(body.address_city),
+    address_pin: toNullIfBlank(body.address_pin),
     phone,
     whatsapp: toNullIfBlank(body.whatsapp),
     dob: toNullIfBlank(body.dob),
@@ -407,6 +441,11 @@ app.post('/registrations', async (req: Request, res: Response) => {
     health_asthma_meds: healthAsthmaValue ? toNullIfBlank(body.health_asthma_meds) : null,
     health_other: healthOtherValue,
     health_other_meds: healthOtherValue ? toNullIfBlank(body.health_other_meds) : null,
+    blood_group: toNullIfBlank(body.blood_group),
+    medical_conditions: toNullIfBlank(body.medical_conditions),
+    medical_allergies: toNullIfBlank(body.medical_allergies),
+    medical_medications: toNullIfBlank(body.medical_medications),
+    medical_emergency_notes: toNullIfBlank(body.medical_emergency_notes),
     emergency_contact_name: toNullIfBlank(body.emergency_contact_name),
     emergency_contact_father_name: toNullIfBlank(body.emergency_contact_father_name),
     emergency_contact_age_years: toNullIfBlank(body.emergency_contact_age_years),
@@ -418,6 +457,9 @@ app.post('/registrations', async (req: Request, res: Response) => {
     sadhu_sant_category: toBool(body.sadhu_sant_category),
     declaration_accepted: true,
     declaration_signed_at: signedAt,
+    category_id: toNullIfBlank(body.category_id),
+    group_id: toNullIfBlank(body.group_id),
+    receipts,
     status,
   };
 
@@ -442,6 +484,7 @@ app.post('/process-form', async (req: Request, res: Response) => {
   }
 
   const extractedAt = new Date().toISOString();
+  const receiptDate = extractedAt.slice(0, 10);
   const mockMedical = {
     heart: { flag: false, meds: null },
     bp: { flag: true, meds: 'Amlodipine' },
@@ -462,6 +505,9 @@ app.post('/process-form', async (req: Request, res: Response) => {
     name_hi: 'राम कुमार',
     father_name_hi: 'शिव प्रसाद',
     address_hi: 'पुरी, ओडिशा',
+    address_state: 'Odisha',
+    address_district: 'Puri',
+    address_city: 'Puri',
     aadhaar_no: '123456789012',
     phone: '+919812345678',
     whatsapp: '+919812345678',
@@ -483,11 +529,24 @@ app.post('/process-form', async (req: Request, res: Response) => {
     health_asthma_meds: mockMedical.asthma.meds,
     health_other: mockHealthNone ? null : mockMedical.other.condition,
     health_other_meds: mockHealthNone ? null : mockMedical.other.meds,
+    blood_group: 'O+',
+    medical_conditions: 'Hypertension, Diabetes',
+    medical_allergies: null,
+    medical_medications: 'Amlodipine, Metformin',
+    medical_emergency_notes: 'Carry regular medicines.',
     emergency_contact_name: 'मोहन',
     emergency_contact_father_name: 'शिव',
     emergency_contact_age_years: 42,
     emergency_contact_address: 'कटक, ओडिशा',
     emergency_contact_phone: '+919800000001',
+    receipts: [
+      {
+        receipt_no: 'R-MOCK-001',
+        amount: 2500,
+        payment_mode: 'cash',
+        receipt_date: receiptDate,
+      },
+    ],
     form_image_url: storagePath,
     attended_badarinath_2024: true,
     sadhu_sant_category: false,
