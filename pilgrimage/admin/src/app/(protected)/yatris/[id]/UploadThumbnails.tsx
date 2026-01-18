@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner } from "@/components/ui";
 
@@ -29,6 +30,7 @@ const isImageFile = (value?: string | null) => {
 
 export function UploadThumbnails({ registrationId, photoPath, formPath, orchestratorUrl }: Props) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [previews, setPreviews] = useState<PreviewState>({ photo: null, form: null });
   const [paths, setPaths] = useState<PathState>({
     photo: photoPath ?? null,
@@ -113,6 +115,7 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
     }
     setUploadingKind(kind);
     setUploadError(null);
+    const stopLoading = startLoading(kind === "photo" ? "Uploading photo..." : "Uploading form...");
     const bucket = kind === "photo" ? "photos" : "forms";
     const object = buildUploadPath(kind);
 
@@ -151,6 +154,7 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
+      stopLoading();
       setUploadingKind(null);
     }
   };

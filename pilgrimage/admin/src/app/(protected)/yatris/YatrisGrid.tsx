@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
 import {
@@ -379,6 +380,7 @@ export function YatrisGrid({
 }: YatrisGridProps) {
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading, startNavigation } = useGlobalLoading();
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const [isPending, startTransition] = useTransition();
   const [searchValue, setSearchValue] = useState(filters.q);
@@ -550,6 +552,7 @@ export function YatrisGrid({
 
     const queryString = buildSearchParams(merged);
     startTransition(() => {
+      startNavigation("Loading yatri list...");
       router.replace(`/yatris?${queryString}`);
     });
   };
@@ -771,6 +774,7 @@ export function YatrisGrid({
     }
     setUploadMessage(null);
     setUploadingPhotoId(row.id);
+    const stopLoading = startLoading("Uploading photo...");
     try {
       const object = `photos/registrations/${row.id}/photo.jpg`;
       const uploadUrl = await signUrl("upload", "photos", object);
@@ -802,6 +806,7 @@ export function YatrisGrid({
     } catch (err) {
       setUploadMessage(err instanceof Error ? err.message : "Upload failed");
     } finally {
+      stopLoading();
       setUploadingPhotoId(null);
     }
   };
@@ -815,16 +820,21 @@ export function YatrisGrid({
 
   const updateCategory = useCallback(async (row: YatriRow, categoryId: string) => {
     setCategoryMessage(null);
-    const { error } = await supabase.rpc("fn_update_registration", {
-      p_id: row.id,
-      p_patch: { category_id: categoryId || null },
-    });
-    if (error) {
-      setCategoryMessage(error.message);
-      return;
+    const stopLoading = startLoading("Saving category...");
+    try {
+      const { error } = await supabase.rpc("fn_update_registration", {
+        p_id: row.id,
+        p_patch: { category_id: categoryId || null },
+      });
+      if (error) {
+        setCategoryMessage(error.message);
+        return;
+      }
+      router.refresh();
+    } finally {
+      stopLoading();
     }
-    router.refresh();
-  }, [router, supabase]);
+  }, [router, supabase, startLoading]);
 
   const handleDelete = useCallback(async (row: YatriRow) => {
     if (!canDelete) return;
@@ -836,6 +846,7 @@ export function YatrisGrid({
     }
     setDeleteMessage(null);
     setDeletingId(row.id);
+    const stopLoading = startLoading("Deleting registration...");
     try {
       const res = await fetch(`/api/admin/yatris/${row.id}`, { method: "DELETE" });
       if (!res.ok) {
@@ -851,10 +862,11 @@ export function YatrisGrid({
     } catch (err) {
       setDeleteMessage(err instanceof Error ? err.message : "Delete failed.");
     } finally {
+      stopLoading();
       setDeletingId(null);
       setOpenRowMenuId(null);
     }
-  }, [canDelete, router]);
+  }, [canDelete, router, startLoading]);
 
   const columns: Record<string, ColumnDef> = useMemo(() => {
     return {
@@ -1274,6 +1286,7 @@ export function YatrisGrid({
   const exportFiltered = async () => {
     setExportMessage(null);
     setExporting(true);
+    const stopLoading = startLoading("Preparing export...");
     try {
       const result = await exportAction({
         filters: {
@@ -1297,6 +1310,7 @@ export function YatrisGrid({
       exportRows(result.rows, exportFormat);
     } finally {
       setExporting(false);
+      stopLoading();
     }
   };
 
@@ -1747,12 +1761,13 @@ export function YatrisGrid({
                 </thead>
                 <tbody className="divide-y divide-[color:var(--border)] bg-[color:var(--surface)]">
                   {rows.map((row) => (
-                    <tr
+                        <tr
                       key={row.id}
                       className="cursor-pointer odd:bg-[color:var(--surface-muted)]/35 even:bg-[color:var(--surface)] hover:bg-[color:var(--surface-muted)]/60"
                       onClick={(event) => {
                         const target = event.target as HTMLElement;
                         if (target.closest("button") || target.closest("a") || target.closest("input")) return;
+                        startNavigation("Loading registration...");
                         router.push(`/yatris/${row.id}`);
                       }}
                     >

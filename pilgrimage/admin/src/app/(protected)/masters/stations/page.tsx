@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
@@ -315,6 +316,7 @@ export default async function MasterStationsPage({
               New station
             </div>
             <form action={createStation} className="mt-3 grid gap-3">
+              <FormStatusOverlay message="Creating station..." />
               <StationFields />
               <button type="submit" className="btn-primary station-action w-full">
                 Add station
@@ -372,6 +374,7 @@ export default async function MasterStationsPage({
                 Edit station
               </div>
               <form action={updateStation} className="mt-3 grid gap-3">
+                <FormStatusOverlay message="Saving station..." />
                 <input type="hidden" name="id" value={station.id} />
                 <StationFields
                   defaults={{
@@ -394,6 +397,7 @@ export default async function MasterStationsPage({
                 </div>
               </form>
               <form action={deleteStation} id={`station-delete-${station.id}`}>
+                <FormStatusOverlay message="Deleting station..." />
                 <input type="hidden" name="id" value={station.id} />
               </form>
             </div>

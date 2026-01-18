@@ -1,4 +1,5 @@
 import { PageHeader, FormSection, Select, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
@@ -143,6 +144,7 @@ export default async function MasterTripsPage() {
 
       <FormSection title="Create train trip from master">
         <form action={createTrainTrip} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <FormStatusOverlay message="Creating train trip..." />
           <Select name="train_no" required>
             <option value="">Select train</option>
             {(trains ?? []).map((train) => (
@@ -169,6 +171,7 @@ export default async function MasterTripsPage() {
 
       <FormSection title="Create flight trip">
         <form action={createFlightTrip} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <FormStatusOverlay message="Creating flight trip..." />
           <TextInput name="trip_name" placeholder="Trip name" required />
           <Select name="trip_kind" defaultValue="other">
             <option value="outbound">Outbound</option>
@@ -205,12 +208,14 @@ export default async function MasterTripsPage() {
                   </div>
                 </div>
                 <form action={deleteTrip}>
+                  <FormStatusOverlay message="Deleting trip..." />
                   <input type="hidden" name="id" value={trip.id} />
                   <button type="submit" className="btn-secondary text-rose-300">Delete</button>
                 </form>
               </div>
 
               <form action={updateTrip} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <FormStatusOverlay message="Saving trip..." />
                 <input type="hidden" name="id" value={trip.id} />
                 <TextInput name="trip_name" defaultValue={trip.trip_name} />
                 <Select name="trip_kind" defaultValue={trip.trip_kind ?? "other"}>

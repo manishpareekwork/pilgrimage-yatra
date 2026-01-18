@@ -1,5 +1,6 @@
 "use client";
 
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormSection } from "@/components/ui";
@@ -29,6 +30,7 @@ export function UploadControls({
   orchestratorUrl,
 }: Props) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [state, setState] = useState<UploadState>({
     uploading: false,
     error: null,
@@ -100,6 +102,7 @@ export function UploadControls({
     const object = buildPath(kind);
 
     setState((prev) => ({ ...prev, uploading: true, error: null }));
+    const stopLoading = startLoading(kind === "photo" ? "Uploading photo..." : "Uploading form...");
 
     try {
       const uploadUrl = await signUrl("upload", bucket, object);
@@ -146,6 +149,8 @@ export function UploadControls({
         uploading: false,
         error: err instanceof Error ? err.message : "Upload failed",
       }));
+    } finally {
+      stopLoading();
     }
   };
 

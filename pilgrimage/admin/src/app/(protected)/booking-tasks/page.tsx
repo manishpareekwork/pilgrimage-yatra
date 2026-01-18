@@ -1,3 +1,4 @@
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { PageHeader, FormSection, Field, Select, TextArea, TextInput } from "@/components/ui";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
@@ -64,6 +65,7 @@ export default async function BookingTasksPage({
 
       <FormSection title="Create booking task">
         <form action={createBookingTask} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormStatusOverlay message="Creating booking task..." />
           <Field label="Task type" htmlFor="task_type" required>
             <Select id="task_type" name="task_type" required defaultValue="train">
               <option value="train">Train</option>
@@ -135,6 +137,7 @@ export default async function BookingTasksPage({
                   </td>
                   <td className="px-3 py-2">
                     <form action={updateBookingTask} className="flex items-center gap-2">
+                      <FormStatusOverlay message="Updating booking task..." />
                       <input type="hidden" name="id" value={task.id} />
                       <Select name="status" defaultValue={task.status}>
                         <option value="open">Open</option>

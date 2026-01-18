@@ -195,5 +195,6 @@ export async function updateRegistrationAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath(`/yatris/${id}`);
+  revalidatePath("/yatris");
+  redirect("/yatris");
 }

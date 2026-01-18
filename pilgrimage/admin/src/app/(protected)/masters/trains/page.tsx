@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
@@ -487,6 +488,7 @@ export default async function MasterTrainsPage({
                 Edit train
               </div>
               <form action={updateTrain} className="mt-3 grid gap-3">
+                <FormStatusOverlay message="Saving train..." />
                 <input type="hidden" name="id" value={train.id} />
                 <TrainFields
                   defaults={{
@@ -514,6 +516,7 @@ export default async function MasterTrainsPage({
                 </div>
               </form>
               <form action={deleteTrain} id={`train-delete-${train.id}`}>
+                <FormStatusOverlay message="Deleting train..." />
                 <input type="hidden" name="id" value={train.id} />
               </form>
             </div>

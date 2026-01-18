@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { Field, FormSection, PageHeader, Select, TextInput } from "@/components/ui";
 
 const roles = ["admin", "reviewer", "volunteer", "yatri"] as const;
@@ -10,6 +11,7 @@ type MessageState = { type: "error" | "success"; text: string } | null;
 
 export function CreateUserForm() {
   const router = useRouter();
+  const { startLoading } = useGlobalLoading();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string>("reviewer");
@@ -20,6 +22,7 @@ export function CreateUserForm() {
     e.preventDefault();
     setBusy(true);
     setMessage(null);
+    const stopLoading = startLoading("Creating user...");
     try {
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
@@ -38,6 +41,7 @@ export function CreateUserForm() {
     } catch (err) {
       setMessage({ type: "error", text: String(err) });
     } finally {
+      stopLoading();
       setBusy(false);
     }
   };

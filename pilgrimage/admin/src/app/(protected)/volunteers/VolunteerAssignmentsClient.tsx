@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { ChakraSpinner, TextInput } from "@/components/ui";
 
 type Role = {
@@ -205,6 +206,7 @@ export function VolunteerAssignmentsClient() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { startLoading } = useGlobalLoading();
 
   const request = async (method: string, payload?: Record<string, unknown>) => {
     const res = await fetch("/api/admin/volunteers", {
@@ -325,32 +327,41 @@ export function VolunteerAssignmentsClient() {
       return;
     }
 
+    const stopLoading = startLoading("Adding member...");
     try {
       await request("POST", { roleId, registrationId, makeLead });
       setMessage(null);
       await loadAll();
     } catch (err: any) {
       setMessage(err?.message || "Unable to add member.");
+    } finally {
+      stopLoading();
     }
   };
 
   const setHead = async (roleId: string, memberId: string) => {
+    const stopLoading = startLoading("Updating group manager...");
     try {
       await request("PATCH", { roleId, memberId });
       setMessage(null);
       await loadAll();
     } catch (err: any) {
       setMessage(err?.message || "Unable to update group manager/lead.");
+    } finally {
+      stopLoading();
     }
   };
 
   const removeMember = async (memberId: string) => {
+    const stopLoading = startLoading("Removing member...");
     try {
       await request("DELETE", { memberId });
       setMessage(null);
       await loadAll();
     } catch (err: any) {
       setMessage(err?.message || "Unable to remove member.");
+    } finally {
+      stopLoading();
     }
   };
 

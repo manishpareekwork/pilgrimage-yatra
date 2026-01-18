@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { Select } from "@/components/ui";
 
 type DashboardMetrics = {
@@ -48,10 +49,12 @@ export function DashboardClient() {
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { startLoading } = useGlobalLoading();
 
   const loadData = async (nextRange = range, nextMode = mode) => {
     setLoading(true);
     setError(null);
+    const stopLoading = startLoading("Loading dashboard...");
     try {
       const res = await fetch(`/api/admin/dashboard?range=${nextRange}&mode=${nextMode}`, {
         cache: "no-store",
@@ -66,6 +69,7 @@ export function DashboardClient() {
       setData(null);
     } finally {
       setLoading(false);
+      stopLoading();
     }
   };
 

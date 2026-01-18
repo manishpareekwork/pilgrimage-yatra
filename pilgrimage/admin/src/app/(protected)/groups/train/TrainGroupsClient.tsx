@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner, Field, Select, TextInput } from "@/components/ui";
 
@@ -96,6 +97,7 @@ const readField = (formData: FormData, key: string) => {
 
 export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [selectedTripId, setSelectedTripId] = useState(trips[0]?.id ?? "");
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
@@ -165,6 +167,7 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
 
   const createGroup = async (formData: FormData) => {
     if (!selectedTripId) return;
+    const stopLoading = startLoading("Creating group...");
     const sizeTarget = readField(formData, "group_size_target");
     const payload = {
       p_trip_id: selectedTripId,
@@ -173,23 +176,33 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
       p_incharge_registration_id: readField(formData, "incharge_registration_id"),
       p_group_code: readField(formData, "group_code"),
     };
-    const { error } = await supabase.rpc("fn_create_co_travel_group", payload);
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    try {
+      const { error } = await supabase.rpc("fn_create_co_travel_group", payload);
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const setIncharge = async (groupId: string, registrationId: string) => {
-    const { error } = await supabase.rpc("fn_set_group_incharge", {
-      p_group_id: groupId,
-      p_registration_id: registrationId || null,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    const stopLoading = startLoading("Saving in-charge...");
+    try {
+      const { error } = await supabase.rpc("fn_set_group_incharge", {
+        p_group_id: groupId,
+        p_registration_id: registrationId || null,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const updateBookingDetails = async (groupId: string, formData: FormData) => {
+    const stopLoading = startLoading("Saving booking details...");
     const patch = {
       pnr: readField(formData, "pnr"),
       booking_status: readField(formData, "booking_status"),
@@ -206,18 +219,23 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
       reservation_upto_station_code: readField(formData, "reservation_upto_station_code"),
       group_size_target: readField(formData, "group_size_target"),
     };
-    const { error } = await supabase.rpc("fn_update_co_travel_group", {
-      p_id: groupId,
-      p_patch: patch,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    try {
+      const { error } = await supabase.rpc("fn_update_co_travel_group", {
+        p_id: groupId,
+        p_patch: patch,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const addMember = async (groupId: string, formData: FormData) => {
     const registrationId = readField(formData, "registration_id");
     if (!registrationId) return;
+    const stopLoading = startLoading("Saving group member...");
     const patch = {
       coach_no: readField(formData, "coach_no"),
       seat_no: readField(formData, "seat_no"),
@@ -235,14 +253,18 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
       baggage_allowance_kg: readField(formData, "baggage_allowance_kg"),
       ssr_notes: readField(formData, "ssr_notes"),
     };
-    const { error } = await supabase.rpc("fn_upsert_co_travel_group_member", {
-      p_group_id: groupId,
-      p_registration_id: registrationId,
-      p_patch: patch,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    try {
+      const { error } = await supabase.rpc("fn_upsert_co_travel_group_member", {
+        p_group_id: groupId,
+        p_registration_id: registrationId,
+        p_patch: patch,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const exportCsv = () => {

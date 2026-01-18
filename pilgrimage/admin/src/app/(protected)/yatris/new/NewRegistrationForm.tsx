@@ -14,6 +14,7 @@ import {
   TextArea,
   TextInput,
 } from "@/components/ui";
+import { FormStatusOverlay, useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { TRAIN_CLASS_OPTIONS } from "@/lib/trainClasses";
 import { listDistricts, listStates, type AddressOption } from "@/lib/addressLookup";
@@ -123,6 +124,7 @@ export function NewRegistrationForm({
 }) {
   const [state, formAction, isPending] = React.useActionState(action, initialState);
   const router = useRouter();
+  const { startLoading, startNavigation } = useGlobalLoading();
   const formRef = useRef<HTMLFormElement | null>(null);
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
@@ -527,6 +529,7 @@ export function NewRegistrationForm({
     if (!state?.id || state?.error || uploadAttempted) return;
     setUploadAttempted(true);
     if (!photoFile && !formFile) {
+      startNavigation("Loading yatri list...");
       router.push("/yatris");
       return;
     }
@@ -536,16 +539,21 @@ export function NewRegistrationForm({
     }
     let isActive = true;
     const runUploads = async () => {
+      const stopLoading = startLoading("Uploading files...");
       setUploadingFiles(true);
       setUploadError(null);
       try {
         await uploadSelectedFiles(state.id as string);
-        if (isActive) router.push("/yatris");
+        if (isActive) {
+          startNavigation("Loading yatri list...");
+          router.push("/yatris");
+        }
       } catch (err) {
         if (isActive) {
           setUploadError(err instanceof Error ? err.message : "Upload failed");
         }
       } finally {
+        stopLoading();
         if (isActive) setUploadingFiles(false);
       }
     };
@@ -553,7 +561,17 @@ export function NewRegistrationForm({
     return () => {
       isActive = false;
     };
-  }, [router, state?.error, state?.id, photoFile, formFile, hasOrchestrator, uploadAttempted]);
+  }, [
+    router,
+    state?.error,
+    state?.id,
+    photoFile,
+    formFile,
+    hasOrchestrator,
+    uploadAttempted,
+    startLoading,
+    startNavigation,
+  ]);
 
   const commonMedicalActive = !healthNone && (healthHeart || healthBp || healthDiabetes || healthAsthma);
   const canUploadSelectedFiles = hasOrchestrator || (!photoFile && !formFile);
@@ -661,6 +679,7 @@ export function NewRegistrationForm({
       }}
       className="new-registration-form space-y-8"
     >
+      <FormStatusOverlay message="Saving registration..." />
       <input type="hidden" name="group_id" value="" />
       <div className="relative">
         <PageHeader

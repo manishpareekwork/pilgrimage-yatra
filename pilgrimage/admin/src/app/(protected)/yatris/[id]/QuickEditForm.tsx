@@ -3,6 +3,7 @@
 import { updateRegistrationAction } from "./actions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckboxRow, Field, FormSection, Select, TextArea, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { TRAIN_CLASS_OPTIONS, normalizeTrainClass } from "@/lib/trainClasses";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { listDistricts, listStates, type AddressOption } from "@/lib/addressLookup";
@@ -330,6 +331,7 @@ export function QuickEditForm({
 
   return (
     <form ref={formRef} id={formId} action={updateRegistrationAction} className="yatri-detail-form space-y-6">
+      <FormStatusOverlay message="Saving registration..." />
       <input type="hidden" name="id" value={registration.id} />
       <input type="hidden" name="group_id" value={registration.group_id ?? ""} />
       <input type="hidden" name="receipt_no" value={registration.receipt_no ?? ""} />

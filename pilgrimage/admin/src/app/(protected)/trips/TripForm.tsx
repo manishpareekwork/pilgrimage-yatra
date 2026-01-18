@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Field, FormSection, Select, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 
 type TripFormProps = {
   action: (formData: FormData) => void;
@@ -13,6 +14,7 @@ export function TripForm({ action }: TripFormProps) {
   return (
     <FormSection title="Create trip" description="Set up a travel leg for train or flight.">
       <form action={action} className="space-y-6">
+        <FormStatusOverlay message="Creating trip..." />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Mode" htmlFor="mode" required>
             <Select

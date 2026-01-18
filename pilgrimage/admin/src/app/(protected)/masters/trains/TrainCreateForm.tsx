@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 
 type StopRow = {
   id: string;
@@ -28,6 +29,7 @@ export function TrainCreateForm({
 
   return (
     <form action={onCreate} className="mt-3 grid gap-4">
+      <FormStatusOverlay message="Creating train..." />
       <div className="space-y-2">
         <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
           Train details

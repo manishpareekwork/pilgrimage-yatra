@@ -1,5 +1,6 @@
 import { getActionSupabase, getServerSupabase } from "@/lib/supabaseServer";
 import { AppShell } from "@/components/AppShell";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { redirect } from "next/navigation";
 import React from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -81,6 +82,7 @@ export default async function ProtectedLayout({
       role={role}
       onLogoutAction={
         <form action={signOut}>
+          <FormStatusOverlay message="Signing out..." />
           <button type="submit" className="app-shell__logout">
             Logout
           </button>

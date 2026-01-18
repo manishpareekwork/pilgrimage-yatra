@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner, Field, TextInput } from "@/components/ui";
 
@@ -58,6 +59,7 @@ const toCsv = (rows: string[][]) =>
 
 export function HotelGroupsClient() {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [stays, setStays] = useState<Stay[]>([]);
@@ -173,38 +175,53 @@ export function HotelGroupsClient() {
   }, [grouped, search, staysByRoom]);
 
   const setHotelIncharge = async (hotelId: string, registrationId: string) => {
-    const { error } = await supabase.rpc("fn_set_hotel_incharge", {
-      p_hotel_id: hotelId,
-      p_registration_id: registrationId || null,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    await loadAll();
+    const stopLoading = startLoading("Saving hotel in-charge...");
+    try {
+      const { error } = await supabase.rpc("fn_set_hotel_incharge", {
+        p_hotel_id: hotelId,
+        p_registration_id: registrationId || null,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      await loadAll();
+    } finally {
+      stopLoading();
+    }
   };
 
   const setRoomIncharge = async (roomId: string, registrationId: string) => {
-    const { error } = await supabase.rpc("fn_set_room_incharge", {
-      p_room_id: roomId,
-      p_registration_id: registrationId || null,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    await loadAll();
+    const stopLoading = startLoading("Saving room in-charge...");
+    try {
+      const { error } = await supabase.rpc("fn_set_room_incharge", {
+        p_room_id: roomId,
+        p_registration_id: registrationId || null,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      await loadAll();
+    } finally {
+      stopLoading();
+    }
   };
 
   const addStay = async (roomId: string, formData: FormData) => {
     const registrationId = formData.get("registration_id")?.toString().trim();
     if (!registrationId) return;
-    const { error } = await supabase.rpc("fn_assign_room_stay", {
-      p_room_id: roomId,
-      p_registration_id: registrationId,
-      p_stay_from: formData.get("stay_from")?.toString() || null,
-      p_stay_to: formData.get("stay_to")?.toString() || null,
-      p_allow_overflow: formData.get("allow_overflow") === "on",
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    await loadAll();
+    const stopLoading = startLoading("Adding stay...");
+    try {
+      const { error } = await supabase.rpc("fn_assign_room_stay", {
+        p_room_id: roomId,
+        p_registration_id: registrationId,
+        p_stay_from: formData.get("stay_from")?.toString() || null,
+        p_stay_to: formData.get("stay_to")?.toString() || null,
+        p_allow_overflow: formData.get("allow_overflow") === "on",
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      await loadAll();
+    } finally {
+      stopLoading();
+    }
   };
 
   const exportCsv = () => {

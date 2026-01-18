@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner, Field, Select, TextArea, TextInput } from "@/components/ui";
 
@@ -65,6 +66,7 @@ export function TrainStopsClient({
   initialTrainId: string;
 }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [selectedTrainId, setSelectedTrainId] = useState(initialTrainId || trains[0]?.id || "");
   const [stops, setStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,6 +116,7 @@ export function TrainStopsClient({
 
   const addStop = async (formData: FormData) => {
     if (!selectedTrain || !selectedTrain.train_no) return;
+    const stopLoading = startLoading("Adding stop...");
     const payload = {
       stop_seq: parseNumber(formData.get("stop_seq")),
       station_code: formData.get("station_code")?.toString().trim().toUpperCase(),
@@ -124,16 +127,21 @@ export function TrainStopsClient({
       distance_km: parseNumber(formData.get("distance_km")),
       halt_minutes: parseNumber(formData.get("halt_minutes")),
     };
-    const { error } = await supabase.rpc("admin_upsert_train_stops", {
-      p_train_no: selectedTrain.train_no,
-      p_stops: [payload],
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    try {
+      const { error } = await supabase.rpc("admin_upsert_train_stops", {
+        p_train_no: selectedTrain.train_no,
+        p_stops: [payload],
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const updateStop = async (stopId: string, formData: FormData) => {
+    const stopLoading = startLoading("Saving stop...");
     const payload = {
       stop_seq: parseNumber(formData.get("stop_seq")),
       station_code: formData.get("station_code")?.toString().trim().toUpperCase() || null,
@@ -143,20 +151,29 @@ export function TrainStopsClient({
       distance_km: parseNumber(formData.get("distance_km")),
       halt_minutes: parseNumber(formData.get("halt_minutes")),
     };
-    const { error } = await supabase
-      .from("master_train_stops")
-      .update(payload)
-      .eq("id", stopId);
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    try {
+      const { error } = await supabase
+        .from("master_train_stops")
+        .update(payload)
+        .eq("id", stopId);
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const deleteStop = async (stopId: string) => {
-    const { error } = await supabase.from("master_train_stops").delete().eq("id", stopId);
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setRefreshToken((prev) => prev + 1);
+    const stopLoading = startLoading("Deleting stop...");
+    try {
+      const { error } = await supabase.from("master_train_stops").delete().eq("id", stopId);
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
+    }
   };
 
   const bulkImport = async () => {
@@ -166,16 +183,21 @@ export function TrainStopsClient({
       setMessage("No valid rows found in CSV input.");
       return;
     }
-    const { error } = await supabase.rpc("admin_upsert_train_stops", {
-      p_train_no: selectedTrain.train_no,
-      p_stops: parsed,
-    });
-    if (error) setMessage(error.message);
-    else {
-      setMessage(null);
-      setCsvText("");
+    const stopLoading = startLoading("Importing stops...");
+    try {
+      const { error } = await supabase.rpc("admin_upsert_train_stops", {
+        p_train_no: selectedTrain.train_no,
+        p_stops: parsed,
+      });
+      if (error) setMessage(error.message);
+      else {
+        setMessage(null);
+        setCsvText("");
+      }
+      setRefreshToken((prev) => prev + 1);
+    } finally {
+      stopLoading();
     }
-    setRefreshToken((prev) => prev + 1);
   };
 
   return (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
@@ -199,6 +200,7 @@ export default async function CategoriesPage({
               New bucket
             </div>
             <form action={createCategory} className="mt-3 grid gap-3">
+              <FormStatusOverlay message="Creating bucket..." />
               <TextInput name="name" placeholder="Bucket name" required />
               <TextInput name="whatsapp_group_ref" placeholder="WhatsApp group ref (optional)" />
               <button type="submit" className="btn-primary master-action w-full">
@@ -253,6 +255,7 @@ export default async function CategoriesPage({
                 Edit bucket
               </div>
               <form action={updateCategory} className="mt-3 grid gap-3">
+                <FormStatusOverlay message="Saving bucket..." />
                 <input type="hidden" name="id" value={bucket.id} />
                 <TextInput name="name" defaultValue={bucket.name} required />
                 <TextInput
@@ -274,6 +277,7 @@ export default async function CategoriesPage({
                 </div>
               </form>
               <form action={deleteCategory} id={`bucket-delete-${bucket.id}`}>
+                <FormStatusOverlay message="Deleting bucket..." />
                 <input type="hidden" name="id" value={bucket.id} />
               </form>
             </div>

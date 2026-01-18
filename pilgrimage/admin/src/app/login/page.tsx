@@ -1,5 +1,6 @@
 "use client";
 
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
 import { useState, FormEvent } from "react";
@@ -7,6 +8,7 @@ import { useState, FormEvent } from "react";
 export default function LoginPage() {
   const supabase = getBrowserSupabase();
   const router = useRouter();
+  const { startLoading, startNavigation } = useGlobalLoading();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export default function LoginPage() {
     setLastAttemptAt(now);
     setError(null);
     setLoading(true);
+    const stopLoading = startLoading("Signing in...");
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -48,11 +51,13 @@ export default function LoginPage() {
         return;
       }
 
+      startNavigation("Loading dashboard...");
       router.replace("/dashboard");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in. Please try again.");
     } finally {
+      stopLoading();
       setLoading(false);
     }
   };

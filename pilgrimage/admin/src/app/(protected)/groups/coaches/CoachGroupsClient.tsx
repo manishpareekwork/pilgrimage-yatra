@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner, Field, Select, TextInput } from "@/components/ui";
 
@@ -48,6 +49,7 @@ const toCsv = (rows: string[][]) =>
 
 export function CoachGroupsClient({ trips }: { trips: Trip[] }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const { startLoading } = useGlobalLoading();
   const [selectedTripId, setSelectedTripId] = useState(trips[0]?.id ?? "");
   const [coachMembers, setCoachMembers] = useState<Record<string, MemberRow[]>>({});
   const [coachIncharges, setCoachIncharges] = useState<Record<string, CoachIncharge>>({});
@@ -132,14 +134,19 @@ export function CoachGroupsClient({ trips }: { trips: Trip[] }) {
 
   const setCoachIncharge = async (coachNo: string, registrationId: string) => {
     if (!selectedTripId) return;
-    const { error } = await supabase.rpc("fn_set_train_coach_incharge", {
-      p_trip_id: selectedTripId,
-      p_coach_no: coachNo,
-      p_registration_id: registrationId || null,
-    });
-    if (error) setMessage(error.message);
-    else setMessage(null);
-    setSelectedTripId(selectedTripId);
+    const stopLoading = startLoading("Saving coach in-charge...");
+    try {
+      const { error } = await supabase.rpc("fn_set_train_coach_incharge", {
+        p_trip_id: selectedTripId,
+        p_coach_no: coachNo,
+        p_registration_id: registrationId || null,
+      });
+      if (error) setMessage(error.message);
+      else setMessage(null);
+      setSelectedTripId(selectedTripId);
+    } finally {
+      stopLoading();
+    }
   };
 
   const exportCsv = () => {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Select, TextArea, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 
 type RoomRow = { id: string };
 
@@ -27,6 +28,7 @@ export function HotelCreateForm({
 
   return (
     <form action={onCreate} className="mt-3 grid gap-4">
+      <FormStatusOverlay message="Creating hotel..." />
       <div className="space-y-2">
         <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
           Hotel details

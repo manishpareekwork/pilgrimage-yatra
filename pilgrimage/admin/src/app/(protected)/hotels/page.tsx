@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader, Select, TextArea, TextInput } from "@/components/ui";
+import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
@@ -540,6 +541,7 @@ export default async function HotelsPage({
                   Edit hotel
                 </div>
                 <form action={updateHotel} className="mt-3 grid gap-3">
+                  <FormStatusOverlay message="Saving hotel..." />
                   <input type="hidden" name="id" value={hotel.id} />
                   <div className="text-xs text-[color:var(--muted)]">
                     Hotel ID: <span className="font-semibold text-[color:var(--ink)]">{hotel.hotel_code ?? "—"}</span>
@@ -572,6 +574,7 @@ export default async function HotelsPage({
                   </div>
                 </form>
                 <form action={deleteHotel} id={`hotel-delete-${hotel.id}`}>
+                  <FormStatusOverlay message="Deleting hotel..." />
                   <input type="hidden" name="id" value={hotel.id} />
                 </form>
 
@@ -583,6 +586,7 @@ export default async function HotelsPage({
                     action={createRoom}
                     className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] items-end"
                   >
+                    <FormStatusOverlay message="Adding room..." />
                     <input type="hidden" name="hotel_id" value={hotel.id} />
                     <TextInput name="room_no" placeholder="Room no" required />
                     <TextInput
@@ -626,6 +630,7 @@ export default async function HotelsPage({
                           action={updateRoom}
                           className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto] items-end"
                         >
+                          <FormStatusOverlay message="Saving room..." />
                           <input type="hidden" name="id" value={room.id} />
                           <TextInput name="room_no" defaultValue={room.room_no} required />
                           <TextInput
@@ -651,6 +656,7 @@ export default async function HotelsPage({
                             Total {roomTotal} · Occupied {roomOccupied} · Vacant {roomVacant}
                           </span>
                           <form action={deleteRoom}>
+                            <FormStatusOverlay message="Deleting room..." />
                             <input type="hidden" name="id" value={room.id} />
                             <button type="submit" className="btn-secondary master-action text-rose-300">
                               Delete room
