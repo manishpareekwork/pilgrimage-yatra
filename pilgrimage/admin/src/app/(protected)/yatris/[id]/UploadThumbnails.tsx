@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner } from "@/components/ui";
+import { useCaptureOption } from "@/lib/useCaptureOption";
 
 type Props = {
   registrationId: string;
@@ -31,6 +32,7 @@ const isImageFile = (value?: string | null) => {
 export function UploadThumbnails({ registrationId, photoPath, formPath, orchestratorUrl }: Props) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const { startLoading } = useGlobalLoading();
+  const showCaptureOption = useCaptureOption();
   const [previews, setPreviews] = useState<PreviewState>({ photo: null, form: null });
   const [paths, setPaths] = useState<PathState>({
     photo: photoPath ?? null,
@@ -197,9 +199,9 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
           const isDisabled = isUploading || uploadingKind !== null;
           const previewUrl = item.preview || (item.path?.startsWith("http") ? item.path : null);
           const showImage = isImageFile(item.path) || isImageFile(previewUrl);
-          return (
+          const uploadLabel = (
             <label
-              key={item.key}
+              key={`${item.key}-upload`}
               className={`upload-thumb ${isDisabled ? "upload-thumb--disabled" : ""}`}
               title={hasOrchestrator ? `Upload ${item.label}` : "Uploads unavailable"}
             >
@@ -244,6 +246,54 @@ export function UploadThumbnails({ registrationId, photoPath, formPath, orchestr
               />
             </label>
           );
+          if (item.key !== "photo" || !showCaptureOption) {
+            return uploadLabel;
+          }
+          const captureLabel = (
+            <label
+              key={`${item.key}-capture`}
+              className={`upload-thumb ${isDisabled ? "upload-thumb--disabled" : ""}`}
+              title={hasOrchestrator ? "Capture Photo" : "Uploads unavailable"}
+            >
+              <div className="upload-thumb-placeholder" aria-label="Capture photo placeholder">
+                {isUploading ? (
+                  <>
+                    <ChakraSpinner className="h-5 w-5" title="Uploading" />
+                    <span>Uploading</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="relative flex items-center justify-center">
+                      <ChakraSpinner
+                        className="h-5 w-5 text-[color:var(--muted)]"
+                        animate={false}
+                        title="Capture photo"
+                      />
+                      <svg viewBox="0 0 20 20" className="upload-thumb-plus absolute" aria-hidden="true">
+                        <path
+                          d="M10 4v12M4 10h12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <span>Capture Photo</span>
+                  </>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                disabled={isDisabled}
+                onChange={onFileChange("photo")}
+              />
+            </label>
+          );
+          return [uploadLabel, captureLabel];
         })}
       </div>
       {!hasOrchestrator && (

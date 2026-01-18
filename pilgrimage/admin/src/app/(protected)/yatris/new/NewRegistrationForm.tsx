@@ -18,6 +18,7 @@ import { FormStatusOverlay, useGlobalLoading } from "@/components/GlobalLoading"
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { TRAIN_CLASS_OPTIONS } from "@/lib/trainClasses";
 import { listDistricts, listStates, type AddressOption } from "@/lib/addressLookup";
+import { useCaptureOption } from "@/lib/useCaptureOption";
 
 const initialState: ActionState = { error: null, id: null, fieldErrors: null };
 
@@ -129,6 +130,7 @@ export function NewRegistrationForm({
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const hasOrchestrator = Boolean(orchestratorUrl);
+  const showCaptureOption = useCaptureOption();
   const [travelMode, setTravelMode] = useState("");
   const [healthNone, setHealthNone] = useState(false);
   const [healthHeart, setHealthHeart] = useState(false);
@@ -225,11 +227,14 @@ export function NewRegistrationForm({
       ? "Uploading"
       : file
         ? "Selected"
-        : placeholderOverride ?? `Add ${label}`;
+        : kind === "photo" && showCaptureOption
+          ? placeholderOverride?.replace("Add", "Upload") ?? `Upload ${label}`
+          : placeholderOverride ?? `Add ${label}`;
     const accept =
       kind === "photo" ? "image/jpeg,image/png,image/webp" : "image/jpeg,image/png,image/webp,application/pdf";
+    const captureText = uploadingFiles ? "Uploading" : "Capture Photo";
 
-    return (
+    const uploadSlot = (
       <label className={`upload-thumb ${isDisabled ? "upload-thumb--disabled" : ""}`} title={label}>
         {previewUrl ? (
           <img src={previewUrl} alt={`${label} preview`} className="upload-thumb-image" />
@@ -271,6 +276,54 @@ export function NewRegistrationForm({
           onChange={handleFileChange(kind)}
         />
       </label>
+    );
+
+    if (kind !== "photo" || !showCaptureOption) {
+      return uploadSlot;
+    }
+
+    return (
+      <>
+        {uploadSlot}
+        <label className={`upload-thumb ${isDisabled ? "upload-thumb--disabled" : ""}`} title="Capture Photo">
+          <div className="upload-thumb-placeholder" aria-label="Capture photo placeholder">
+            {uploadingFiles ? (
+              <>
+                <ChakraSpinner className="h-5 w-5" title="Uploading" />
+                <span>{captureText}</span>
+              </>
+            ) : (
+              <>
+                <div className="relative flex items-center justify-center">
+                  <ChakraSpinner
+                    className="h-5 w-5 text-[color:var(--muted)]"
+                    animate={false}
+                    title="Capture photo"
+                  />
+                  <svg viewBox="0 0 20 20" className="upload-thumb-plus absolute" aria-hidden="true">
+                    <path
+                      d="M10 4v12M4 10h12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <span>{captureText}</span>
+              </>
+            )}
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            disabled={isDisabled}
+            onChange={handleFileChange("photo")}
+          />
+        </label>
+      </>
     );
   };
 

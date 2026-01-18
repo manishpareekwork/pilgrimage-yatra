@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition
 import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
+import { useCaptureOption } from "@/lib/useCaptureOption";
 import type { ExportPayload, ExportResult } from "./actions";
 import {
   COLUMN_FILTER_KEYS,
@@ -381,6 +382,7 @@ export function YatrisGrid({
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const { startLoading, startNavigation } = useGlobalLoading();
+  const showCaptureOption = useCaptureOption();
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const [isPending, startTransition] = useTransition();
   const [searchValue, setSearchValue] = useState(filters.q);
@@ -992,7 +994,7 @@ export function YatrisGrid({
             );
           }
           return (
-            <div className="flex items-center justify-center gap-2">
+            <div className={showCaptureOption ? "flex flex-col items-center gap-1.5" : "flex items-center justify-center gap-2"}>
               <label
                 className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                 onClick={(event) => event.stopPropagation()}
@@ -1021,9 +1023,43 @@ export function YatrisGrid({
                   )}
                 </div>
                 <span className="text-[11px] text-[color:var(--muted)]">
-                  {isUploading ? "Uploading..." : "Add photo"}
+                  {isUploading ? "Uploading..." : showCaptureOption ? "Upload photo" : "Add photo"}
                 </span>
               </label>
+              {showCaptureOption && (
+                <label
+                  className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    disabled={isDisabled}
+                    onChange={onPhotoInputChange(row)}
+                  />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                    {isUploading ? (
+                      <ChakraSpinner className="h-4 w-4" title="Uploading" />
+                    ) : (
+                      <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
+                        <path
+                          d="M6 2.5v7M2.5 6h7"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.4"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-[color:var(--muted)]">
+                    {isUploading ? "Uploading..." : "Capture photo"}
+                  </span>
+                </label>
+              )}
             </div>
           );
         },

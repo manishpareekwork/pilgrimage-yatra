@@ -4,6 +4,7 @@ import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import React, { useEffect, useMemo, useState } from "react";
 import { FormSection } from "@/components/ui";
+import { useCaptureOption } from "@/lib/useCaptureOption";
 
 type UploadKind = "photo" | "form";
 
@@ -31,6 +32,7 @@ export function UploadControls({
 }: Props) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const { startLoading } = useGlobalLoading();
+  const showCaptureOption = useCaptureOption();
   const [state, setState] = useState<UploadState>({
     uploading: false,
     error: null,
@@ -203,18 +205,35 @@ export function UploadControls({
               Private bucket ({kind === "photo" ? "photos" : "forms"}). Signed URL upload.
             </div>
           </div>
-          <label
-            className={`btn-secondary inline-flex min-h-[32px] items-center text-[12px] ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
-          >
-            <input
-              type="file"
-              accept={kind === "photo" ? "image/jpeg,image/png" : "image/jpeg,image/png,application/pdf"}
-              className="sr-only"
-              onChange={onFileChange(kind)}
-              disabled={isDisabled}
-            />
-            {state.uploading ? "Uploading..." : "Upload"}
-          </label>
+          <div className="flex items-center gap-2">
+            <label
+              className={`btn-secondary inline-flex min-h-[32px] items-center text-[12px] ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+            >
+              <input
+                type="file"
+                accept={kind === "photo" ? "image/jpeg,image/png" : "image/jpeg,image/png,application/pdf"}
+                className="sr-only"
+                onChange={onFileChange(kind)}
+                disabled={isDisabled}
+              />
+              {state.uploading ? "Uploading..." : "Upload"}
+            </label>
+            {kind === "photo" && showCaptureOption && (
+              <label
+                className={`btn-secondary inline-flex min-h-[32px] items-center text-[12px] ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={onFileChange("photo")}
+                  disabled={isDisabled}
+                />
+                {state.uploading ? "Uploading..." : "Capture"}
+              </label>
+            )}
+          </div>
         </div>
         <div className="mt-2 text-[11px] text-[color:var(--subtle)]">
           {path ? (
