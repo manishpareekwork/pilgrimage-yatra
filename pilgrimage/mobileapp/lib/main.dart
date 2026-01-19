@@ -19,13 +19,147 @@ Future<void> main() async {
   runApp(const App());
 }
 
-class App extends StatelessWidget {
+typedef LoadingHandle = void Function();
+
+class GlobalLoadingController extends ChangeNotifier {
+  int _count = 0;
+  String _message = 'Loading...';
+
+  String get message => _message;
+  bool get isLoading => _count > 0;
+
+  LoadingHandle start([String? message]) {
+    if (message != null && message.isNotEmpty) {
+      _message = message;
+    }
+    _count += 1;
+    notifyListeners();
+    var stopped = false;
+    return () {
+      if (stopped) return;
+      stopped = true;
+      if (_count > 0) {
+        _count -= 1;
+      }
+      if (_count == 0) {
+        _message = 'Loading...';
+      }
+      notifyListeners();
+    };
+  }
+
+  void updateMessage(String message) {
+    if (!isLoading) return;
+    _message = message;
+    notifyListeners();
+  }
+}
+
+class GlobalLoadingScope extends InheritedNotifier<GlobalLoadingController> {
+  const GlobalLoadingScope({
+    super.key,
+    required GlobalLoadingController controller,
+    required super.child,
+  }) : super(notifier: controller);
+
+  static GlobalLoadingController of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<GlobalLoadingScope>();
+    final controller = scope?.notifier;
+    if (controller == null) {
+      throw StateError('GlobalLoadingScope not found');
+    }
+    return controller;
+  }
+}
+
+class _GlobalLoadingOverlay extends StatelessWidget {
+  const _GlobalLoadingOverlay({required this.child});
+
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = GlobalLoadingScope.of(context);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final content = child ?? const SizedBox.shrink();
+        if (!controller.isLoading) {
+          return content;
+        }
+        return Stack(
+          children: [
+            content,
+            Positioned.fill(
+              child: Stack(
+                children: [
+                  const ModalBarrier(
+                    dismissible: false,
+                    color: Colors.black54,
+                  ),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            height: 28,
+                            width: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              valueColor: AlwaysStoppedAnimation(Colors.orangeAccent),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            controller.message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class App extends StatefulWidget {
   const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  final GlobalLoadingController _globalLoading = GlobalLoadingController();
 
   bool _isAdminish() {
     final role =
         Supabase.instance.client.auth.currentUser?.appMetadata['role'] as String?;
     return role == 'admin' || role == 'reviewer';
+  }
+
+  @override
+  void dispose() {
+    _globalLoading.dispose();
+    super.dispose();
   }
 
   @override
@@ -60,18 +194,22 @@ class App extends StatelessWidget {
           GoRouterRefreshStream(client.auth.onAuthStateChange.map((event) => event.session)),
     );
 
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'Pilgrimage',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-          isDense: true,
+    return GlobalLoadingScope(
+      controller: _globalLoading,
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        title: 'Pilgrimage',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorSchemeSeed: Colors.indigo,
+          inputDecorationTheme: const InputDecorationTheme(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
         ),
+        routerConfig: router,
+        builder: (context, child) => _GlobalLoadingOverlay(child: child),
       ),
-      routerConfig: router,
     );
   }
 }
@@ -109,9 +247,17 @@ class _LoginPageState extends State<LoginPage> {
     _loadBg();
   }
 
+  @override
+  void dispose() {
+    _email.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadBg() async {
     try {
       final data = await rootBundle.load('assets/images/web-bg.png');
+      if (!mounted) return;
       setState(() {
         _bg = data.buffer.asUint8List();
       });
@@ -121,6 +267,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
+    if (_loading) return;
+    final loading = GlobalLoadingScope.of(context);
+    final stopLoading = loading.start('Signing in...');
     setState(() {
       _error = null;
       _loading = true;
@@ -131,13 +280,22 @@ class _LoginPageState extends State<LoginPage> {
         email: _email.text.trim(),
         password: _password.text,
       );
-      if (mounted) context.go('/home');
+      if (!mounted) return;
+      loading.updateMessage('Loading home...');
+      context.go('/home');
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) {
+        setState(() => _error = e.message);
+      }
     } catch (e) {
-      setState(() => _error = 'Login failed: $e');
+      if (mounted) {
+        setState(() => _error = 'Login failed: $e');
+      }
     } finally {
-      setState(() => _loading = false);
+      stopLoading();
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -545,186 +703,250 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   bool _extracting = false;
   final ImagePicker _picker = ImagePicker();
 
+  @override
+  void dispose() {
+    _receiptNo.dispose();
+    _name.dispose();
+    _father.dispose();
+    _address.dispose();
+    _aadhaar.dispose();
+    _phone.dispose();
+    _whatsapp.dispose();
+    _dob.dispose();
+    _ageYears.dispose();
+    _heightCm.dispose();
+    _weightKg.dispose();
+    _trainClass.dispose();
+    _healthHeartMeds.dispose();
+    _healthBpMeds.dispose();
+    _healthDiabetesMeds.dispose();
+    _healthAsthmaMeds.dispose();
+    _healthOther.dispose();
+    _healthOtherMeds.dispose();
+    _emergencyName.dispose();
+    _emergencyFather.dispose();
+    _emergencyAge.dispose();
+    _emergencyAddress.dispose();
+    _emergencyPhone.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
+    if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
     if (!_declarationAccepted) {
-      setState(() {
-        _message = 'Please accept the declaration to submit.';
-      });
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _message = 'Creating registration…';
-    });
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-    if (user == null) {
-      if (mounted) context.go('/login');
-      setState(() => _busy = false);
-      return;
-    }
-
-    // Step 1: create registration first
-    late final String registrationId;
-    final signedAtIso = DateTime.now().toIso8601String();
-    final hasOtherCondition = _otherActive && _healthOther.text.trim().isNotEmpty;
-    final healthNone =
-        !(_healthHeart || _healthBp || _healthDiabetes || _healthAsthma || hasOtherCondition);
-    final healthHeartValue = healthNone ? false : _healthHeart;
-    final healthBpValue = healthNone ? false : _healthBp;
-    final healthDiabetesValue = healthNone ? false : _healthDiabetes;
-    final healthAsthmaValue = healthNone ? false : _healthAsthma;
-    final healthOtherValue = healthNone
-        ? null
-        : hasOtherCondition
-            ? _healthOther.text.trim()
-            : null;
-    try {
-      final result = await supabase.rpc('fn_create_registration', params: {
-        'p_owner': user.id,
-        'p_created_by': user.id,
-        'p_name_hi': _name.text.trim(),
-        'p_address_hi': _address.text.trim(),
-        'p_phone': _phone.text.trim(),
-        'p_declaration_accepted': _declarationAccepted,
-        'p_declaration_signed_at': signedAtIso,
-        'p_health_none': healthNone,
-        'p_health_heart': healthHeartValue,
-        'p_health_bp': healthBpValue,
-        'p_health_diabetes': healthDiabetesValue,
-        'p_health_asthma': healthAsthmaValue,
-        'p_health_other': healthOtherValue,
-      });
-      final createdId = result as String?;
-      if (createdId == null) {
-        throw Exception('Registration id missing');
+      if (mounted) {
+        setState(() {
+          _message = 'Please accept the declaration to submit.';
+        });
       }
-      registrationId = createdId;
-    } on PostgrestException catch (e) {
-      setState(() {
-        _busy = false;
-        _message = e.message;
-      });
-      return;
-    } catch (e) {
-      setState(() {
-        _busy = false;
-        _message = 'Could not create registration: $e';
-      });
       return;
     }
 
-    // Step 2: upload form image if present
-    String? formImagePath;
-    bool uploadFailed = false;
-    if (_formImage != null) {
+    final loading = GlobalLoadingScope.of(context);
+    final stopLoading = loading.start('Creating registration...');
+    if (mounted) {
       setState(() {
-        _message = 'Uploading form image…';
+        _busy = true;
+        _message = 'Creating registration...';
       });
+    }
+
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        if (mounted) context.go('/login');
+        return;
+      }
+
+      // Step 1: create registration first
+      late final String registrationId;
+      final signedAtIso = DateTime.now().toIso8601String();
+      final hasOtherCondition = _otherActive && _healthOther.text.trim().isNotEmpty;
+      final healthNone =
+          !(_healthHeart || _healthBp || _healthDiabetes || _healthAsthma || hasOtherCondition);
+      final healthHeartValue = healthNone ? false : _healthHeart;
+      final healthBpValue = healthNone ? false : _healthBp;
+      final healthDiabetesValue = healthNone ? false : _healthDiabetes;
+      final healthAsthmaValue = healthNone ? false : _healthAsthma;
+      final healthOtherValue = healthNone
+          ? null
+          : hasOtherCondition
+              ? _healthOther.text.trim()
+              : null;
       try {
-        final bytes = await File(_formImage!.path).readAsBytes();
-        final path = 'forms/registrations/$registrationId/form.jpg';
-        await supabase.storage.from('forms').uploadBinary(
-              path,
-              bytes,
-              fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
-            );
-        formImagePath = path;
-      } on PostgrestException catch (e) {
-        uploadFailed = true;
-        setState(() {
-          _message = 'Image upload failed (registration saved): ${e.message}';
+        final result = await supabase.rpc('fn_create_registration', params: {
+          'p_owner': user.id,
+          'p_created_by': user.id,
+          'p_name_hi': _name.text.trim(),
+          'p_address_hi': _address.text.trim(),
+          'p_phone': _phone.text.trim(),
+          'p_declaration_accepted': _declarationAccepted,
+          'p_declaration_signed_at': signedAtIso,
+          'p_health_none': healthNone,
+          'p_health_heart': healthHeartValue,
+          'p_health_bp': healthBpValue,
+          'p_health_diabetes': healthDiabetesValue,
+          'p_health_asthma': healthAsthmaValue,
+          'p_health_other': healthOtherValue,
         });
+        final createdId = result as String?;
+        if (createdId == null) {
+          throw Exception('Registration id missing');
+        }
+        registrationId = createdId;
+      } on PostgrestException catch (e) {
+        if (mounted) {
+          setState(() {
+            _message = e.message;
+          });
+        }
+        return;
       } catch (e) {
-        uploadFailed = true;
+        if (mounted) {
+          setState(() {
+            _message = 'Could not create registration: $e';
+          });
+        }
+        return;
+      }
+
+      // Step 2: upload form image if present
+      String? formImagePath;
+      bool uploadFailed = false;
+      if (_formImage != null) {
+        loading.updateMessage('Uploading form image...');
+        if (mounted) {
+          setState(() {
+            _message = 'Uploading form image...';
+          });
+        }
+        try {
+          final bytes = await File(_formImage!.path).readAsBytes();
+          final path = 'forms/registrations/$registrationId/form.jpg';
+          await supabase.storage.from('forms').uploadBinary(
+                path,
+                bytes,
+                fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
+              );
+          formImagePath = path;
+        } on PostgrestException catch (e) {
+          uploadFailed = true;
+          if (mounted) {
+            setState(() {
+              _message = 'Image upload failed (registration saved): ${e.message}';
+            });
+          }
+        } catch (e) {
+          uploadFailed = true;
+          if (mounted) {
+            setState(() {
+              _message = 'Image upload failed (registration saved): $e';
+            });
+          }
+        }
+      }
+
+      loading.updateMessage('Saving details...');
+      if (mounted) {
         setState(() {
-          _message = 'Image upload failed (registration saved): $e';
+          _message = 'Saving details...';
         });
       }
-    }
 
-    setState(() {
-      _message = 'Saving details…';
-    });
+      final patch = {
+        'receipt_no': _receiptNo.text.trim().isEmpty ? null : _receiptNo.text.trim(),
+        'name_hi': _name.text.trim(),
+        'father_name_hi': _father.text.trim().isEmpty ? null : _father.text.trim(),
+        'address_hi': _address.text.trim(),
+        'aadhaar_no': _aadhaar.text.trim().isEmpty ? null : _aadhaar.text.trim(),
+        'phone': _phone.text.trim(),
+        'whatsapp': _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
+        'dob': _dob.text.trim().isEmpty ? null : _dob.text.trim(),
+        'age_years': _ageYears.text.trim().isEmpty ? null : int.tryParse(_ageYears.text.trim()),
+        'height_cm': _heightCm.text.trim().isEmpty ? null : double.tryParse(_heightCm.text.trim()),
+        'weight_kg': _weightKg.text.trim().isEmpty ? null : double.tryParse(_weightKg.text.trim()),
+        'travel_mode': _travelMode,
+        'train_class': _trainClass.text.trim().isEmpty ? null : _trainClass.text.trim(),
+        'reservation_by': _reservationBy.isEmpty ? null : _reservationBy,
+        'health_none': healthNone,
+        'health_heart': healthHeartValue,
+        'health_heart_meds': healthHeartValue
+            ? (_healthHeartMeds.text.trim().isEmpty ? null : _healthHeartMeds.text.trim())
+            : null,
+        'health_bp': healthBpValue,
+        'health_bp_meds':
+            healthBpValue ? (_healthBpMeds.text.trim().isEmpty ? null : _healthBpMeds.text.trim()) : null,
+        'health_diabetes': healthDiabetesValue,
+        'health_diabetes_meds': healthDiabetesValue
+            ? (_healthDiabetesMeds.text.trim().isEmpty ? null : _healthDiabetesMeds.text.trim())
+            : null,
+        'health_asthma': healthAsthmaValue,
+        'health_asthma_meds': healthAsthmaValue
+            ? (_healthAsthmaMeds.text.trim().isEmpty ? null : _healthAsthmaMeds.text.trim())
+            : null,
+        'health_other': healthOtherValue,
+        'health_other_meds': healthOtherValue != null
+            ? (_healthOtherMeds.text.trim().isEmpty ? null : _healthOtherMeds.text.trim())
+            : null,
+        'emergency_contact_name':
+            _emergencyName.text.trim().isEmpty ? null : _emergencyName.text.trim(),
+        'emergency_contact_father_name':
+            _emergencyFather.text.trim().isEmpty ? null : _emergencyFather.text.trim(),
+        'emergency_contact_age_years':
+            _emergencyAge.text.trim().isEmpty ? null : int.tryParse(_emergencyAge.text.trim()),
+        'emergency_contact_address':
+            _emergencyAddress.text.trim().isEmpty ? null : _emergencyAddress.text.trim(),
+        'emergency_contact_phone':
+            _emergencyPhone.text.trim().isEmpty ? null : _emergencyPhone.text.trim(),
+        'attended_badarinath_2024': _attendedBadarinath2024,
+        'sadhu_sant_category': _sadhuSantCategory,
+        'declaration_accepted': _declarationAccepted,
+        'declaration_signed_at': signedAtIso,
+        'form_image_url': formImagePath,
+        'status': 'submitted',
+      };
 
-    final patch = {
-      'receipt_no': _receiptNo.text.trim().isEmpty ? null : _receiptNo.text.trim(),
-      'name_hi': _name.text.trim(),
-      'father_name_hi': _father.text.trim().isEmpty ? null : _father.text.trim(),
-      'address_hi': _address.text.trim(),
-      'aadhaar_no': _aadhaar.text.trim().isEmpty ? null : _aadhaar.text.trim(),
-      'phone': _phone.text.trim(),
-      'whatsapp': _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
-      'dob': _dob.text.trim().isEmpty ? null : _dob.text.trim(),
-      'age_years': _ageYears.text.trim().isEmpty ? null : int.tryParse(_ageYears.text.trim()),
-      'height_cm': _heightCm.text.trim().isEmpty ? null : double.tryParse(_heightCm.text.trim()),
-      'weight_kg': _weightKg.text.trim().isEmpty ? null : double.tryParse(_weightKg.text.trim()),
-      'travel_mode': _travelMode,
-      'train_class': _trainClass.text.trim().isEmpty ? null : _trainClass.text.trim(),
-      'reservation_by': _reservationBy.isEmpty ? null : _reservationBy,
-      'health_none': healthNone,
-      'health_heart': healthHeartValue,
-      'health_heart_meds':
-          healthHeartValue ? (_healthHeartMeds.text.trim().isEmpty ? null : _healthHeartMeds.text.trim()) : null,
-      'health_bp': healthBpValue,
-      'health_bp_meds': healthBpValue ? (_healthBpMeds.text.trim().isEmpty ? null : _healthBpMeds.text.trim()) : null,
-      'health_diabetes': healthDiabetesValue,
-      'health_diabetes_meds':
-          healthDiabetesValue
-              ? (_healthDiabetesMeds.text.trim().isEmpty ? null : _healthDiabetesMeds.text.trim())
-              : null,
-      'health_asthma': healthAsthmaValue,
-      'health_asthma_meds':
-          healthAsthmaValue ? (_healthAsthmaMeds.text.trim().isEmpty ? null : _healthAsthmaMeds.text.trim()) : null,
-      'health_other': healthOtherValue,
-      'health_other_meds':
-          healthOtherValue != null
-              ? (_healthOtherMeds.text.trim().isEmpty ? null : _healthOtherMeds.text.trim())
-              : null,
-      'emergency_contact_name': _emergencyName.text.trim().isEmpty ? null : _emergencyName.text.trim(),
-      'emergency_contact_father_name': _emergencyFather.text.trim().isEmpty ? null : _emergencyFather.text.trim(),
-      'emergency_contact_age_years':
-          _emergencyAge.text.trim().isEmpty ? null : int.tryParse(_emergencyAge.text.trim()),
-      'emergency_contact_address': _emergencyAddress.text.trim().isEmpty ? null : _emergencyAddress.text.trim(),
-      'emergency_contact_phone': _emergencyPhone.text.trim().isEmpty ? null : _emergencyPhone.text.trim(),
-      'attended_badarinath_2024': _attendedBadarinath2024,
-      'sadhu_sant_category': _sadhuSantCategory,
-      'declaration_accepted': _declarationAccepted,
-      'declaration_signed_at': signedAtIso,
-      'form_image_url': formImagePath,
-      'status': 'submitted',
-    };
-
-    try {
-      await supabase.rpc('fn_update_registration', params: {
-        'p_id': registrationId,
-        'p_patch': patch,
-      });
-      setState(() {
-        _busy = false;
-        _message = uploadFailed
-            ? 'Registration submitted; form image upload failed.'
-            : formImagePath != null
-                ? 'Registration submitted with form image.'
-                : 'Registration submitted (no form image uploaded).';
-      });
-    } on PostgrestException catch (e) {
-      setState(() {
-        _busy = false;
-        _message = 'Registration saved but details update failed: ${e.message}';
-      });
-    } catch (e) {
-      setState(() {
-        _busy = false;
-        _message = 'Registration saved but details update failed: $e';
-      });
+      try {
+        await supabase.rpc('fn_update_registration', params: {
+          'p_id': registrationId,
+          'p_patch': patch,
+        });
+        if (mounted) {
+          setState(() {
+            _message = uploadFailed
+                ? 'Registration submitted; form image upload failed.'
+                : formImagePath != null
+                    ? 'Registration submitted with form image.'
+                    : 'Registration submitted (no form image uploaded).';
+          });
+        }
+      } on PostgrestException catch (e) {
+        if (mounted) {
+          setState(() {
+            _message = 'Registration saved but details update failed: ${e.message}';
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _message = 'Registration saved but details update failed: $e';
+          });
+        }
+      }
+    } finally {
+      stopLoading();
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   Future<void> _captureFormImage() async {
     try {
       final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (!mounted) return;
       if (picked != null) {
         setState(() => _formImage = picked);
       }
@@ -743,6 +965,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       _extracting = true;
     });
     await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
     setState(() {
       _name.text = _name.text.isEmpty ? 'राम कुमार' : _name.text;
       _address.text = _address.text.isEmpty ? 'पुरी, ओडिशा' : _address.text;

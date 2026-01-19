@@ -5,6 +5,7 @@
 -- =====================================================================
 
 -- NOTE: This file consolidates the bootstrap plus all migrations and includes address lookup seeds.
+-- Last updated: 2026-01-19 (UI-only changes; no schema updates required for mobile photo capture).
 -- Run this file in the Supabase SQL editor for a full setup.
 
 begin;

@@ -1,6 +1,6 @@
 # Pilgrimage / Yatra Project — Progress & Next Steps Log
 
-_Last updated: 2026-01-02_
+_Last updated: 2026-01-19_
 
 Note: This document is the current source of truth; older versions are obsolete.
 
@@ -45,7 +45,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Next.js Scaffold | ✅ | App Router + Tailwind v4, strict TS. |
 | Supabase Auth Integration | ✅ | Email/password login (`/login`), middleware redirects unauthenticated users. |
 | Dashboard | ✅ | Status tiles (inline styled) with banner header. |
-| Yatris CRUD | ✅ | `/yatris` list with filters + column search, multi-format export, inline photo upload; `/yatris/[id]` detail + full PDF-aligned quick edit + uploads + approve/reject RPC; `/yatris/new` full PDF form (declaration required) using create+patch RPCs. |
+| Yatris CRUD | ✅ | `/yatris` list with filters + column search, multi-format export, inline photo upload; `/yatris/[id]` detail + full PDF-aligned quick edit + uploads + approve/reject RPC; `/yatris/new` full PDF form (declaration required) using create+patch RPCs; global loader + save redirect to list + mobile photo capture. |
 | Users | ✅ | `/users` admin-only profile table. |
 | Styling | ⚙️ Mixed | Some views use inline styling to bypass dev CSS issues; align via shared styles next. |
 
@@ -122,6 +122,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 ## 📝 Update Log
 | Date | Update |
 |------|---------|
+| 2026-01-19 | Added global loader for save/navigation actions, save changes redirects back to Yatris list, and mobile-only camera capture option for photo uploads. |
 | 2026-01-09 | Analytics dashboard + Operations hub shipped; reports builder cleaned up with 12px padding and print-ready exports; volunteer CRUD moved behind API; default status now approved; admin/cloud builds pass. |
 | 2026-01-02 | Consolidated Supabase schema into single safe SQL file and signed download URLs for private photo thumbnails in Yatris grid. |
 | 2026-01-02 | Yatris grid refinement: table spacing, column search, multi-format export (CSV/Excel/PDF), inline photo upload; orchestrator CORS enabled for browser clients. |
