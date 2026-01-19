@@ -93,9 +93,9 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Mobile — Login (`/login`)
 - UI Layout: Fullscreen gradient/bg image; email/password text fields; error text; Sign in button; seeded creds hint.
-- Functional: `supabase.auth.signInWithPassword`; on success navigate to `/home`.
+- Functional: `supabase.auth.signInWithPassword`; global loading overlay shows sign-in/navigation progress; on success navigate to `/home`.
 - Data: Supabase Auth only.
-- Validation: Fields required; disable while loading.
+- Validation: Fields required; disable while loading; duplicate submits blocked.
 - Errors: Displays `AuthException` message or generic failure.
 - Acceptance: Valid creds land on home; invalid shows error; unauthenticated routes redirect to login via router guard.
 
@@ -109,7 +109,7 @@ Note: This document is the current source of truth; older versions are obsolete.
 
 ### Mobile — Registration Form (`/registration`)
 - UI Layout: Full PDF form including receipt_no, name/father/address (required), aadhaar, phone/whatsapp, DOB/age/height/weight, travel_mode dropdown, train_class, reservation_by dropdown, medical switches with meds textfields disabled/cleared when off, other condition+meds toggle, emergency contact (name/father/age/address/phone), additional questions, required declaration checkbox, optional form photo preview, “Extract & Fill (mock)” button, bottom submit.
-- Functional: Two-step submit. Step 1 creates minimal row via `fn_create_registration` (owner/created_by, required fields, declaration timestamp, health flags) with status `submitted`. Step 2 (optional) uploads form image to `forms/registrations/<id>/form.jpg` (upsert). Step 3 patches all fields + `form_image_url` via `fn_update_registration` (includes meds clearing, status submitted). Mock extract fills sample data for new fields.
+- Functional: Two-step submit. Step 1 creates minimal row via `fn_create_registration` (owner/created_by, required fields, declaration timestamp, health flags) with status `submitted`. Step 2 (optional) uploads form image to `forms/registrations/<id>/form.jpg` (upsert). Step 3 patches all fields + `form_image_url` via `fn_update_registration` (includes meds clearing, status submitted). Global loading overlay shows create/upload/save progress and blocks duplicate submits. Mock extract fills sample data for new fields.
 - Data: `yatra_registrations`; Storage `forms`; mock OCR filler (no orchestrator).
 - Validation: Required: name, address, phone, declaration accepted, health selection. Age/emergency age bounded; meds disabled when switch off; travel defaults train/self but editable.
 - Errors: Upload failure noted in message (registration still saved); camera failure uses snackbar.

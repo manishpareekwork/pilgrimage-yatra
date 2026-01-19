@@ -58,6 +58,7 @@ This document tracks all progress, configuration milestones, and next planned ac
 | Supabase SDK Integration | ✅ | `supabase_flutter`, `go_router`, `flutter_dotenv` wired with `.env` loader. |
 | Auth Screen | ✅ | Email/password login. |
 | Registration Form | ✅ | Full PDF-aligned fields with medical toggles, reservation_by, declaration required; create → optional upload → patch flow storing `form_image_url`. |
+| Global Loading | ✅ | Full-screen overlay for login and registration submit; progress messages and duplicate-submit guard. |
 | Admin Tab | ✅ | Role-gated list/detail; read-only detail shows all fields; approval wiring still pending. |
 
 ---

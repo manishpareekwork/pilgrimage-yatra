@@ -15,6 +15,12 @@ type Card = {
   requireAdmin?: boolean;
 };
 
+type CardGroup = {
+  title: string;
+  description: string;
+  cards: Card[];
+};
+
 const operationsCards: Card[] = [
   {
     title: "Yatris",
@@ -205,21 +211,16 @@ const masterCards: Card[] = [
 ];
 
 const renderCards = (cards: Card[]) => (
-  <div className="grid gap-4 justify-start justify-items-start [grid-template-columns:repeat(auto-fit,minmax(200px,200px))]">
+  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
     {cards.map((card) => (
       <div
         key={card.href}
-        className="card card--hover p-0 overflow-hidden grid grid-rows-[3fr_1fr] justify-self-start"
-        style={{
-          width: "200px",
-          height: "160px",
-          borderRadius: "8px",
-        }}
+        className="card card--hover grid min-h-[176px] grid-rows-[1fr_auto] overflow-hidden p-0"
       >
         <div
           className="relative h-full"
           style={{
-            padding: "12px",
+            padding: "14px",
             backgroundImage: card.background,
           }}
         >
@@ -250,25 +251,35 @@ const renderCards = (cards: Card[]) => (
           </div>
         </div>
         <div
-          className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] bg-[color:var(--surface-muted)]"
-          style={{
-            paddingTop: "5px",
-            paddingRight: "12px",
-            paddingBottom: "8px",
-            paddingLeft: "12px",
-          }}
+          className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-2.5"
         >
-          <Link href={card.href} className="btn-secondary" style={{ padding: "8px" }}>
+          <Link href={card.href} className="btn-secondary px-2.5 py-1.5 text-[11px]">
             View list
           </Link>
           <Link
             href={`${card.href}?mode=edit`}
-            className="btn-secondary"
-            style={{ padding: "8px" }}
+            className="btn-secondary px-2.5 py-1.5 text-[11px]"
           >
             Edit list
           </Link>
         </div>
+      </div>
+    ))}
+  </div>
+);
+
+const renderCardGroups = (groups: CardGroup[]) => (
+  <div className="space-y-5">
+    {groups.map((group) => (
+      <div
+        key={group.title}
+        className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/70 p-4 sm:p-5"
+      >
+        <div className="mb-4 space-y-1">
+          <div className="text-sm font-semibold text-[color:var(--ink)]">{group.title}</div>
+          <div className="text-xs text-[color:var(--muted)]">{group.description}</div>
+        </div>
+        {renderCards(group.cards)}
       </div>
     ))}
   </div>
@@ -283,6 +294,38 @@ export default async function MastersPage() {
   );
   const visibleMasters = masterCards;
   const moduleCount = visibleOperations.length + visibleMasters.length;
+  const operationsGroups: CardGroup[] = [
+    {
+      title: "Core operations",
+      description: "Registrations, groups, and booking oversight.",
+      cards: visibleOperations.filter((card) =>
+        ["Yatris", "Groups", "Bookings"].includes(card.title)
+      ),
+    },
+    {
+      title: "People & access",
+      description: "Volunteer coordination and staff provisioning.",
+      cards: visibleOperations.filter((card) =>
+        ["Volunteers", "Users"].includes(card.title)
+      ),
+    },
+  ].filter((group) => group.cards.length > 0);
+  const masterGroups: CardGroup[] = [
+    {
+      title: "Travel masters",
+      description: "Stations, trains, trips, and stop schedules.",
+      cards: visibleMasters.filter((card) =>
+        ["Stations", "Trains", "Trips", "Train Stops"].includes(card.title)
+      ),
+    },
+    {
+      title: "Hospitality & buckets",
+      description: "Accommodation inventory and yatri grouping buckets.",
+      cards: visibleMasters.filter((card) =>
+        ["Hotels & Rooms", "Yatri Buckets"].includes(card.title)
+      ),
+    },
+  ].filter((group) => group.cards.length > 0);
 
   return (
     <div className="space-y-6">
@@ -322,14 +365,14 @@ export default async function MastersPage() {
         <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted)]">
           Operations
         </div>
-        {renderCards(visibleOperations)}
+        {renderCardGroups(operationsGroups)}
       </section>
 
       <section className="space-y-3">
         <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted)]">
           Master data
         </div>
-        {renderCards(visibleMasters)}
+        {renderCardGroups(masterGroups)}
       </section>
     </div>
   );
