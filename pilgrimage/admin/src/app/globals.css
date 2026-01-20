@@ -1114,93 +1114,28 @@ a {
     backdrop-filter: blur(10px);
   }
 
-  .upload-cell {
+  .yatri-image-cell {
     display: flex;
-    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 6px;
   }
 
-  .upload-cell--stacked {
-    align-items: flex-start;
-  }
-
-  .upload-preview {
-    display: flex;
+  .yatri-image-thumb {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface-muted);
+    object-fit: cover;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .upload-preview__meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-
-  .upload-preview__label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--ink);
-  }
-
-  .upload-preview__status {
-    font-size: 10px;
+    justify-content: center;
     color: var(--muted);
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
   }
 
-  .upload-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .upload-actions--stacked {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .upload-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .upload-badge {
-    border-radius: 999px;
-    border: 1px solid transparent;
-    padding: 2px 8px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-
-  .upload-badge--ok {
-    border-color: rgba(16, 185, 129, 0.45);
-    background: rgba(16, 185, 129, 0.12);
-    color: #10b981;
-  }
-
-  .upload-badge--missing {
-    border-color: rgba(248, 113, 113, 0.4);
-    background: rgba(248, 113, 113, 0.12);
-    color: #f87171;
-  }
-
-  .dark .upload-badge--ok {
-    border-color: rgba(52, 211, 153, 0.45);
-    background: rgba(16, 185, 129, 0.18);
-    color: #34d399;
-  }
-
-  .dark .upload-badge--missing {
-    border-color: rgba(251, 113, 133, 0.45);
-    background: rgba(248, 113, 113, 0.18);
-    color: #fda4af;
+  .yatri-image-thumb--empty {
+    border-style: dashed;
   }
 
   .yatri-card {
@@ -1268,13 +1203,6 @@ a {
   .yatri-card__phone {
     font-size: 12px;
     color: var(--muted);
-  }
-
-  .yatri-card__uploads {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
   }
 
   .yatri-card__meta {

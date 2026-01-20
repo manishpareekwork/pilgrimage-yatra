@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition
 import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
-import { useCaptureOption } from "@/lib/useCaptureOption";
 import type { ExportPayload, ExportResult } from "./actions";
 import {
   COLUMN_FILTER_KEYS,
@@ -132,12 +131,6 @@ const FilterIcon = ({ className }: { className?: string }) => (
       strokeWidth="1.4"
     />
   </svg>
-);
-
-const UploadBadge = ({ label, active }: { label: string; active: boolean }) => (
-  <span className={`upload-badge ${active ? "upload-badge--ok" : "upload-badge--missing"}`}>
-    {label}
-  </span>
 );
 
 const formatDateTime = (value?: string | null) => {
@@ -390,7 +383,6 @@ export function YatrisGrid({
   const router = useRouter();
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const { startLoading, startNavigation } = useGlobalLoading();
-  const showCaptureOption = useCaptureOption();
   const orchestratorUrl = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL;
   const [isPending, startTransition] = useTransition();
   const [searchValue, setSearchValue] = useState(filters.q);
@@ -406,8 +398,6 @@ export function YatrisGrid({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("csv");
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
-  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<Record<string, { path: string; url: string }>>({});
   const [categoryOptions, setCategoryOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -749,9 +739,9 @@ export function YatrisGrid({
     );
   };
 
-  const signUrl = async (action: "upload" | "download", bucket: "photos", object: string) => {
+  const signUrl = async (action: "download", bucket: "photos", object: string) => {
     if (!orchestratorUrl) {
-      throw new Error("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
+      throw new Error("Image previews are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
     }
     const { data: session } = await supabase.auth.getSession();
     const token = session.session?.access_token;
@@ -775,57 +765,6 @@ export function YatrisGrid({
     }
     const json = await res.json();
     return json.signedUrl as string;
-  };
-
-  const handlePhotoUpload = async (row: YatriRow, file: File) => {
-    if (!orchestratorUrl) {
-      setUploadMessage("Uploads are disabled. Configure NEXT_PUBLIC_ORCHESTRATOR_URL.");
-      return;
-    }
-    setUploadMessage(null);
-    setUploadingPhotoId(row.id);
-    const stopLoading = startLoading("Uploading photo...");
-    try {
-      const object = `photos/registrations/${row.id}/photo.jpg`;
-      const uploadUrl = await signUrl("upload", "photos", object);
-      const put = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-        body: file,
-      });
-      if (!put.ok) throw new Error("Upload failed");
-
-      const { error } = await supabase.rpc("fn_update_registration", {
-        p_id: row.id,
-        p_patch: { photo_url: object },
-      });
-      if (error) throw error;
-
-      const { data: session } = await supabase.auth.getSession();
-      const actor = session.session?.user.id;
-      if (actor) {
-        await supabase.rpc("fn_create_review", {
-          p_registration_id: row.id,
-          p_action: "edit",
-          p_diff: { event: "photo_upload", prev: row.photo_url, next: object },
-          p_actor: actor,
-        });
-      }
-
-      router.refresh();
-    } catch (err) {
-      setUploadMessage(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      stopLoading();
-      setUploadingPhotoId(null);
-    }
-  };
-
-  const onPhotoInputChange = (row: YatriRow) => async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    await handlePhotoUpload(row, file);
-    event.target.value = "";
   };
 
   const updateCategory = useCallback(async (row: YatriRow, categoryId: string) => {
@@ -948,150 +887,32 @@ export function YatrisGrid({
       },
       uploads: {
         id: "uploads",
-        label: "Uploads",
+        label: "Image",
         cell: (row) => {
-          const isUploading = uploadingPhotoId === row.id;
           const rawPhotoPath = row.photo_url ?? "";
           const cachedPreview = photoPreviewUrls[row.id];
           const signedUrl = cachedPreview?.path === rawPhotoPath ? cachedPreview.url : "";
           const directUrl = rawPhotoPath.startsWith("http") ? rawPhotoPath : "";
           const previewUrl = signedUrl || directUrl;
           const isLoadingPreview = Boolean(rawPhotoPath) && !previewUrl && Boolean(orchestratorUrl);
-          const isDisabled = isUploading;
-          const statusBadges = (
-            <div className="upload-status">
-              <UploadBadge label="Photo" active={Boolean(row.photo_url)} />
-              <UploadBadge label="Form" active={Boolean(row.form_image_url)} />
-            </div>
-          );
-          if (row.photo_url) {
-            return (
-              <div className="upload-cell">
-                <div className="upload-preview">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
-                      className="h-9 w-9 rounded-lg border border-[color:var(--border)] object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
-                      {isLoadingPreview ? (
-                        <ChakraSpinner className="h-4 w-4" title="Loading" />
-                      ) : (
-                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
-                          <rect
-                            x="1.5"
-                            y="2"
-                            width="9"
-                            height="8"
-                            rx="1.5"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                          />
-                          <circle cx="4.2" cy="5" r="1" fill="currentColor" />
-                          <path
-                            d="M2.5 9l2.3-2 2 1.4 2.2-2"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  )}
-                  <div className="upload-preview__meta">
-                    <span className="upload-preview__label">Photo</span>
-                    {isLoadingPreview && <span className="upload-preview__status">Loading</span>}
-                  </div>
-                </div>
-                {statusBadges}
-              </div>
-            );
-          }
           return (
-            <div className={`upload-cell ${showCaptureOption ? "upload-cell--stacked" : ""}`}>
-              <div className={`upload-actions ${showCaptureOption ? "upload-actions--stacked" : ""}`}>
-                <label
-                  className={`upload-action flex items-center gap-2 ${
-                    isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
-                  }`}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png"
-                    className="sr-only"
-                    disabled={isDisabled}
-                    onChange={onPhotoInputChange(row)}
-                  />
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
-                    {isUploading ? (
-                      <ChakraSpinner className="h-4 w-4" title="Uploading" />
-                    ) : (
-                      <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
-                        <path
-                          d="M6 2.5v7M2.5 6h7"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.4"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-[color:var(--muted)]">
-                    {isUploading ? "Uploading..." : showCaptureOption ? "Upload photo" : "Add photo"}
-                  </span>
-                </label>
-                {showCaptureOption && (
-                  <label
-                    className={`upload-action flex items-center gap-2 ${
-                      isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
-                    }`}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="sr-only"
-                      disabled={isDisabled}
-                      onChange={onPhotoInputChange(row)}
-                    />
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
-                      {isUploading ? (
-                        <ChakraSpinner className="h-4 w-4" title="Uploading" />
-                      ) : (
-                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
-                          <path
-                            d="M6 2.5v7M2.5 6h7"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="1.4"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-[color:var(--muted)]">
-                      {isUploading ? "Uploading..." : "Capture photo"}
-                    </span>
-                  </label>
-                )}
-              </div>
-              {statusBadges}
+            <div className="yatri-image-cell">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt={row.name_hi ? `${row.name_hi} image` : "Yatri image"}
+                  className="yatri-image-thumb"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="yatri-image-thumb yatri-image-thumb--empty">
+                  {isLoadingPreview && <ChakraSpinner className="h-4 w-4" title="Loading" />}
+                </div>
+              )}
             </div>
           );
         },
-        exportValue: (row) =>
-          `Photo: ${row.photo_url ? "Yes" : "No"}; Form: ${row.form_image_url ? "Yes" : "No"}`,
+        exportValue: (row) => (row.photo_url ? "Yes" : "No"),
       },
       receipt_no: {
         id: "receipt_no",
@@ -1150,11 +971,8 @@ export function YatrisGrid({
     };
   }, [
     renderRowActions,
-    uploadingPhotoId,
     photoPreviewUrls,
     orchestratorUrl,
-    showCaptureOption,
-    onPhotoInputChange,
     categoryOptions,
     updateCategory,
   ]);
@@ -1519,7 +1337,7 @@ export function YatrisGrid({
           <div className="summary-label">Uploads missing (page)</div>
           <div className="summary-value">{formatCount(pageStats.missingAny)}</div>
           <div className="summary-sub">
-            Photo {formatCount(pageStats.missingPhoto)} | Form {formatCount(pageStats.missingForm)}
+            Image {formatCount(pageStats.missingPhoto)} | Form {formatCount(pageStats.missingForm)}
           </div>
         </div>
         <div className="yatris-summary-card">
@@ -1640,11 +1458,11 @@ export function YatrisGrid({
                 updateParams({ missing: value, page: 1 });
               }}
             >
-              <option value="">All uploads</option>
-              <option value="photo">Missing photo</option>
-              <option value="form">Missing form</option>
-              <option value="any">Missing any</option>
-            </Select>
+                <option value="">All uploads</option>
+                <option value="photo">Missing image</option>
+                <option value="form">Missing form</option>
+                <option value="any">Missing any</option>
+              </Select>
           </div>
           <div className="filters-field filters-field--dates">
             <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
@@ -1741,12 +1559,6 @@ export function YatrisGrid({
       {exportMessage && (
         <div className="card px-4 py-3 text-sm text-amber-200 border border-amber-500/40 bg-amber-950/30">
           {exportMessage}
-        </div>
-      )}
-
-      {uploadMessage && (
-        <div className="card px-4 py-3 text-sm text-rose-200 border border-rose-500/40 bg-rose-950/30">
-          {uploadMessage}
         </div>
       )}
 
@@ -1939,7 +1751,7 @@ export function YatrisGrid({
                           {previewUrl ? (
                             <img
                               src={previewUrl}
-                              alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
+                              alt={row.name_hi ? `${row.name_hi} image` : "Yatri image"}
                               className="yatri-card__avatar-image"
                               loading="lazy"
                             />
@@ -1951,10 +1763,6 @@ export function YatrisGrid({
                           <div className="yatri-card__name">{row.name_hi || "--"}</div>
                           <div className="yatri-card__phone">{row.phone || "--"}</div>
                         </div>
-                      </div>
-                      <div className="yatri-card__uploads">
-                        <UploadBadge label="Photo" active={Boolean(row.photo_url)} />
-                        <UploadBadge label="Form" active={Boolean(row.form_image_url)} />
                       </div>
                     </div>
                     <div className="yatri-card__meta">
