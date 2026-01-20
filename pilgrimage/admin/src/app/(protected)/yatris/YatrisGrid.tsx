@@ -134,6 +134,12 @@ const FilterIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const UploadBadge = ({ label, active }: { label: string; active: boolean }) => (
+  <span className={`upload-badge ${active ? "upload-badge--ok" : "upload-badge--missing"}`}>
+    {label}
+  </span>
+);
+
 const formatDateTime = (value?: string | null) => {
   if (!value) return "--";
   const date = new Date(value);
@@ -147,6 +153,8 @@ const formatDate = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) return "--";
   return date.toLocaleDateString("en-GB");
 };
+
+const formatCount = (value: number) => value.toLocaleString("en-IN");
 
 const maskAadhaar = (value: string | null, includeFull: boolean) => {
   if (!value) return "--";
@@ -595,7 +603,7 @@ export function YatrisGrid({
             closeAllDetails();
             setOpenRowMenuId((prev) => (prev === row.id ? null : row.id));
           }}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
+          className="row-action-trigger inline-flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
         >
           <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" aria-hidden="true">
             <circle cx="10" cy="4" r="1.6" fill="currentColor" />
@@ -606,7 +614,7 @@ export function YatrisGrid({
         {isOpen && (
           <div
             role="menu"
-            className="absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-lg"
+            className="row-action-menu absolute right-0 top-full z-50 mt-2 w-44 rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-2 shadow-lg"
           >
             <div className="space-y-1">
               <Link
@@ -940,7 +948,7 @@ export function YatrisGrid({
       },
       uploads: {
         id: "uploads",
-        label: "Photo",
+        label: "Uploads",
         cell: (row) => {
           const isUploading = uploadingPhotoId === row.id;
           const rawPhotoPath = row.photo_url ?? "";
@@ -950,96 +958,78 @@ export function YatrisGrid({
           const previewUrl = signedUrl || directUrl;
           const isLoadingPreview = Boolean(rawPhotoPath) && !previewUrl && Boolean(orchestratorUrl);
           const isDisabled = isUploading;
+          const statusBadges = (
+            <div className="upload-status">
+              <UploadBadge label="Photo" active={Boolean(row.photo_url)} />
+              <UploadBadge label="Form" active={Boolean(row.form_image_url)} />
+            </div>
+          );
           if (row.photo_url) {
             return (
-              <div className="flex items-center justify-center gap-2">
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
-                    className="h-8 w-8 rounded-md border border-[color:var(--border)] object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
-                    {isLoadingPreview ? (
-                      <ChakraSpinner className="h-4 w-4" title="Loading" />
-                    ) : (
-                      <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
-                        <rect
-                          x="1.5"
-                          y="2"
-                          width="9"
-                          height="8"
-                          rx="1.5"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                        />
-                        <circle cx="4.2" cy="5" r="1" fill="currentColor" />
-                        <path
-                          d="M2.5 9l2.3-2 2 1.4 2.2-2"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
+              <div className="upload-cell">
+                <div className="upload-preview">
+                  {previewUrl ? (
+                    <img
+                      src={previewUrl}
+                      alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
+                      className="h-9 w-9 rounded-lg border border-[color:var(--border)] object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                      {isLoadingPreview ? (
+                        <ChakraSpinner className="h-4 w-4" title="Loading" />
+                      ) : (
+                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
+                          <rect
+                            x="1.5"
+                            y="2"
+                            width="9"
+                            height="8"
+                            rx="1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                          />
+                          <circle cx="4.2" cy="5" r="1" fill="currentColor" />
+                          <path
+                            d="M2.5 9l2.3-2 2 1.4 2.2-2"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                  )}
+                  <div className="upload-preview__meta">
+                    <span className="upload-preview__label">Photo</span>
+                    {isLoadingPreview && <span className="upload-preview__status">Loading</span>}
                   </div>
-                )}
-                <span className="text-[11px] text-[color:var(--ink)]">Photo</span>
+                </div>
+                {statusBadges}
               </div>
             );
           }
           return (
-            <div className={showCaptureOption ? "flex flex-col items-center gap-1.5" : "flex items-center justify-center gap-2"}>
-              <label
-                className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  className="sr-only"
-                  disabled={isDisabled}
-                  onChange={onPhotoInputChange(row)}
-                />
-                <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
-                  {isUploading ? (
-                    <ChakraSpinner className="h-4 w-4" title="Uploading" />
-                  ) : (
-                    <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
-                      <path
-                        d="M6 2.5v7M2.5 6h7"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.4"
-                      />
-                    </svg>
-                  )}
-                </div>
-                <span className="text-[11px] text-[color:var(--muted)]">
-                  {isUploading ? "Uploading..." : showCaptureOption ? "Upload photo" : "Add photo"}
-                </span>
-              </label>
-              {showCaptureOption && (
+            <div className={`upload-cell ${showCaptureOption ? "upload-cell--stacked" : ""}`}>
+              <div className={`upload-actions ${showCaptureOption ? "upload-actions--stacked" : ""}`}>
                 <label
-                  className={`flex items-center gap-2 ${isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+                  className={`upload-action flex items-center gap-2 ${
+                    isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                  }`}
                   onClick={(event) => event.stopPropagation()}
                 >
                   <input
                     type="file"
-                    accept="image/*"
-                    capture="environment"
+                    accept="image/jpeg,image/png"
                     className="sr-only"
                     disabled={isDisabled}
                     onChange={onPhotoInputChange(row)}
                   />
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
                     {isUploading ? (
                       <ChakraSpinner className="h-4 w-4" title="Uploading" />
                     ) : (
@@ -1056,10 +1046,47 @@ export function YatrisGrid({
                     )}
                   </div>
                   <span className="text-[11px] text-[color:var(--muted)]">
-                    {isUploading ? "Uploading..." : "Capture photo"}
+                    {isUploading ? "Uploading..." : showCaptureOption ? "Upload photo" : "Add photo"}
                   </span>
                 </label>
-              )}
+                {showCaptureOption && (
+                  <label
+                    className={`upload-action flex items-center gap-2 ${
+                      isDisabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"
+                    }`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      disabled={isDisabled}
+                      onChange={onPhotoInputChange(row)}
+                    />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-dashed border-[color:var(--border)] bg-[color:var(--surface-muted)] text-[color:var(--muted)]">
+                      {isUploading ? (
+                        <ChakraSpinner className="h-4 w-4" title="Uploading" />
+                      ) : (
+                        <svg viewBox="0 0 12 12" className="h-3.5 w-3.5" aria-hidden="true">
+                          <path
+                            d="M6 2.5v7M2.5 6h7"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.4"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-[color:var(--muted)]">
+                      {isUploading ? "Uploading..." : "Capture photo"}
+                    </span>
+                  </label>
+                )}
+              </div>
+              {statusBadges}
             </div>
           );
         },
@@ -1126,6 +1153,7 @@ export function YatrisGrid({
     uploadingPhotoId,
     photoPreviewUrls,
     orchestratorUrl,
+    showCaptureOption,
     onPhotoInputChange,
     categoryOptions,
     updateCategory,
@@ -1247,6 +1275,24 @@ export function YatrisGrid({
     setViews([...DEFAULT_VIEWS, ...updated]);
   };
 
+  const pageStats = useMemo(() => {
+    const missingPhoto = rows.filter((row) => !row.photo_url).length;
+    const missingForm = rows.filter((row) => !row.form_image_url).length;
+    const missingAny = rows.filter((row) => !row.photo_url || !row.form_image_url).length;
+    return { missingPhoto, missingForm, missingAny };
+  }, [rows]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (localFilters.q) count += 1;
+    if (localFilters.travel_mode) count += 1;
+    if (localFilters.date_from) count += 1;
+    if (localFilters.date_to) count += 1;
+    if (localFilters.missing) count += 1;
+    count += Object.keys(localFilters.columnFilters ?? {}).length;
+    return count;
+  }, [localFilters]);
+
   const pageCount = Math.max(1, Math.ceil(totalCount / pageSize));
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(totalCount, page * pageSize);
@@ -1365,10 +1411,12 @@ export function YatrisGrid({
   }, [views, recentView]);
 
   return (
-    <div className="yatris-grid flex flex-col gap-6">
+    <div className="yatris-grid yatris-list flex flex-col gap-6">
       <PageHeader
         className="relative z-30 overflow-visible yatris-hero"
         title="Yatris"
+        subtitle="Review registrations, uploads, and travel details in one view."
+        kicker="Pilgrimage Ops"
         actions={
           <div className="header-actions flex flex-wrap items-center gap-2">
             <details
@@ -1459,153 +1507,190 @@ export function YatrisGrid({
         }
       />
 
-      <div className="card relative z-20 p-6 space-y-4 overflow-visible filters-compact">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-72 lg:w-80">
-              <TextInput
-                placeholder="Search name, phone, receipt"
-                value={searchValue}
-                onChange={(event) => setSearchValue(event.target.value)}
-              />
-            </div>
-            <div className="w-full sm:w-40">
-              <Select
-                value={localFilters.travel_mode}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setLocalFilters({ ...localFilters, travel_mode: value });
-                  updateParams({ travel_mode: value, page: 1 });
-                }}
-              >
-                <option value="">All travel</option>
-                <option value="train">Train</option>
-                <option value="air">Air</option>
-              </Select>
-            </div>
-            <div className="w-full sm:w-40">
-              <Select
-                value={localFilters.missing}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setLocalFilters({ ...localFilters, missing: value });
-                  updateParams({ missing: value, page: 1 });
-                }}
-              >
-                <option value="">All uploads</option>
-                <option value="photo">Missing photo</option>
-                <option value="form">Missing form</option>
-                <option value="any">Missing any</option>
-              </Select>
-            </div>
-            <div className="w-full sm:w-72 lg:w-80">
-              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                <TextInput
-                  type="date"
-                  value={toDateInput(localFilters.date_from)}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setLocalFilters({ ...localFilters, date_from: value });
-                    updateParams({ date_from: value, page: 1 });
-                  }}
-                  className="filters-date-input"
-                />
-                <span className="text-xs text-[color:var(--muted)]">to</span>
-                <TextInput
-                  type="date"
-                  value={toDateInput(localFilters.date_to)}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setLocalFilters({ ...localFilters, date_to: value });
-                    updateParams({ date_to: value, page: 1 });
-                  }}
-                  className="filters-date-input"
-                />
-              </div>
+      <div className="yatris-summary-grid">
+        <div className="yatris-summary-card">
+          <div className="summary-label">Total registrations</div>
+          <div className="summary-value">{formatCount(totalCount)}</div>
+          <div className="summary-sub">
+            Showing {formatCount(rangeStart)}-{formatCount(rangeEnd)}
+          </div>
+        </div>
+        <div className="yatris-summary-card">
+          <div className="summary-label">Uploads missing (page)</div>
+          <div className="summary-value">{formatCount(pageStats.missingAny)}</div>
+          <div className="summary-sub">
+            Photo {formatCount(pageStats.missingPhoto)} | Form {formatCount(pageStats.missingForm)}
+          </div>
+        </div>
+        <div className="yatris-summary-card">
+          <div className="summary-label">Active filters</div>
+          <div className="summary-value">{formatCount(activeFiltersCount)}</div>
+          <div className="summary-sub">
+            {activeFiltersCount ? "Tap chips to clear" : "No filters applied"}
+          </div>
+        </div>
+      </div>
+
+      <div className="card relative z-20 p-6 space-y-4 overflow-visible filters-compact yatris-filters">
+        <div className="filters-header">
+          <div className="filters-title">
+            <div className="filters-kicker">Filters</div>
+            <div className="filters-meta">
+              <span>
+                {isPending
+                  ? "Updating..."
+                  : `Showing ${formatCount(rangeStart)}-${formatCount(rangeEnd)} of ${formatCount(totalCount)}`}
+              </span>
+              {selectedIds.size > 0 && <span>{`${formatCount(selectedIds.size)} selected`}</span>}
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[color:var(--muted)]">
-            <span>
-              {isPending ? "Updating..." : `Showing ${rangeStart}-${rangeEnd} of ${totalCount}`}
-              {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="btn-secondary min-h-[36px] w-full sm:w-auto" onClick={clearFilters}>
-                Clear filters
-              </button>
-              <div className="w-[140px]">
-                <Select
-                  value={exportFormat}
-                  onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
-                  className="export-format-select text-[11px]"
-                  aria-label="Export format"
-                >
-                  <option value="csv">CSV</option>
-                  <option value="excel">Excel</option>
-                  <option value="pdf">PDF</option>
-                </Select>
-              </div>
-              <details
-                ref={exportRef}
-                className="relative z-30 w-full sm:w-auto"
-                onToggle={() => {
-                  if (exportRef.current?.open) {
-                    openExclusive(exportRef);
-                  }
-                }}
+          <div className="filters-actions">
+            <button type="button" className="btn-secondary min-h-[36px] w-full sm:w-auto" onClick={clearFilters}>
+              Clear filters
+            </button>
+            <div className="w-[140px]">
+              <Select
+                value={exportFormat}
+                onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                className="export-format-select text-[11px]"
+                aria-label="Export format"
               >
-                <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
-                  Export
-                </summary>
-                <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                  <div className="space-y-3 text-sm text-[color:var(--ink)]">
-                    <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
-                      <input
-                        type="checkbox"
-                        checked={includeFullAadhaar}
-                        onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
-                      />
-                      Include full Aadhaar
-                    </label>
-                    <button type="button" className="btn-secondary w-full" onClick={exportFiltered} disabled={exporting}>
-                      Export filtered (max 2000)
-                    </button>
-                  </div>
-                </div>
-              </details>
-              {selectedIds.size > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className="btn-secondary min-h-[36px] w-full sm:w-auto"
-                    onClick={exportSelected}
-                  >
-                    Export selected
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary min-h-[36px] w-full sm:w-auto"
-                    onClick={printSelected}
-                  >
-                    Print ID Cards
+                <option value="csv">CSV</option>
+                <option value="excel">Excel</option>
+                <option value="pdf">PDF</option>
+              </Select>
+            </div>
+            <details
+              ref={exportRef}
+              className="relative z-30 w-full sm:w-auto"
+              onToggle={() => {
+                if (exportRef.current?.open) {
+                  openExclusive(exportRef);
+                }
+              }}
+            >
+              <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
+                Export
+              </summary>
+              <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
+                <div className="space-y-3 text-sm text-[color:var(--ink)]">
+                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
+                    <input
+                      type="checkbox"
+                      checked={includeFullAadhaar}
+                      onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
+                    />
+                    Include full Aadhaar
+                  </label>
+                  <button type="button" className="btn-secondary w-full" onClick={exportFiltered} disabled={exporting}>
+                    Export filtered (max 2000)
                   </button>
                 </div>
-              )}
+              </div>
+            </details>
+            {selectedIds.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                  onClick={exportSelected}
+                >
+                  Export selected
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                  onClick={printSelected}
+                >
+                  Print ID Cards
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="filters-grid">
+          <div className="filters-field filters-field--search">
+            <TextInput
+              placeholder="Search name, phone, receipt"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+            />
+          </div>
+          <div className="filters-field">
+            <Select
+              value={localFilters.travel_mode}
+              onChange={(event) => {
+                const value = event.target.value;
+                setLocalFilters({ ...localFilters, travel_mode: value });
+                updateParams({ travel_mode: value, page: 1 });
+              }}
+            >
+              <option value="">All travel</option>
+              <option value="train">Train</option>
+              <option value="air">Air</option>
+            </Select>
+          </div>
+          <div className="filters-field">
+            <Select
+              value={localFilters.missing}
+              onChange={(event) => {
+                const value = event.target.value;
+                setLocalFilters({ ...localFilters, missing: value });
+                updateParams({ missing: value, page: 1 });
+              }}
+            >
+              <option value="">All uploads</option>
+              <option value="photo">Missing photo</option>
+              <option value="form">Missing form</option>
+              <option value="any">Missing any</option>
+            </Select>
+          </div>
+          <div className="filters-field filters-field--dates">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+              <TextInput
+                type="date"
+                value={toDateInput(localFilters.date_from)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setLocalFilters({ ...localFilters, date_from: value });
+                  updateParams({ date_from: value, page: 1 });
+                }}
+                className="filters-date-input"
+              />
+              <span className="text-xs text-[color:var(--muted)]">to</span>
+              <TextInput
+                type="date"
+                value={toDateInput(localFilters.date_to)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setLocalFilters({ ...localFilters, date_to: value });
+                  updateParams({ date_to: value, page: 1 });
+                }}
+                className="filters-date-input"
+              />
             </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
+        <div className="filters-chips">
           {localFilters.q && (
-            <span className="rounded-full border border-[color:var(--border)] px-3 py-1">
-              Search: {localFilters.q}
-            </span>
+            <button
+              type="button"
+              className="filter-chip"
+              onClick={() => {
+                setSearchValue("");
+                setLocalFilters({ ...localFilters, q: "" });
+                updateParams({ q: "", page: 1 });
+              }}
+            >
+              Search: {localFilters.q} x
+            </button>
           )}
           {localFilters.travel_mode && (
             <button
               type="button"
-              className="rounded-full border border-[color:var(--border)] px-3 py-1"
+              className="filter-chip"
               onClick={() => {
                 setLocalFilters({ ...localFilters, travel_mode: "" });
                 updateParams({ travel_mode: "", page: 1 });
@@ -1617,7 +1702,7 @@ export function YatrisGrid({
           {localFilters.date_from && (
             <button
               type="button"
-              className="rounded-full border border-[color:var(--border)] px-3 py-1"
+              className="filter-chip"
               onClick={() => {
                 setLocalFilters({ ...localFilters, date_from: "" });
                 updateParams({ date_from: "", page: 1 });
@@ -1629,7 +1714,7 @@ export function YatrisGrid({
           {localFilters.date_to && (
             <button
               type="button"
-              className="rounded-full border border-[color:var(--border)] px-3 py-1"
+              className="filter-chip"
               onClick={() => {
                 setLocalFilters({ ...localFilters, date_to: "" });
                 updateParams({ date_to: "", page: 1 });
@@ -1641,7 +1726,7 @@ export function YatrisGrid({
           {localFilters.missing && (
             <button
               type="button"
-              className="rounded-full border border-[color:var(--border)] px-3 py-1"
+              className="filter-chip"
               onClick={() => {
                 setLocalFilters({ ...localFilters, missing: "" });
                 updateParams({ missing: "", page: 1 });
@@ -1703,10 +1788,10 @@ export function YatrisGrid({
 
       {!error && rows.length > 0 && (
         <div className="space-y-4 p-2">
-          <div className="card rounded-none overflow-visible p-2">
-            <div className="hidden overflow-x-auto overflow-y-visible p-2 md:block">
-              <table className="min-w-full bg-[color:var(--surface)] text-[12px] text-center">
-                <thead className="sticky top-0 bg-[color:var(--surface-muted)] text-[11px] font-semibold text-[color:var(--muted)] border-b border-[color:var(--border)]">
+          <div className="card yatris-table overflow-visible">
+            <div className="yatris-table__scroll hidden overflow-x-auto overflow-y-visible p-2 md:block">
+              <table className="yatris-table__table min-w-full bg-[color:var(--surface)] text-[12px] text-center">
+                <thead className="yatris-table__head sticky top-0 bg-[color:var(--surface-muted)] text-[11px] font-semibold text-[color:var(--muted)] border-b border-[color:var(--border)]">
                   <tr className="text-center">
                     <th className="h-[45px] px-6 py-0 align-middle text-center">
                       <input type="checkbox" checked={allSelected} onChange={toggleAll} />
@@ -1786,7 +1871,7 @@ export function YatrisGrid({
                             }
                             placeholder={isDisabled ? "" : "Search"}
                             disabled={isDisabled}
-                            className={`w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-2 py-1 text-[11px] text-center text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] ${
+                            className={`yatris-table__filter-input w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-2 py-1 text-[11px] text-center text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] ${
                               isDisabled ? "cursor-not-allowed opacity-50" : ""
                             }`}
                           />
@@ -1795,11 +1880,12 @@ export function YatrisGrid({
                     })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[color:var(--border)] bg-[color:var(--surface)]">
+                <tbody className="yatris-table__body divide-y divide-[color:var(--border)] bg-[color:var(--surface)]">
                   {rows.map((row) => (
-                        <tr
+                    <tr
                       key={row.id}
-                      className="cursor-pointer odd:bg-[color:var(--surface-muted)]/35 even:bg-[color:var(--surface)] hover:bg-[color:var(--surface-muted)]/60"
+                      data-selected={selectedIds.has(row.id) ? "true" : "false"}
+                      className="yatris-table__row cursor-pointer odd:bg-[color:var(--surface-muted)]/35 even:bg-[color:var(--surface)] hover:bg-[color:var(--surface-muted)]/60"
                       onClick={(event) => {
                         const target = event.target as HTMLElement;
                         if (target.closest("button") || target.closest("a") || target.closest("input")) return;
@@ -1829,27 +1915,59 @@ export function YatrisGrid({
             </div>
 
             <div className="grid gap-3 p-4 md:hidden">
-              {rows.map((row) => (
-                <div key={row.id} className="rounded-2xl border border-[color:var(--border)] p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-base font-semibold text-[color:var(--ink)]">{row.name_hi || "--"}</div>
-                      <div className="text-xs text-[color:var(--muted)]">{row.phone || "--"}</div>
+              {rows.map((row) => {
+                const rawPhotoPath = row.photo_url ?? "";
+                const cachedPreview = photoPreviewUrls[row.id];
+                const signedUrl = cachedPreview?.path === rawPhotoPath ? cachedPreview.url : "";
+                const directUrl = rawPhotoPath.startsWith("http") ? rawPhotoPath : "";
+                const previewUrl = signedUrl || directUrl;
+                const initial = row.name_hi?.trim()?.charAt(0) || "Y";
+                return (
+                  <div
+                    key={row.id}
+                    className="yatri-card"
+                    onClick={(event) => {
+                      const target = event.target as HTMLElement;
+                      if (target.closest("button") || target.closest("a") || target.closest("input")) return;
+                      startNavigation("Loading registration...");
+                      router.push(`/yatris/${row.id}`);
+                    }}
+                  >
+                    <div className="yatri-card__header">
+                      <div className="yatri-card__identity">
+                        <div className="yatri-card__avatar">
+                          {previewUrl ? (
+                            <img
+                              src={previewUrl}
+                              alt={row.name_hi ? `${row.name_hi} photo` : "Photo"}
+                              className="yatri-card__avatar-image"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="yatri-card__avatar-fallback">{initial}</span>
+                          )}
+                        </div>
+                        <div>
+                          <div className="yatri-card__name">{row.name_hi || "--"}</div>
+                          <div className="yatri-card__phone">{row.phone || "--"}</div>
+                        </div>
+                      </div>
+                      <div className="yatri-card__uploads">
+                        <UploadBadge label="Photo" active={Boolean(row.photo_url)} />
+                        <UploadBadge label="Form" active={Boolean(row.form_image_url)} />
+                      </div>
+                    </div>
+                    <div className="yatri-card__meta">
+                      <span>Created: {formatDate(row.created_at)}</span>
+                      <span>Travel: {row.travel_mode || "--"}</span>
+                      <span>Bucket: {row.category?.name || "Unassigned"}</span>
+                    </div>
+                    <div className="yatri-card__actions">
+                      {renderRowActions(row)}
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
-                    <span>Created: {formatDate(row.created_at)}</span>
-                    <span>Travel: {row.travel_mode || "--"}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-[color:var(--muted)]">
-                    <span className={row.photo_url ? "text-emerald-300" : "text-slate-400"}>Photo</span>
-                    <span className={row.form_image_url ? "text-emerald-300" : "text-slate-400"}>Form</span>
-                  </div>
-                  <div className="flex justify-end">
-                    {renderRowActions(row)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
