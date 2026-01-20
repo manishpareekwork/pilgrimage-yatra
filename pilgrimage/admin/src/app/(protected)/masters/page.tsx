@@ -2,33 +2,25 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { requireStaff } from "@/lib/roleGuard";
 
-const iconSize = 16;
+const iconSize = 20;
+const iconSizeSmall = 14;
 
-type Card = {
+type OperationItem = {
   title: string;
   description: string;
   href: string;
   accent: string;
-  background: string;
   icon: ReactNode;
-  tag: string;
   requireAdmin?: boolean;
 };
 
-type CardGroup = {
-  title: string;
-  description: string;
-  cards: Card[];
-};
-
-const operationsCards: Card[] = [
+// Core operations - top priority modules
+const coreOperations: OperationItem[] = [
   {
     title: "Yatris",
-    description: "Registration roster, profiles, and intake history.",
+    description: "Registration roster & profiles",
     href: "/yatris",
     accent: "#38bdf8",
-    background: "radial-gradient(circle at top right, rgba(56, 189, 248, 0.18), transparent 60%)",
-    tag: "Operations",
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
         <circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -38,11 +30,9 @@ const operationsCards: Card[] = [
   },
   {
     title: "Groups",
-    description: "Co-travel groups, tickets, and allocations.",
+    description: "Travel groups & allocations",
     href: "/groups/train",
     accent: "#f59e0b",
-    background: "radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 60%)",
-    tag: "Operations",
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
         <circle cx="7" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -54,11 +44,9 @@ const operationsCards: Card[] = [
   },
   {
     title: "Bookings",
-    description: "Ticketing and accommodation task tracking.",
+    description: "Tickets & accommodation tasks",
     href: "/booking-tasks",
     accent: "#f97316",
-    background: "radial-gradient(circle at top right, rgba(249, 115, 22, 0.18), transparent 60%)",
-    tag: "Operations",
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
         <rect x="4" y="5" width="16" height="14" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -66,13 +54,15 @@ const operationsCards: Card[] = [
       </svg>
     ),
   },
+];
+
+// People & access
+const peopleOperations: OperationItem[] = [
   {
     title: "Volunteers",
-    description: "Assign roles and identify group leads.",
+    description: "Roles & group leads",
     href: "/volunteers",
     accent: "#22c55e",
-    background: "radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 60%)",
-    tag: "Operations",
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
         <path
@@ -86,11 +76,9 @@ const operationsCards: Card[] = [
   },
   {
     title: "Users",
-    description: "Roles, access provisioning, and staff accounts.",
+    description: "Staff access & provisioning",
     href: "/users",
     accent: "#0ea5e9",
-    background: "radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 60%)",
-    tag: "Operations",
     requireAdmin: true,
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
@@ -101,16 +89,15 @@ const operationsCards: Card[] = [
   },
 ];
 
-const masterCards: Card[] = [
+// Travel masters
+const travelMasters: OperationItem[] = [
   {
     title: "Stations",
-    description: "Manage master railway stations used in routes.",
+    description: "Railway station catalog",
     href: "/masters/stations",
     accent: "#38bdf8",
-    background: "radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 60%)",
-    tag: "Master data",
     icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
         <path
           d="M12 22s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z"
           fill="none"
@@ -123,13 +110,11 @@ const masterCards: Card[] = [
   },
   {
     title: "Trains",
-    description: "Train templates and route definitions.",
+    description: "Templates & routes",
     href: "/masters/trains",
     accent: "#f59e0b",
-    background: "radial-gradient(circle at top right, rgba(245, 158, 11, 0.2), transparent 60%)",
-    tag: "Master data",
     icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
         <path
           d="M6 3h12a2 2 0 0 1 2 2v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V5a2 2 0 0 1 2-2Z"
           fill="none"
@@ -144,13 +129,11 @@ const masterCards: Card[] = [
   },
   {
     title: "Trips",
-    description: "Trip instances built from train and air masters.",
+    description: "Trip instances",
     href: "/masters/trips",
     accent: "#0ea5e9",
-    background: "radial-gradient(circle at top right, rgba(14, 165, 233, 0.2), transparent 60%)",
-    tag: "Master data",
     icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
         <path d="M4 12h16" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <path d="M12 4l4 4-4 4-4-4 4-4Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <path d="M12 12l4 4-4 4-4-4 4-4Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -159,220 +142,205 @@ const masterCards: Card[] = [
   },
   {
     title: "Train Stops",
-    description: "Stop sequences and timetable details.",
+    description: "Schedules & stops",
     href: "/masters/train-stops",
     accent: "#22c55e",
-    background: "radial-gradient(circle at top right, rgba(34, 197, 94, 0.2), transparent 60%)",
-    tag: "Master data",
     icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
         <path d="M6 4h12v6H6z" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <path d="M6 14h12v6H6z" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <path d="M12 10v4" fill="none" stroke="currentColor" strokeWidth="1.6" />
       </svg>
     ),
   },
-  {
-    title: "Yatri Buckets",
-    description: "Grouping buckets for registrations.",
-    href: "/masters/buckets",
-    accent: "#f97316",
-    background: "radial-gradient(circle at top right, rgba(249, 115, 22, 0.2), transparent 60%)",
-    tag: "Master data",
-    icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
-        <circle cx="9" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
-        <path
-          d="M3.5 19a6 6 0 0 1 11 0"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-        <circle cx="17" cy="10" r="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-        <path d="M14.5 19a4 4 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      </svg>
-    ),
-  },
+];
+
+// Hospitality masters
+const hospitalityMasters: OperationItem[] = [
   {
     title: "Hotels & Rooms",
-    description: "Accommodation inventory and room capacity.",
+    description: "Accommodation inventory",
     href: "/masters/hotels",
     accent: "#0ea5e9",
-    background: "radial-gradient(circle at top right, rgba(14, 165, 233, 0.2), transparent 60%)",
-    tag: "Master data",
     icon: (
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
         <rect x="4" y="6" width="16" height="12" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <path d="M4 12h16" fill="none" stroke="currentColor" strokeWidth="1.6" />
         <circle cx="8" cy="10" r="1.3" fill="currentColor" />
       </svg>
     ),
   },
+  {
+    title: "Yatri Buckets",
+    description: "Grouping buckets",
+    href: "/masters/buckets",
+    accent: "#f97316",
+    icon: (
+      <svg viewBox="0 0 24 24" width={iconSizeSmall} height={iconSizeSmall} aria-hidden="true">
+        <circle cx="9" cy="9" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M3.5 19a6 6 0 0 1 11 0" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <circle cx="17" cy="10" r="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M14.5 19a4 4 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    ),
+  },
 ];
 
-const renderCards = (cards: Card[]) => (
-  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-    {cards.map((card) => (
-      <div
-        key={card.href}
-        className="card card--hover grid min-h-[176px] grid-rows-[1fr_auto] overflow-hidden p-0"
-      >
-        <div
-          className="relative h-full"
-          style={{
-            padding: "14px",
-            backgroundImage: card.background,
-          }}
-        >
-          <div
-            className="absolute -right-6 -top-6 h-16 w-16 rounded-full opacity-20"
-            style={{ backgroundColor: card.accent }}
-            aria-hidden="true"
-          />
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                backgroundColor: "rgba(15, 23, 42, 0.12)",
-                color: card.accent,
-              }}
-            >
-              {card.icon}
-            </div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {card.tag}
-            </div>
-          </div>
-          <div className="mt-3 space-y-1">
-            <div className="text-sm font-semibold text-[color:var(--ink)]">{card.title}</div>
-            <div className="text-[11px] text-[color:var(--muted)] leading-snug">
-              {card.description}
-            </div>
-          </div>
-        </div>
-        <div
-          className="flex items-center justify-between gap-2 border-t border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3 py-2.5"
-        >
-          <Link href={card.href} className="btn-secondary px-2.5 py-1.5 text-[11px]">
-            View list
-          </Link>
-          <Link
-            href={`${card.href}?mode=edit`}
-            className="btn-secondary px-2.5 py-1.5 text-[11px]"
-          >
-            Edit list
-          </Link>
-        </div>
-      </div>
-    ))}
-  </div>
+// Quick action tile (larger)
+const OperationTile = ({ item }: { item: OperationItem }) => (
+  <Link
+    href={item.href}
+    className="ops-tile group"
+    style={{
+      "--tile-accent": item.accent,
+    } as React.CSSProperties}
+  >
+    <div className="ops-tile__icon" style={{ color: item.accent }}>
+      {item.icon}
+    </div>
+    <div className="ops-tile__content">
+      <div className="ops-tile__title">{item.title}</div>
+      <div className="ops-tile__desc">{item.description}</div>
+    </div>
+    <div className="ops-tile__arrow">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+    </div>
+  </Link>
 );
 
-const renderCardGroups = (groups: CardGroup[]) => (
-  <div className="space-y-5">
-    {groups.map((group) => (
-      <div
-        key={group.title}
-        className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)]/70 p-4 sm:p-5"
-      >
-        <div className="mb-4 space-y-1">
-          <div className="text-sm font-semibold text-[color:var(--ink)]">{group.title}</div>
-          <div className="text-xs text-[color:var(--muted)]">{group.description}</div>
-        </div>
-        {renderCards(group.cards)}
-      </div>
-    ))}
-  </div>
+// Master data link (compact)
+const MasterLink = ({ item }: { item: OperationItem }) => (
+  <Link
+    href={item.href}
+    className="master-link group"
+    style={{
+      "--tile-accent": item.accent,
+    } as React.CSSProperties}
+  >
+    <div className="master-link__icon" style={{ color: item.accent }}>
+      {item.icon}
+    </div>
+    <span className="master-link__title">{item.title}</span>
+    <span className="master-link__desc">{item.description}</span>
+    <svg className="master-link__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  </Link>
 );
 
 export default async function MastersPage() {
   const { role } = await requireStaff();
   const isAdmin = role === "admin";
 
-  const visibleOperations = operationsCards.filter(
-    (card) => !card.requireAdmin || isAdmin
+  const visiblePeopleOps = peopleOperations.filter(
+    (item) => !item.requireAdmin || isAdmin
   );
-  const visibleMasters = masterCards;
-  const moduleCount = visibleOperations.length + visibleMasters.length;
-  const operationsGroups: CardGroup[] = [
-    {
-      title: "Core operations",
-      description: "Registrations, groups, and booking oversight.",
-      cards: visibleOperations.filter((card) =>
-        ["Yatris", "Groups", "Bookings"].includes(card.title)
-      ),
-    },
-    {
-      title: "People & access",
-      description: "Volunteer coordination and staff provisioning.",
-      cards: visibleOperations.filter((card) =>
-        ["Volunteers", "Users"].includes(card.title)
-      ),
-    },
-  ].filter((group) => group.cards.length > 0);
-  const masterGroups: CardGroup[] = [
-    {
-      title: "Travel masters",
-      description: "Stations, trains, trips, and stop schedules.",
-      cards: visibleMasters.filter((card) =>
-        ["Stations", "Trains", "Trips", "Train Stops"].includes(card.title)
-      ),
-    },
-    {
-      title: "Hospitality & buckets",
-      description: "Accommodation inventory and yatri grouping buckets.",
-      cards: visibleMasters.filter((card) =>
-        ["Hotels & Rooms", "Yatri Buckets"].includes(card.title)
-      ),
-    },
-  ].filter((group) => group.cards.length > 0);
+
+  const moduleCount =
+    coreOperations.length +
+    visiblePeopleOps.length +
+    travelMasters.length +
+    hospitalityMasters.length;
 
   return (
-    <div className="space-y-6">
+    <div className="ops-page">
+      {/* Hero Banner */}
       <section
-        className="card card--hover dashboard-hero min-h-[180px]"
-        style={{ backgroundImage: "url('/banner.png')", padding: "12px" }}
+        className="ops-hero"
+        style={{ backgroundImage: "url('/banner.png')" }}
       >
-        <div className="grid min-h-[180px] grid-rows-2 gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-white">Operations</h1>
-              <p className="text-sm text-white/80">
-                Yatri ops, staffing, bookings, and master data in one console.
+        <div className="ops-hero__overlay" />
+        <div className="ops-hero__content">
+          <div className="ops-hero__top">
+            <div>
+              <h1 className="ops-hero__title">Operations Console</h1>
+              <p className="ops-hero__subtitle">
+                Manage yatris, groups, bookings, and master data
               </p>
             </div>
-            <span className="pill pill--contrast pill--wide sm:self-start">
-              Operations console
-            </span>
+            <div className="ops-hero__badge">
+              <span className="ops-hero__count">{moduleCount}</span>
+              <span>modules</span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <span className="pill pill--contrast pill--metric pill--wide">
-              <span className="pill__metric">{moduleCount}</span>
-              <span>Modules</span>
-            </span>
-            <Link
-              href="/yatris/new"
-              className="pill pill--contrast pill--metric pill--wide pill--clickable pill--cta inline-flex items-center"
-            >
-              <span className="pill__metric">+</span>
-              <span>New Registration</span>
+          <div className="ops-hero__actions">
+            <Link href="/yatris/new" className="ops-hero__cta">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New Registration
+            </Link>
+            <Link href="/dashboard" className="ops-hero__link">
+              View Dashboard →
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted)]">
-          Operations
+      {/* Core Operations */}
+      <section className="ops-section">
+        <div className="ops-section__header">
+          <h2 className="ops-section__title">Core Operations</h2>
+          <p className="ops-section__desc">Registrations, groups, and booking oversight</p>
         </div>
-        {renderCardGroups(operationsGroups)}
+        <div className="ops-tiles-grid">
+          {coreOperations.map((item) => (
+            <OperationTile key={item.href} item={item} />
+          ))}
+        </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--muted)]">
-          Master data
+      {/* People & Access */}
+      {visiblePeopleOps.length > 0 && (
+        <section className="ops-section">
+          <div className="ops-section__header">
+            <h2 className="ops-section__title">People & Access</h2>
+            <p className="ops-section__desc">Volunteer coordination and staff provisioning</p>
+          </div>
+          <div className="ops-tiles-grid ops-tiles-grid--2col">
+            {visiblePeopleOps.map((item) => (
+              <OperationTile key={item.href} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Master Data */}
+      <section className="ops-section ops-section--masters">
+        <div className="ops-section__header">
+          <h2 className="ops-section__title">Master Data</h2>
+          <p className="ops-section__desc">Reference data powering operations</p>
         </div>
-        {renderCardGroups(masterGroups)}
+        
+        <div className="masters-grid">
+          {/* Travel */}
+          <div className="masters-group">
+            <div className="masters-group__header">
+              <span className="masters-group__dot" style={{ background: "#38bdf8" }} />
+              <span className="masters-group__label">Travel</span>
+            </div>
+            <div className="masters-list">
+              {travelMasters.map((item) => (
+                <MasterLink key={item.href} item={item} />
+              ))}
+            </div>
+          </div>
+
+          {/* Hospitality */}
+          <div className="masters-group">
+            <div className="masters-group__header">
+              <span className="masters-group__dot" style={{ background: "#0ea5e9" }} />
+              <span className="masters-group__label">Hospitality</span>
+            </div>
+            <div className="masters-list">
+              {hospitalityMasters.map((item) => (
+                <MasterLink key={item.href} item={item} />
+              ))}
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );
