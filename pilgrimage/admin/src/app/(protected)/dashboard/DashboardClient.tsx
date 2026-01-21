@@ -92,7 +92,12 @@ export function DashboardClient() {
     <div className="space-y-6">
       <section
         className="card card--hover dashboard-hero min-h-[220px]"
-        style={{ backgroundImage: "url('/banner.png')", padding: "12px" }}
+        style={{
+          backgroundImage: "url('/banner.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "top center",
+          padding: "12px"
+        }}
       >
         <div className="grid min-h-[220px] gap-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
