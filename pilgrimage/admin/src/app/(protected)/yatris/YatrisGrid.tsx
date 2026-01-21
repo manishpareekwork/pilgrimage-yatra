@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChakraSpinner, PageHeader, Select, TextInput } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
@@ -406,40 +407,16 @@ export function YatrisGrid({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dragColumn, setDragColumn] = useState<string | null>(null);
   const [openRowMenuId, setOpenRowMenuId] = useState<string | null>(null);
-  const viewsRef = useRef<HTMLDetailsElement>(null);
-  const columnsRef = useRef<HTMLDetailsElement>(null);
-  const exportRef = useRef<HTMLDetailsElement>(null);
-  const detailRefs: Array<React.RefObject<HTMLDetailsElement | null>> = [
-    viewsRef,
-    columnsRef,
-    exportRef,
-  ];
+  const [openModal, setOpenModal] = useState<"views" | "columns" | "export" | null>(null);
 
   const canDelete = currentRole === "admin";
 
-  const closeAllDetails = () => {
-    detailRefs.forEach((ref) => {
-      if (ref.current) {
-        ref.current.open = false;
-      }
-    });
-  };
-
-  const openExclusive = (activeRef: React.RefObject<HTMLDetailsElement | null>) => {
-    setOpenRowMenuId(null);
-    detailRefs.forEach((ref) => {
-      if (ref.current && ref !== activeRef) {
-        ref.current.open = false;
-      }
-    });
-  };
+  const closeModal = () => setOpenModal(null);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      const isInside = detailRefs.some((ref) => ref.current && ref.current.contains(target));
-      if (!isInside) closeAllDetails();
-      if (!(target as HTMLElement | null)?.closest?.("[data-row-menu]")) {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest?.("[data-row-menu]")) {
         setOpenRowMenuId(null);
       }
     };
@@ -590,7 +567,6 @@ export function YatrisGrid({
           aria-expanded={isOpen}
           onClick={(event) => {
             event.stopPropagation();
-            closeAllDetails();
             setOpenRowMenuId((prev) => (prev === row.id ? null : row.id));
           }}
           className="row-action-trigger inline-flex h-7 w-7 items-center justify-center rounded-md border border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
@@ -1238,86 +1214,21 @@ export function YatrisGrid({
         backgroundImage="/banner.png"
         actions={
           <div className="header-actions flex flex-wrap items-center gap-2">
-            <details
-              ref={viewsRef}
-              className="relative z-40"
-              onToggle={() => {
-                if (viewsRef.current?.open) {
-                  openExclusive(viewsRef);
-                }
-              }}
+            <button
+              type="button"
+              onClick={() => setOpenModal("views")}
+              className="btn-secondary inline-flex min-h-[32px] items-center"
             >
-              <summary className="btn-secondary inline-flex min-h-[32px] items-center justify-between cursor-pointer list-none">
-                Views
-              </summary>
-              <div className="yatris-popover absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-lg">
-                <div className="yatris-popover-list space-y-2.5">
-                  {allViews.map((view) => (
-                    <button
-                      key={view.name}
-                      type="button"
-                      onClick={() => applyView(view)}
-                      className="flex w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-left text-[13px] text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
-                    >
-                      {view.name}
-                      <span className="text-xs text-[color:var(--muted)]">Apply</span>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={saveCurrentView}
-                    className="w-full rounded-lg border border-[color:var(--border)] px-3.5 py-2.5 text-[13px] text-[color:var(--muted)] hover:border-[color:var(--accent)]"
-                  >
-                    Save current view
-                  </button>
-                </div>
-              </div>
-            </details>
+              Views
+            </button>
 
-            <details
-              ref={columnsRef}
-              className="relative z-40"
-              onToggle={() => {
-                if (columnsRef.current?.open) {
-                  openExclusive(columnsRef);
-                }
-              }}
+            <button
+              type="button"
+              onClick={() => setOpenModal("columns")}
+              className="btn-secondary inline-flex min-h-[32px] items-center"
             >
-              <summary className="btn-secondary inline-flex min-h-[32px] items-center justify-between cursor-pointer list-none">
-                Columns
-              </summary>
-              <div className="yatris-popover absolute right-0 z-50 mt-2 w-80 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-4 shadow-lg">
-                <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">Visible columns</div>
-                <div className="mt-3 space-y-2">
-                  {columnConfig.order.map((id) => {
-                    const column = columns[id];
-                    if (!column) return null;
-                    const isLocked = id === "actions";
-                    return (
-                      <div
-                        key={id}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)]"
-                        draggable={!isLocked}
-                        onDragStart={() => setDragColumn(id)}
-                        onDragOver={(event) => event.preventDefault()}
-                        onDrop={() => handleReorder(id)}
-                      >
-                        <span className="cursor-grab text-[color:var(--muted)]">::</span>
-                        <label className="flex flex-1 items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={!columnConfig.hidden.includes(id)}
-                            onChange={() => toggleColumn(id)}
-                            disabled={isLocked}
-                          />
-                          {column.label}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </details>
+              Columns
+            </button>
 
             <Link href="/yatris/new" className="btn-primary inline-flex min-h-[32px] items-center">
               + New Registration
@@ -1379,34 +1290,13 @@ export function YatrisGrid({
                 <option value="pdf">PDF</option>
               </Select>
             </div>
-            <details
-              ref={exportRef}
-              className="relative z-30 w-full sm:w-auto"
-              onToggle={() => {
-                if (exportRef.current?.open) {
-                  openExclusive(exportRef);
-                }
-              }}
+            <button
+              type="button"
+              onClick={() => setOpenModal("export")}
+              className="btn-secondary inline-flex min-h-[36px] w-full sm:w-auto items-center justify-center"
             >
-              <summary className="btn-secondary inline-flex min-h-[36px] w-full items-center justify-between cursor-pointer list-none">
-                Export
-              </summary>
-              <div className="absolute right-0 z-50 mt-2 w-64 rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-3 shadow-lg">
-                <div className="space-y-3 text-sm text-[color:var(--ink)]">
-                  <label className="flex items-center gap-2 text-xs text-[color:var(--muted)]">
-                    <input
-                      type="checkbox"
-                      checked={includeFullAadhaar}
-                      onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
-                    />
-                    Include full Aadhaar
-                  </label>
-                  <button type="button" className="btn-secondary w-full" onClick={exportFiltered} disabled={exporting}>
-                    Export filtered (max 2000)
-                  </button>
-                </div>
-              </div>
-            </details>
+              Export
+            </button>
             {selectedIds.size > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1821,6 +1711,99 @@ export function YatrisGrid({
           </div>
         </div>
       )}
+
+      {/* Views Modal */}
+      <Modal isOpen={openModal === "views"} onClose={closeModal} title="Saved Views">
+        <div className="space-y-2">
+          {allViews.map((view) => (
+            <button
+              key={view.name}
+              type="button"
+              onClick={() => {
+                applyView(view);
+                closeModal();
+              }}
+              className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-[14px] font-medium text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)] transition-colors"
+            >
+              {view.name}
+              <span className="text-[13px] text-[color:var(--muted)]">Apply</span>
+            </button>
+          ))}
+          <div className="pt-3 mt-3 border-t border-[color:var(--border)]">
+            <button
+              type="button"
+              onClick={() => {
+                saveCurrentView();
+                closeModal();
+              }}
+              className="w-full rounded-lg border border-[color:var(--border)] px-4 py-3 text-[14px] font-medium text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--ink)] transition-colors"
+            >
+              Save current view
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Columns Modal */}
+      <Modal isOpen={openModal === "columns"} onClose={closeModal} title="Visible Columns" maxWidth="lg">
+        <div className="space-y-1.5 max-h-[480px] overflow-y-auto">
+          {columnConfig.order.map((id) => {
+            const column = columns[id];
+            if (!column) return null;
+            const isLocked = id === "actions";
+            return (
+              <div
+                key={id}
+                className="flex items-center gap-3 rounded-lg px-4 py-3 text-[14px] text-[color:var(--ink)] hover:bg-[color:var(--surface-muted)] transition-colors"
+                draggable={!isLocked}
+                onDragStart={() => setDragColumn(id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => handleReorder(id)}
+              >
+                <span className="cursor-grab text-[color:var(--muted)] text-base leading-none select-none">::</span>
+                <label className="flex flex-1 items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!columnConfig.hidden.includes(id)}
+                    onChange={() => toggleColumn(id)}
+                    disabled={isLocked}
+                    className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-[color:var(--accent)] focus:ring-offset-0"
+                  />
+                  <span className="font-medium">{column.label}</span>
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </Modal>
+
+      {/* Export Modal */}
+      <Modal isOpen={openModal === "export"} onClose={closeModal} title="Export Data" maxWidth="sm">
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 text-[14px] font-medium text-[color:var(--ink)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeFullAadhaar}
+              onChange={(event) => setIncludeFullAadhaar(event.target.checked)}
+              className="h-4 w-4 rounded border-[color:var(--border)] text-[color:var(--accent)] focus:ring-[color:var(--accent)] focus:ring-offset-0"
+            />
+            Include full Aadhaar
+          </label>
+          <div className="pt-2 border-t border-[color:var(--border)]">
+            <button
+              type="button"
+              className="btn-secondary w-full min-h-[44px] text-[14px] font-semibold"
+              onClick={() => {
+                exportFiltered();
+                closeModal();
+              }}
+              disabled={exporting}
+            >
+              {exporting ? "Exporting..." : "Export filtered (max 2000)"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
