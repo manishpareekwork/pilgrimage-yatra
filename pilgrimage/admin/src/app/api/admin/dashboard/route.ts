@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireApiAuth } from "@/lib/apiAuth";
 
 export const dynamic = "force-dynamic";
+const TRAIN_GROUP_SIZE_TARGET = 6;
 
 export async function GET(_req: NextRequest) {
   const auth = await requireApiAuth({ requireStaff: true });
@@ -14,18 +15,41 @@ export async function GET(_req: NextRequest) {
     reservationMembersRes,
     hotelsRes,
     roomsRes,
+    categoriesRes,
+    trainRegistrationsRes,
+    trainTripsRes,
   ] = await Promise.all([
     supabase.from("yatra_registrations").select("id, reservation_by", { count: "exact" }),
     supabase.from("yatra_co_travel_group_members").select("registration_id"),
     supabase.from("yatra_hotels").select("id", { count: "exact", head: true }),
     supabase.from("yatra_hotel_rooms").select("id", { count: "exact", head: true }),
+    supabase.from("yatra_categories").select("id", { count: "exact", head: true }),
+    supabase
+      .from("yatra_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("travel_mode", "train"),
+    supabase.from("yatra_trips").select("id").eq("mode", "train"),
   ]);
+
+  const trainTrips = (trainTripsRes.data ?? []) as Array<{ id: string }>;
+  const trainTripIds = trainTrips.map((trip) => trip.id);
+  let trainGroupsRes: { count: number | null; error: unknown } = { count: 0, error: null };
+  if (trainTripIds.length > 0) {
+    trainGroupsRes = await supabase
+      .from("yatra_co_travel_groups")
+      .select("id", { count: "exact", head: true })
+      .in("trip_id", trainTripIds);
+  }
 
   const errors = [
     registrationRes.error,
     reservationMembersRes.error,
     hotelsRes.error,
     roomsRes.error,
+    categoriesRes.error,
+    trainRegistrationsRes.error,
+    trainTripsRes.error,
+    trainGroupsRes.error,
   ]
     .filter(Boolean)
     .map((error) => (error as { message?: string }).message || "Unknown error");
@@ -63,6 +87,13 @@ export async function GET(_req: NextRequest) {
     }
   });
 
+  const trainRegistrations = trainRegistrationsRes.count ?? 0;
+  const trainGroups = trainGroupsRes.count ?? 0;
+  const trainGroupTarget = trainRegistrations
+    ? Math.ceil(trainRegistrations / TRAIN_GROUP_SIZE_TARGET)
+    : 0;
+  const trainGroupGap = Math.max(trainGroupTarget - trainGroups, 0);
+
   return NextResponse.json({
     connected: errors.length === 0,
     errors,
@@ -76,7 +107,16 @@ export async function GET(_req: NextRequest) {
       rooms: {
         total: roomsRes.count ?? 0,
       },
+      categories: {
+        total: categoriesRes.count ?? 0,
+      },
       reservations: reservationMetrics,
+      train: {
+        registrations: trainRegistrations,
+        groups: trainGroups,
+        group_target: trainGroupTarget,
+        group_gap: trainGroupGap,
+      },
     },
   });
 }

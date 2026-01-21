@@ -7,12 +7,19 @@ type DashboardMetrics = {
   registrations: { total: number };
   hotels: { total: number };
   rooms: { total: number };
+  categories: { total: number };
   reservations: {
     total: number;
     self: number;
     committee: number;
     pending_self: number;
     pending_committee: number;
+  };
+  train: {
+    registrations: number;
+    groups: number;
+    group_target: number;
+    group_gap: number;
   };
 };
 
@@ -60,6 +67,15 @@ export function DashboardClient() {
     if (!data) return loading ? "..." : "--";
     return loading ? "..." : formatNumber(value ?? 0);
   };
+  const detailValue = (value: string) => {
+    if (!data) return loading ? "..." : "--";
+    return loading ? "..." : value;
+  };
+
+  const reservationsTotal = metrics?.reservations.total ?? 0;
+  const reservationsPendingTotal =
+    (metrics?.reservations.pending_self ?? 0) +
+    (metrics?.reservations.pending_committee ?? 0);
 
   const dbConnected = data?.connected ?? false;
   const dbLabel = dbConnected ? "Database connected" : "Database disconnected";
@@ -82,29 +98,35 @@ export function DashboardClient() {
       detail: "Total rooms",
     },
     {
-      title: "Reservations so far",
-      value: displayValue(metrics?.reservations.total),
-      detail: "Data available",
+      title: "Yatri buckets",
+      value: displayValue(metrics?.categories.total),
+      detail: "Categories",
     },
     {
-      title: "Reservations self",
-      value: displayValue(metrics?.reservations.self),
-      detail: "Data available",
+      title: "Reservations logged",
+      value: displayValue(reservationsTotal),
+      detail: detailValue(
+        `Self ${formatNumber(metrics?.reservations.self ?? 0)} · Committee ${formatNumber(metrics?.reservations.committee ?? 0)}`
+      ),
     },
     {
-      title: "Reservations committee",
-      value: displayValue(metrics?.reservations.committee),
-      detail: "Data available",
+      title: "Reservations pending",
+      value: displayValue(reservationsPendingTotal),
+      detail: detailValue(
+        `Self ${formatNumber(metrics?.reservations.pending_self ?? 0)} · Committee ${formatNumber(metrics?.reservations.pending_committee ?? 0)}`
+      ),
     },
     {
-      title: "Pending self",
-      value: displayValue(metrics?.reservations.pending_self),
-      detail: "Data missing",
+      title: "Train yatris",
+      value: displayValue(metrics?.train.registrations),
+      detail: "Travel mode: train",
     },
     {
-      title: "Pending committee",
-      value: displayValue(metrics?.reservations.pending_committee),
-      detail: "Data missing",
+      title: "Train groups",
+      value: displayValue(metrics?.train.groups),
+      detail: detailValue(
+        `Target ${formatNumber(metrics?.train.group_target ?? 0)} (6/group) · Gap ${formatNumber(metrics?.train.group_gap ?? 0)}`
+      ),
     },
   ];
 
