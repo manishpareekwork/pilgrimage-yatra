@@ -1235,6 +1235,7 @@ export function YatrisGrid({
         title="Yatris"
         subtitle="Review registrations, uploads, and travel details in one view."
         kicker="Pilgrimage Ops"
+        backgroundImage="/banner.png"
         actions={
           <div className="header-actions flex flex-wrap items-center gap-2">
             <details

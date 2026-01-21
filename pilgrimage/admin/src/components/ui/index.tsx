@@ -14,25 +14,52 @@ export function PageHeader({
   kicker,
   actions,
   className,
+  backgroundImage,
+  backgroundStyle,
 }: {
   title: string;
   subtitle?: string;
   kicker?: string;
   actions?: React.ReactNode;
   className?: string;
+  backgroundImage?: string;
+  backgroundStyle?: React.CSSProperties;
 }) {
+  const hasBackground = Boolean(backgroundImage);
+  
   return (
-    <div className={cn("card p-6", className)}>
+    <div 
+      className={cn("card p-6", className)} 
+      style={
+        hasBackground
+          ? {
+              backgroundImage: `url('${backgroundImage}')`,
+              backgroundSize: "cover",
+              backgroundPosition: "top center",
+              ...backgroundStyle,
+            }
+          : undefined
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           {kicker && (
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[color:var(--accent)]">
+            <p className={cn(
+              "text-xs font-semibold uppercase tracking-[0.25em]",
+              hasBackground ? "text-white/90" : "text-[color:var(--accent)]"
+            )}>
               {kicker}
             </p>
           )}
-          <h1 className="text-xl font-semibold text-[color:var(--ink)]">{title}</h1>
+          <h1 className={cn(
+            "text-xl font-semibold",
+            hasBackground ? "text-white" : "text-[color:var(--ink)]"
+          )}>{title}</h1>
           {subtitle && (
-            <p className="text-sm text-[color:var(--muted)]">{subtitle}</p>
+            <p className={cn(
+              "text-sm",
+              hasBackground ? "text-white/80" : "text-[color:var(--muted)]"
+            )}>{subtitle}</p>
           )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
