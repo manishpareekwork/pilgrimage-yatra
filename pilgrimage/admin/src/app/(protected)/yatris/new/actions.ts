@@ -333,7 +333,7 @@ export async function createRegistrationAction(
     return { error: createError?.message ?? "Could not create registration" };
   }
 
-  const patch = {
+  const patch: Record<string, unknown> = {
     receipt_no: input.receipt_no ?? null,
     name_hi: input.name_hi,
     guardian_relation: input.guardian_relation ?? null,
@@ -389,11 +389,11 @@ export async function createRegistrationAction(
     attended_badarinath_2024: input.attended_badarinath_2024 ?? false,
     sadhu_sant_category: input.sadhu_sant_category ?? false,
     declaration_accepted: input.declaration_accepted,
-    declaration_signed_at: input.declaration_signed_at
-      ? new Date(input.declaration_signed_at).toISOString()
-      : null,
     status: "approved",
   };
+  if (input.declaration_signed_at) {
+    patch.declaration_signed_at = new Date(input.declaration_signed_at).toISOString();
+  }
 
   const { error: updateError } = await supabase
     .from("yatra_registrations")
