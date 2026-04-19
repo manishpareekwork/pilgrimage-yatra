@@ -138,7 +138,7 @@ export function DashboardClient() {
           backgroundImage: "url('/banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "top center",
-          padding: "12px",
+          padding: "24px",
         }}
       >
         <div className="grid min-h-[220px] gap-6">
@@ -175,16 +175,16 @@ export function DashboardClient() {
       </section>
 
       {error && (
-        <section className="card dashboard-card border border-rose-400/40 bg-rose-500/10 p-3">
+        <section className="card dashboard-card border border-rose-400/40 bg-rose-500/10 p-4 sm:p-5">
           <div className="text-sm text-rose-700 dark:text-rose-200">
             Failed to load: {error}
           </div>
         </section>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <section key={card.title} className="card dashboard-card p-3 space-y-2">
+          <section key={card.title} className="card dashboard-card space-y-2 p-4 sm:p-5">
             <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
               {card.title}
             </div>

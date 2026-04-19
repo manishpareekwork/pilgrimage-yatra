@@ -18,6 +18,8 @@
   --accent-2: #0ea5e9;
   --shadow-soft: 0 14px 30px rgba(2, 6, 23, 0.08);
   --shadow-hover: 0 20px 40px rgba(2, 6, 23, 0.12);
+  --radius-card: 14px;
+  --radius-control: 10px;
   --header-bg: rgba(255, 255, 255, 0.9);
   --header-border: rgba(15, 23, 42, 0.08);
   --chip-bg: rgba(15, 23, 42, 0.06);
@@ -137,7 +139,7 @@ body {
 }
 
 .app-shell__inner {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 16px;
   display: flex;
@@ -310,18 +312,30 @@ body {
 }
 
 .app-shell__main {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 20px 18px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .app-shell__main {
+    padding: 24px 22px;
+  }
 }
 
 @media (min-width: 768px) {
   .app-shell__main {
-    padding: 24px;
+    padding: 28px 28px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell__main {
+    padding: 32px 32px;
   }
 }
 
@@ -339,7 +353,7 @@ a {
 @layer components {
   .card {
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-card);
     background: var(--card);
     background-image: var(--card-highlight);
     box-shadow: var(--shadow-soft);
@@ -424,14 +438,14 @@ a {
   .new-registration-form > .card,
   .new-registration-form > section,
   .new-registration-form > details {
-    padding: 12px !important;
-    border-radius: 10px !important;
+    padding: 20px !important;
+    border-radius: var(--radius-card) !important;
   }
 
   .yatris-grid > .card,
   .yatris-grid > section {
-    padding: 12px !important;
-    border-radius: 10px !important;
+    padding: 20px !important;
+    border-radius: var(--radius-card) !important;
   }
 
   .yatris-grid details > summary {
@@ -486,20 +500,20 @@ a {
   }
 
   .reports-grid .report-card {
-    border-radius: 8px;
-    padding: 12px !important;
+    border-radius: var(--radius-card);
+    padding: 18px !important;
   }
 
   .reports-grid .report-panel {
-    border-radius: 8px;
-    padding: 12px !important;
+    border-radius: var(--radius-card);
+    padding: 18px !important;
     background: var(--surface-muted);
     box-shadow: none;
   }
 
   .dashboard-card {
-    border-radius: 8px !important;
-    padding: 12px !important;
+    border-radius: var(--radius-card) !important;
+    padding: 18px !important;
   }
 
   .station-modal,
@@ -564,17 +578,17 @@ a {
   .yatris-grid .header-actions .btn-secondary,
   .yatris-grid .header-actions .btn-primary,
   .yatris-grid .header-actions summary.btn-secondary {
-    min-height: 32px !important;
-    padding: 5px 10px !important;
-    font-size: 11px !important;
+    min-height: 38px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
   }
 
   .yatri-detail .header-actions .btn-secondary,
   .yatri-detail .header-actions .btn-primary,
   .yatri-detail .header-actions summary.btn-secondary {
-    min-height: 32px !important;
-    padding: 5px 10px !important;
-    font-size: 11px !important;
+    min-height: 38px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
   }
 
   .yatris-grid .header-actions .btn-primary {
@@ -608,13 +622,13 @@ a {
 
   .yatri-detail-form > .card,
   .yatri-detail-form > section {
-    padding: 16px !important;
-    border-radius: 12px !important;
+    padding: 20px !important;
+    border-radius: var(--radius-card) !important;
   }
 
   .yatri-detail-section {
-    padding: 16px !important;
-    border-radius: 12px !important;
+    padding: 20px !important;
+    border-radius: var(--radius-card) !important;
   }
 
   .yatri-detail-form input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
@@ -787,7 +801,8 @@ a {
   .new-registration-form button,
   .new-registration-form a.rounded-xl,
   .new-registration-form .btn-secondary {
-    padding: calc(0.5rem + 5px) calc(1rem + 5px) !important;
+    padding: 12px 20px !important;
+    min-height: 44px !important;
   }
 
   .theme-toggle {
@@ -897,7 +912,7 @@ a {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    border-radius: 8px;
+    border-radius: var(--radius-card);
   }
 
   .dashboard-hero::before {
@@ -1019,9 +1034,9 @@ a {
   .yatris-filters {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 18px !important;
-    border-radius: 16px !important;
+    gap: 18px;
+    padding: 22px !important;
+    border-radius: var(--radius-card) !important;
   }
 
   .filters-header {
@@ -1299,8 +1314,8 @@ a {
   .btn-primary {
     background: linear-gradient(135deg, var(--accent) 0%, #fb923c 40%, var(--accent-2) 100%);
     color: #0b1120;
-    border-radius: 12px;
-    padding: 10px 16px;
+    border-radius: var(--radius-control);
+    padding: 10px 18px;
     font-weight: 600;
     box-shadow: 0 10px 30px rgba(249, 115, 22, 0.25);
     display: inline-flex;
@@ -1334,8 +1349,8 @@ a {
   .btn-secondary {
     background: var(--btn-secondary-bg);
     color: var(--btn-secondary-text);
-    border-radius: 12px;
-    padding: 10px 16px;
+    border-radius: var(--radius-control);
+    padding: 10px 18px;
     font-weight: 600;
     border: 1px solid var(--border);
     transition: background 0.15s ease;
@@ -1364,7 +1379,7 @@ a {
   /* Hero Banner */
   .ops-hero {
     position: relative;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     overflow: hidden;
     background-size: cover;
     background-position: center;
@@ -1441,12 +1456,12 @@ a {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 11px 22px;
+    padding: 12px 24px;
     background: linear-gradient(135deg, var(--accent) 0%, #fb923c 100%);
     color: #ffffff;
     font-size: 14px;
     font-weight: 700;
-    border-radius: 12px;
+    border-radius: var(--radius-control);
     text-decoration: none;
     box-shadow: 0 8px 24px rgba(249, 115, 22, 0.35);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -1462,8 +1477,8 @@ a {
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
-    padding: 11px 16px;
-    border-radius: 12px;
+    padding: 12px 18px;
+    border-radius: var(--radius-control);
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.15s ease;
   }
@@ -1531,10 +1546,10 @@ a {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 20px;
+    padding: 22px 24px;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: var(--radius-card);
     text-decoration: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     box-shadow: var(--shadow-soft);
@@ -1644,10 +1659,10 @@ a {
   .masters-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
     background: var(--surface-muted);
-    border-radius: 12px;
-    padding: 8px;
+    border-radius: var(--radius-card);
+    padding: 12px;
   }
 
   .dark .masters-list {
@@ -1659,10 +1674,10 @@ a {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 14px 16px;
     background: var(--card);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     text-decoration: none;
     transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
   }

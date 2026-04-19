@@ -71,7 +71,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: Mod
             border border-[color:var(--border)]
             shadow-2xl
             /* Mobile: bottom sheet */
-            rounded-t-3xl sm:rounded-2xl
+            rounded-t-2xl sm:rounded-xl
             /* Desktop: centered modal */
             max-h-[85vh] sm:max-h-[90vh]
             overflow-hidden

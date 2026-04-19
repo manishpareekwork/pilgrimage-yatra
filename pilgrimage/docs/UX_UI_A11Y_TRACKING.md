@@ -37,7 +37,7 @@ Use this for the **screen-by-screen** pass. Mark **Pass / Partial / Gap** and sh
 
 | Route | Pass | Notes |
 |-------|------|-------|
-| `/login` | Partial | Skip link, landmarks, errors (`role="alert"`), show/hide password, seed hint gated to dev or `NEXT_PUBLIC_SHOW_LOGIN_SEED_HINT`. |
+| `/login` | Partial | Layout/padding + icon password toggle + tighter radii (2026-04). Skip link, landmarks, alerts, seed hint gated. |
 | `/dashboard` | | |
 | `/yatris` | | |
 | `/yatris/new` | | |

@@ -3,10 +3,14 @@
 -- File: supabase/pilgrimage.sql
 -- NOTE: This file avoids full reset drops but may drop obsolete objects as part of migrations.
 -- =====================================================================
+--
+-- Supabase Dashboard: prefer smaller chunks — run `sql/00_*.sql` … `14_*.sql` in order
+-- (see `sql/README.md`). Regenerate pieces after editing this file: `scripts/split_pilgrimage.sh`
+--
+-- For one-shot apply use `psql` or CLI (see `APPLY_SCHEMA.md`).
 
 -- NOTE: This file consolidates the bootstrap plus all migrations and includes address lookup seeds.
 -- Last updated: 2026-01-19 (UI-only changes; no schema updates required for mobile photo capture).
--- Run this file in the Supabase SQL editor for a full setup.
 
 begin;
 
@@ -39,7 +43,7 @@ end$$;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   role user_role not null default 'yatri',
-  name_hi text,
+  name_hi text, 
   phone text,
   created_at timestamptz not null default now()
 );
@@ -1862,49 +1866,42 @@ with check ((auth.jwt() ->> 'role') in ('reviewer', 'admin'));
 -- ---------------------------------------------------------------------
 -- Helper functions / RPCs
 -- ---------------------------------------------------------------------
+-- Pure SQL (no PL/pgSQL locals): Supabase SQL editor misparses DECLARE / INTO / variable names.
 create or replace function public.fn_generate_group_code(p_trip_id uuid)
 returns text
-language plpgsql
-as $$
-declare
-  trip_rec record;
-  seq_num int;
-  prefix text;
-  from_code text;
-  to_code text;
-begin
-  select
-    mode,
-    journey_date,
-    from_station_code,
-    to_station_code,
-    from_airport_code,
-    to_airport_code
-  into trip_rec
-  from public.yatra_trips
-  where id = p_trip_id;
-
-  if trip_rec is null then
-    raise exception 'Trip not found';
-  end if;
-
-  prefix := case when trip_rec.mode = 'air' then 'AIR' else 'TRN' end;
-  from_code := upper(coalesce(
-    case when trip_rec.mode = 'air' then trip_rec.from_airport_code else trip_rec.from_station_code end,
-    'UNK'
-  ));
-  to_code := upper(coalesce(
-    case when trip_rec.mode = 'air' then trip_rec.to_airport_code else trip_rec.to_station_code end,
-    'UNK'
-  ));
-
-  select coalesce(max((regexp_match(group_code, '-(\\d{3})$'))[1]::int), 0) + 1
-  into seq_num
-  from public.yatra_co_travel_groups
-  where trip_id = p_trip_id;
-
-  return format('%s-%s-%s-%s-%s', prefix, trip_rec.journey_date::text, from_code, to_code, lpad(seq_num::text, 3, '0'));
-end$$;
+language sql
+stable
+as $fn$
+  select format(
+    '%s-%s-%s-%s-%s',
+    case when t.mode = 'air' then 'AIR' else 'TRN' end,
+    t.journey_date::text,
+    upper(coalesce(
+      case when t.mode = 'air' then t.from_airport_code else t.from_station_code end,
+      'UNK'
+    )),
+    upper(coalesce(
+      case when t.mode = 'air' then t.to_airport_code else t.to_station_code end,
+      'UNK'
+    )),
+    lpad(
+      (
+        coalesce(
+          (
+            select max((regexp_match(g.group_code, '-([0-9]{3})$'))[1]::int)
+            from public.yatra_co_travel_groups g
+            where g.trip_id = p_trip_id
+          ),
+          0
+        ) + 1
+      )::text,
+      3,
+      '0'
+    )
+  )
+  from public.yatra_trips t
+  where t.id = p_trip_id;
+$fn$;
 
 create or replace function public.fn_create_trip(
   p_mode travel_mode,
@@ -1944,6 +1941,8 @@ begin
   return new_id;
 end$$;
 
+-- LANGUAGE sql: Dashboard SQL editor mangles many PL/pgSQL constructs (DECLARE/INTO/local names).
+-- If no matching trip, INSERT selects 0 rows → function returns NULL (callers should treat as "not found").
 create or replace function public.fn_create_co_travel_group(
   p_trip_id uuid,
   p_group_size_target int default null,
@@ -1951,32 +1950,25 @@ create or replace function public.fn_create_co_travel_group(
   p_pnr text default null,
   p_group_code text default null
 ) returns uuid
-language plpgsql
-as $$
-declare new_id uuid;
-declare resolved_code text;
-declare mode_value travel_mode;
-begin
-  select mode into mode_value from public.yatra_trips where id = p_trip_id;
-  if mode_value is null then
-    raise exception 'Trip not found';
-  end if;
-
-  resolved_code := coalesce(p_group_code, public.fn_generate_group_code(p_trip_id));
-
+language sql
+as $fn$
   insert into public.yatra_co_travel_groups (
-    trip_id, group_code, group_size_target, incharge_registration_id, pnr
-  ) values (
+    trip_id,
+    group_code,
+    group_size_target,
+    incharge_registration_id,
+    pnr
+  )
+  select
     p_trip_id,
-    resolved_code,
-    coalesce(p_group_size_target, case when mode_value = 'train' then 6 else 6 end),
+    coalesce(p_group_code, public.fn_generate_group_code(p_trip_id)),
+    coalesce(p_group_size_target, 6),
     p_incharge_registration_id,
     p_pnr
-  )
-  returning id into new_id;
-
-  return new_id;
-end$$;
+  from public.yatra_trips t
+  where t.id = p_trip_id
+  returning id;
+$fn$;
 
 create or replace function public.fn_update_co_travel_group(
   p_id uuid,
@@ -2127,6 +2119,8 @@ begin
   return new_id;
 end$$;
 
+-- LANGUAGE sql (no PL/pgSQL locals): Dashboard SQL editor misparses names like capacity_total.
+-- If room is missing or capacity is exceeded (and overflow not allowed), inserts 0 rows (no exception).
 create or replace function public.fn_assign_room_stay(
   p_room_id uuid,
   p_registration_id uuid,
@@ -2134,33 +2128,25 @@ create or replace function public.fn_assign_room_stay(
   p_stay_to date default null,
   p_allow_overflow boolean default false
 ) returns void
-language plpgsql
-as $$
-declare
-  capacity_total int;
-  current_count int;
-begin
-  select (base_capacity + extra_beds_max)
-  into capacity_total
-  from public.yatra_hotel_rooms
-  where id = p_room_id;
-
-  if capacity_total is null then
-    raise exception 'Room not found';
-  end if;
-
-  select count(*)
-  into current_count
-  from public.yatra_room_stays
-  where room_id = p_room_id;
-
-  if not p_allow_overflow and current_count >= capacity_total then
-    raise exception 'Room capacity exceeded';
-  end if;
-
+language sql
+as $fn$
   insert into public.yatra_room_stays (room_id, registration_id, stay_from, stay_to)
-  values (p_room_id, p_registration_id, p_stay_from, p_stay_to);
-end$$;
+  select
+    p_room_id,
+    p_registration_id,
+    p_stay_from,
+    p_stay_to
+  from public.yatra_hotel_rooms r
+  where r.id = p_room_id
+    and (
+      p_allow_overflow
+      or (
+        select count(*)::bigint
+        from public.yatra_room_stays s
+        where s.room_id = p_room_id
+      ) < (r.base_capacity + r.extra_beds_max)
+    );
+$fn$;
 
 create or replace function public.fn_set_room_incharge(
   p_room_id uuid,
@@ -2231,7 +2217,29 @@ create or replace function public.fn_assert_registration_ready(
 ) returns void
 language plpgsql
 as $$
-declare r record;
+declare
+  reg_name_hi text;
+  reg_father_name_hi text;
+  reg_address_hi text;
+  reg_aadhaar_no text;
+  reg_phone text;
+  reg_whatsapp text;
+  reg_dob date;
+  reg_age_years smallint;
+  reg_travel_mode travel_mode;
+  reg_train_class text;
+  reg_reservation_by reservation_by;
+  reg_photo_url text;
+  reg_health_none boolean;
+  reg_health_heart boolean;
+  reg_health_bp boolean;
+  reg_health_diabetes boolean;
+  reg_health_asthma boolean;
+  reg_health_other text;
+  reg_accompanying_name text;
+  reg_accompanying_guardian_name text;
+  reg_accompanying_resident_of text;
+  reg_accompanying_phone text;
 begin
   select
     name_hi,
@@ -2256,38 +2264,60 @@ begin
     accompanying_guardian_name,
     accompanying_resident_of,
     accompanying_phone
-  into r
+  into
+    reg_name_hi,
+    reg_father_name_hi,
+    reg_address_hi,
+    reg_aadhaar_no,
+    reg_phone,
+    reg_whatsapp,
+    reg_dob,
+    reg_age_years,
+    reg_travel_mode,
+    reg_train_class,
+    reg_reservation_by,
+    reg_photo_url,
+    reg_health_none,
+    reg_health_heart,
+    reg_health_bp,
+    reg_health_diabetes,
+    reg_health_asthma,
+    reg_health_other,
+    reg_accompanying_name,
+    reg_accompanying_guardian_name,
+    reg_accompanying_resident_of,
+    reg_accompanying_phone
   from public.yatra_registrations
   where id = p_registration_id;
 
-  if r is null then
+  if not found then
     raise exception 'Registration not found';
   end if;
 
   if p_target_status in ('needs_review', 'approved') then
-    if coalesce(btrim(r.name_hi), '') = ''
-      or coalesce(btrim(r.father_name_hi), '') = ''
-      or coalesce(btrim(r.address_hi), '') = ''
-      or coalesce(btrim(r.aadhaar_no), '') = ''
-      or coalesce(btrim(r.phone), '') = ''
-      or coalesce(btrim(r.whatsapp), '') = ''
-      or r.dob is null
-      or r.age_years is null
-      or r.travel_mode is null
-      or r.reservation_by is null
-      or r.photo_url is null or btrim(r.photo_url) = ''
-      or coalesce(btrim(r.accompanying_name), '') = ''
-      or coalesce(btrim(r.accompanying_guardian_name), '') = ''
-      or coalesce(btrim(r.accompanying_resident_of), '') = ''
-      or coalesce(btrim(r.accompanying_phone), '') = ''
-      or (r.travel_mode = 'train' and coalesce(btrim(r.train_class), '') = '')
+    if coalesce(btrim(reg_name_hi), '') = ''
+      or coalesce(btrim(reg_father_name_hi), '') = ''
+      or coalesce(btrim(reg_address_hi), '') = ''
+      or coalesce(btrim(reg_aadhaar_no), '') = ''
+      or coalesce(btrim(reg_phone), '') = ''
+      or coalesce(btrim(reg_whatsapp), '') = ''
+      or reg_dob is null
+      or reg_age_years is null
+      or reg_travel_mode is null
+      or reg_reservation_by is null
+      or reg_photo_url is null or btrim(reg_photo_url) = ''
+      or coalesce(btrim(reg_accompanying_name), '') = ''
+      or coalesce(btrim(reg_accompanying_guardian_name), '') = ''
+      or coalesce(btrim(reg_accompanying_resident_of), '') = ''
+      or coalesce(btrim(reg_accompanying_phone), '') = ''
+      or (reg_travel_mode = 'train' and coalesce(btrim(reg_train_class), '') = '')
       or not (
-        coalesce(r.health_none, false)
-        or coalesce(r.health_heart, false)
-        or coalesce(r.health_bp, false)
-        or coalesce(r.health_diabetes, false)
-        or coalesce(r.health_asthma, false)
-        or (r.health_other is not null and btrim(r.health_other) <> '')
+        coalesce(reg_health_none, false)
+        or coalesce(reg_health_heart, false)
+        or coalesce(reg_health_bp, false)
+        or coalesce(reg_health_diabetes, false)
+        or coalesce(reg_health_asthma, false)
+        or (reg_health_other is not null and btrim(reg_health_other) <> '')
       )
     then
       raise exception 'Registration is missing mandatory fields for %', p_target_status;
@@ -2823,33 +2853,36 @@ returns trigger
 language plpgsql
 as $$
 declare
-  master_rec record;
+  mt_train_no text;
+  mt_train_name text;
+  mt_source_station_code text;
+  mt_destination_station_code text;
 begin
   if new.train_master_id is null then
     return new;
   end if;
 
   select train_no, train_name, source_station_code, destination_station_code
-  into master_rec
+  into mt_train_no, mt_train_name, mt_source_station_code, mt_destination_station_code
   from public.master_trains
   where id = new.train_master_id;
 
-  if master_rec is null then
+  if not found then
     return new;
   end if;
 
   if new.mode = 'train' then
     if coalesce(btrim(new.train_no), '') = '' then
-      new.train_no := master_rec.train_no;
+      new.train_no := mt_train_no;
     end if;
     if coalesce(btrim(new.train_name), '') = '' then
-      new.train_name := master_rec.train_name;
+      new.train_name := mt_train_name;
     end if;
     if coalesce(btrim(new.from_station_code), '') = '' then
-      new.from_station_code := master_rec.source_station_code;
+      new.from_station_code := mt_source_station_code;
     end if;
     if coalesce(btrim(new.to_station_code), '') = '' then
-      new.to_station_code := master_rec.destination_station_code;
+      new.to_station_code := mt_destination_station_code;
     end if;
   end if;
 
@@ -2976,9 +3009,15 @@ security definer
 set search_path = public, extensions, pg_temp
 as $$
 declare
-  train_rec record;
-  first_stop record;
-  last_stop record;
+  mt_id uuid;
+  mt_train_no text;
+  mt_train_name text;
+  mt_src text;
+  mt_dst text;
+  fs_depart_time time;
+  fs_day_offset int;
+  ls_arrive_time time;
+  ls_day_offset int;
   depart_ts timestamptz;
   arrive_ts timestamptz;
   new_id uuid;
@@ -2987,29 +3026,35 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  select * into train_rec from public.master_trains where train_no = p_train_no;
-  if train_rec is null then
+  select id, train_no, train_name, source_station_code, destination_station_code
+  into mt_id, mt_train_no, mt_train_name, mt_src, mt_dst
+  from public.master_trains
+  where train_no = p_train_no;
+
+  if not found then
     raise exception 'Train not found';
   end if;
 
-  select * into first_stop
+  select depart_time, day_offset
+  into fs_depart_time, fs_day_offset
   from public.master_train_stops
-  where train_id = train_rec.id
+  where train_id = mt_id
   order by stop_seq asc
   limit 1;
 
-  select * into last_stop
+  select arrive_time, day_offset
+  into ls_arrive_time, ls_day_offset
   from public.master_train_stops
-  where train_id = train_rec.id
+  where train_id = mt_id
   order by stop_seq desc
   limit 1;
 
-  if first_stop.depart_time is not null then
-    depart_ts := (p_journey_date + coalesce(first_stop.day_offset, 0) + first_stop.depart_time)::timestamptz;
+  if fs_depart_time is not null then
+    depart_ts := (p_journey_date + coalesce(fs_day_offset, 0) + fs_depart_time)::timestamptz;
   end if;
 
-  if last_stop.arrive_time is not null then
-    arrive_ts := (p_journey_date + coalesce(last_stop.day_offset, 0) + last_stop.arrive_time)::timestamptz;
+  if ls_arrive_time is not null then
+    arrive_ts := (p_journey_date + coalesce(ls_day_offset, 0) + ls_arrive_time)::timestamptz;
   end if;
 
   insert into public.yatra_trips (
@@ -3027,15 +3072,15 @@ begin
   ) values (
     'train',
     coalesce(p_trip_kind, 'other'::trip_kind),
-    format('%s %s', train_rec.train_no, train_rec.train_name),
+    format('%s %s', mt_train_no, mt_train_name),
     p_journey_date,
     depart_ts,
     arrive_ts,
-    train_rec.id,
-    train_rec.train_no,
-    train_rec.train_name,
-    train_rec.source_station_code,
-    train_rec.destination_station_code
+    mt_id,
+    mt_train_no,
+    mt_train_name,
+    mt_src,
+    mt_dst
   )
   returning id into new_id;
 
@@ -3321,9 +3366,15 @@ security definer
 set search_path = public, extensions, pg_temp
 as $$
 declare
-  train_rec record;
-  first_stop record;
-  last_stop record;
+  mt_id uuid;
+  mt_train_no text;
+  mt_train_name text;
+  mt_src text;
+  mt_dst text;
+  fs_depart_time time;
+  fs_day_offset int;
+  ls_arrive_time time;
+  ls_day_offset int;
   depart_ts timestamptz;
   arrive_ts timestamptz;
   new_id uuid;
@@ -3332,29 +3383,35 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  select * into train_rec from public.master_trains where train_no = p_train_no;
-  if train_rec is null then
+  select id, train_no, train_name, source_station_code, destination_station_code
+  into mt_id, mt_train_no, mt_train_name, mt_src, mt_dst
+  from public.master_trains
+  where train_no = p_train_no;
+
+  if not found then
     raise exception 'Train not found';
   end if;
 
-  select * into first_stop
+  select depart_time, day_offset
+  into fs_depart_time, fs_day_offset
   from public.master_train_stops
-  where train_id = train_rec.id
+  where train_id = mt_id
   order by stop_seq asc
   limit 1;
 
-  select * into last_stop
+  select arrive_time, day_offset
+  into ls_arrive_time, ls_day_offset
   from public.master_train_stops
-  where train_id = train_rec.id
+  where train_id = mt_id
   order by stop_seq desc
   limit 1;
 
-  if first_stop.depart_time is not null then
-    depart_ts := (p_journey_date + coalesce(first_stop.day_offset, 0) + first_stop.depart_time)::timestamptz;
+  if fs_depart_time is not null then
+    depart_ts := (p_journey_date + coalesce(fs_day_offset, 0) + fs_depart_time)::timestamptz;
   end if;
 
-  if last_stop.arrive_time is not null then
-    arrive_ts := (p_journey_date + coalesce(last_stop.day_offset, 0) + last_stop.arrive_time)::timestamptz;
+  if ls_arrive_time is not null then
+    arrive_ts := (p_journey_date + coalesce(ls_day_offset, 0) + ls_arrive_time)::timestamptz;
   end if;
 
   insert into public.yatra_trips (
@@ -3372,15 +3429,15 @@ begin
   ) values (
     'train',
     coalesce(p_trip_kind, 'other'::trip_kind),
-    format('%s %s', train_rec.train_no, train_rec.train_name),
+    format('%s %s', mt_train_no, mt_train_name),
     p_journey_date,
     depart_ts,
     arrive_ts,
-    train_rec.id,
-    train_rec.train_no,
-    train_rec.train_name,
-    train_rec.source_station_code,
-    train_rec.destination_station_code
+    mt_id,
+    mt_train_no,
+    mt_train_name,
+    mt_src,
+    mt_dst
   )
   returning id into new_id;
 
@@ -3869,7 +3926,22 @@ create or replace function public.fn_assert_registration_ready(
 ) returns void
 language plpgsql
 as $$
-declare r record;
+declare
+  reg_name_hi text;
+  reg_father_name_hi text;
+  reg_address_hi text;
+  reg_aadhaar_no text;
+  reg_phone text;
+  reg_whatsapp text;
+  reg_dob date;
+  reg_age_years smallint;
+  reg_travel_mode travel_mode;
+  reg_train_class text;
+  reg_reservation_by reservation_by;
+  reg_accompanying_name text;
+  reg_accompanying_guardian_name text;
+  reg_accompanying_resident_of text;
+  reg_accompanying_phone text;
 begin
   select
     name_hi,
@@ -3887,30 +3959,45 @@ begin
     accompanying_guardian_name,
     accompanying_resident_of,
     accompanying_phone
-  into r
+  into
+    reg_name_hi,
+    reg_father_name_hi,
+    reg_address_hi,
+    reg_aadhaar_no,
+    reg_phone,
+    reg_whatsapp,
+    reg_dob,
+    reg_age_years,
+    reg_travel_mode,
+    reg_train_class,
+    reg_reservation_by,
+    reg_accompanying_name,
+    reg_accompanying_guardian_name,
+    reg_accompanying_resident_of,
+    reg_accompanying_phone
   from public.yatra_registrations
   where id = p_registration_id;
 
-  if r is null then
+  if not found then
     raise exception 'Registration not found';
   end if;
 
   if p_target_status in ('needs_review', 'approved') then
-    if coalesce(btrim(r.name_hi), '') = ''
-      or coalesce(btrim(r.father_name_hi), '') = ''
-      or coalesce(btrim(r.address_hi), '') = ''
-      or coalesce(btrim(r.aadhaar_no), '') = ''
-      or coalesce(btrim(r.phone), '') = ''
-      or coalesce(btrim(r.whatsapp), '') = ''
-      or r.dob is null
-      or r.age_years is null
-      or r.travel_mode is null
-      or r.reservation_by is null
-      or coalesce(btrim(r.accompanying_name), '') = ''
-      or coalesce(btrim(r.accompanying_guardian_name), '') = ''
-      or coalesce(btrim(r.accompanying_resident_of), '') = ''
-      or coalesce(btrim(r.accompanying_phone), '') = ''
-      or (r.travel_mode = 'train' and coalesce(btrim(r.train_class), '') = '')
+    if coalesce(btrim(reg_name_hi), '') = ''
+      or coalesce(btrim(reg_father_name_hi), '') = ''
+      or coalesce(btrim(reg_address_hi), '') = ''
+      or coalesce(btrim(reg_aadhaar_no), '') = ''
+      or coalesce(btrim(reg_phone), '') = ''
+      or coalesce(btrim(reg_whatsapp), '') = ''
+      or reg_dob is null
+      or reg_age_years is null
+      or reg_travel_mode is null
+      or reg_reservation_by is null
+      or coalesce(btrim(reg_accompanying_name), '') = ''
+      or coalesce(btrim(reg_accompanying_guardian_name), '') = ''
+      or coalesce(btrim(reg_accompanying_resident_of), '') = ''
+      or coalesce(btrim(reg_accompanying_phone), '') = ''
+      or (reg_travel_mode = 'train' and coalesce(btrim(reg_train_class), '') = '')
     then
       raise exception 'Registration is missing mandatory fields for %', p_target_status;
     end if;

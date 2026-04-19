@@ -61,7 +61,7 @@ export function CreateUserForm() {
       <FormSection title="Create user" description="Provision a new admin, reviewer, or volunteer.">
         {message && (
           <div
-            className={`rounded-xl border px-3 py-2 text-sm ${
+            className={`rounded-[10px] border px-4 py-3 text-sm ${
               message.type === "error"
                 ? "border-red-500/40 bg-red-950/40 text-red-200"
                 : "border-emerald-500/40 bg-emerald-950/40 text-emerald-200"
@@ -70,8 +70,8 @@ export function CreateUserForm() {
             {message.text}
           </div>
         )}
-        <form className="space-y-4" onSubmit={onSubmit}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <form className="space-y-6" onSubmit={onSubmit}>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Email" htmlFor="email" required>
               <TextInput
                 id="email"
@@ -100,11 +100,11 @@ export function CreateUserForm() {
               </Select>
             </Field>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-3 border-t border-[color:var(--border)] pt-5 sm:flex-row sm:justify-end">
             <button
               type="submit"
               disabled={busy}
-              className="rounded-xl bg-gradient-to-r from-orange-500 to-sky-500 px-4 py-2 text-sm font-semibold text-black shadow disabled:opacity-60"
+              className="btn-primary min-h-[44px] min-w-[160px] px-6 disabled:opacity-60"
             >
               {busy ? "Creating..." : "Create user"}
             </button>

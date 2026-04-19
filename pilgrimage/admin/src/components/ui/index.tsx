@@ -4,7 +4,7 @@ const cn = (...classes: Array<string | undefined | false | null>) =>
   classes.filter(Boolean).join(" ");
 
 const inputBaseClass =
-  "w-full min-h-[44px] rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3.5 py-2.5 text-[14px] leading-[1.35] text-[color:var(--ink)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
+  "w-full min-h-[44px] rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3.5 py-2.5 text-[14px] leading-[1.35] text-[color:var(--ink)] shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
 const inputErrorClass =
   "border-red-500/70 focus:ring-red-400 focus:border-red-500/70";
 
@@ -29,7 +29,7 @@ export function PageHeader({
   
   return (
     <div 
-      className={cn("card p-6", className)} 
+      className={cn("card p-6 sm:p-8", className)} 
       style={
         hasBackground
           ? {
@@ -83,11 +83,11 @@ export function FormSection({
 }) {
   return (
     <section
-      className={cn("card space-y-6 p-6", className)}
+      className={cn("card space-y-7 p-6 sm:p-8", className)}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="text-sm font-semibold text-[color:var(--ink)]">{title}</div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="text-base font-semibold text-[color:var(--ink)]">{title}</div>
           {description && (
             <p className="text-xs text-[color:var(--muted)]">{description}</p>
           )}
@@ -117,19 +117,19 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn("form-field", className)}>
+    <div className={cn("form-field flex flex-col gap-1.5", className)}>
       <label
         htmlFor={htmlFor}
-        className="mb-2 block text-sm font-medium text-[color:var(--ink)]"
+        className="text-sm font-medium text-[color:var(--ink)]"
       >
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>
       {helperText && (
-        <p className="mb-2 text-xs text-[color:var(--subtle)]">{helperText}</p>
+        <p className="text-xs text-[color:var(--subtle)]">{helperText}</p>
       )}
       {children}
-      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }
