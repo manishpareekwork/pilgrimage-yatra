@@ -99,7 +99,7 @@ const parseReceipts = (formData: FormData, fieldErrors: Record<string, string>) 
   return receipts;
 };
 
-type FormInput = {
+export type RegistrationFormInput = {
   receipt_no?: string;
   name_hi: string;
   guardian_relation?: string;
@@ -153,6 +153,8 @@ type FormInput = {
   declaration_signed_at?: string;
   receipts?: ReceiptInput[];
 };
+
+type FormInput = RegistrationFormInput;
 
 const parseFormData = (
   formData: FormData
@@ -274,12 +276,30 @@ const parseFormData = (
     fieldErrors.train_class = "Train class is required";
   }
 
+  const hasMedicalSelection =
+    data.health_none ||
+    data.health_heart ||
+    data.health_bp ||
+    data.health_diabetes ||
+    data.health_asthma ||
+    Boolean(data.health_other?.trim());
+  if (!hasMedicalSelection) {
+    fieldErrors.health_none = "Select a medical condition or 'No known conditions'.";
+  }
+
   if (Object.keys(fieldErrors).length > 0) {
     return { error: "Please correct the highlighted fields.", fieldErrors };
   }
 
   return { data };
 };
+
+/** Shared parser for new registration and quick-edit forms (same field names). */
+export function parseRegistrationFormData(
+  formData: FormData
+): { data?: RegistrationFormInput; error?: string; fieldErrors?: Record<string, string> } {
+  return parseFormData(formData);
+}
 
 export async function createRegistrationAction(
   _prevState: ActionState,
@@ -330,7 +350,16 @@ export async function createRegistrationAction(
   const { data: newId, error: createError } = await supabase.rpc("fn_create_registration", createPayload);
 
   if (createError || !newId) {
-    return { error: createError?.message ?? "Could not create registration" };
+    const msg = createError?.message ?? "Could not create registration";
+    if (/health selection is required/i.test(msg)) {
+      return {
+        error: "Please correct the highlighted fields.",
+        fieldErrors: {
+          health_none: "Select a medical condition or 'No known conditions'.",
+        },
+      };
+    }
+    return { error: msg };
   }
 
   const patch: Record<string, unknown> = {

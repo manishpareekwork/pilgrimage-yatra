@@ -49,8 +49,8 @@ If you must use the Dashboard, run **one migration / one function at a time**, n
 ## Repo convention
 
 - `**supabase/pilgrimage.sql`** — consolidated schema (source of truth in this repo).
-- Helper functions that must run everywhere are being moved to `**LANGUAGE sql**` where possible so they survive naive clients; behavior may differ slightly (e.g. `NULL` instead of `RAISE` when a row is missing) — see comments on each function.
+- Helper functions that must run everywhere are being moved to `**LANGUAGE sql`** where possible so they survive naive clients; behavior may differ slightly (e.g. `NULL` instead of `RAISE` when a row is missing) — see comments on each function.
 
 ## Reset scripts (`15` / `16`)
 
-Optional dev reset lives in **`supabase/sql/15_clear_public_and_auth.sql`** and **`16_seed_dev_admin.sql`** (see `sql/README.md`). Those are fine to run in the Dashboard **individually**. Full schema application should still prefer `psql` or CLI.
+Optional dev reset lives in `**supabase/sql/15_clear_public_and_auth.sql**` and `**16_seed_dev_admin.sql**` (see `sql/README.md`). Those are fine to run in the Dashboard **individually**. Full schema application should still prefer `psql` or CLI.

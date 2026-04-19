@@ -1,7 +1,10 @@
 "use client";
 
-import { updateRegistrationAction } from "./actions";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  initialUpdateRegistrationState,
+  updateRegistrationAction,
+} from "./actions";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { CheckboxRow, Field, FormSection, Select, TextArea, TextInput } from "@/components/ui";
 import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { TRAIN_CLASS_OPTIONS, normalizeTrainClass } from "@/lib/trainClasses";
@@ -198,6 +201,13 @@ export function QuickEditForm({
   );
   const showReceiptsSection = !showRequiredOnly || receipts.length > 0;
 
+  const [formState, formAction] = useActionState(
+    updateRegistrationAction,
+    initialUpdateRegistrationState
+  );
+  const fieldErrors = formState.fieldErrors ?? undefined;
+  const hasFieldError = (name: string) => Boolean(fieldErrors?.[name]);
+
   const clearInput = (name: string) => {
     const el = formRef.current?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
     if (el) el.value = "";
@@ -330,8 +340,16 @@ export function QuickEditForm({
   }, [otherActive]);
 
   return (
-    <form ref={formRef} id={formId} action={updateRegistrationAction} className="yatri-detail-form space-y-6">
+    <form ref={formRef} id={formId} action={formAction} className="yatri-detail-form space-y-6">
       <FormStatusOverlay message="Saving registration..." />
+      {formState.error && (
+        <div
+          role="alert"
+          className="rounded-[10px] border border-rose-500/40 bg-rose-950/35 px-4 py-3 text-sm text-rose-100"
+        >
+          {formState.error}
+        </div>
+      )}
       <input type="hidden" name="id" value={registration.id} />
       <input type="hidden" name="group_id" value={registration.group_id ?? ""} />
       <input type="hidden" name="receipt_no" value={registration.receipt_no ?? ""} />
@@ -351,15 +369,22 @@ export function QuickEditForm({
 
       <FormSection title="Applicant" description="Primary identification and contact details.">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          <Field label="Name" htmlFor="name_hi" required>
-            <TextInput id="name_hi" name="name_hi" required defaultValue={registration.name_hi ?? ""} />
+          <Field label="Name" htmlFor="name_hi" required error={fieldErrors?.name_hi}>
+            <TextInput
+              id="name_hi"
+              name="name_hi"
+              required
+              defaultValue={registration.name_hi ?? ""}
+              error={hasFieldError("name_hi")}
+            />
           </Field>
-          <Field label="Father's Name" htmlFor="father_name_hi" required>
+          <Field label="Father's Name" htmlFor="father_name_hi" required error={fieldErrors?.father_name_hi}>
             <TextInput
               id="father_name_hi"
               name="father_name_hi"
               required
               defaultValue={registration.father_name_hi ?? ""}
+              error={hasFieldError("father_name_hi")}
             />
           </Field>
           <Field
@@ -374,21 +399,29 @@ export function QuickEditForm({
               <option value="guardian">Guardian</option>
             </Select>
           </Field>
-          <Field label="Address" htmlFor="address_hi" required className="sm:col-span-2 xl:col-span-3 max-w-2xl">
+          <Field
+            label="Address"
+            htmlFor="address_hi"
+            required
+            className="sm:col-span-2 xl:col-span-3 max-w-2xl"
+            error={fieldErrors?.address_hi}
+          >
             <TextArea
               id="address_hi"
               name="address_hi"
               required
               defaultValue={registration.address_hi ?? ""}
               rows={3}
+              error={hasFieldError("address_hi")}
             />
           </Field>
           <div className="sm:col-span-2 xl:col-span-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <Field label="State" htmlFor="address_state" required>
+            <Field label="State" htmlFor="address_state" required error={fieldErrors?.address_state}>
               <Select
                 id="address_state"
                 name="address_state"
                 required
+                error={hasFieldError("address_state")}
                 value={addressState}
                 onChange={(event) => {
                   setAddressState(event.target.value);
@@ -404,11 +437,12 @@ export function QuickEditForm({
                 ))}
               </Select>
             </Field>
-            <Field label="District" htmlFor="address_district" required>
+            <Field label="District" htmlFor="address_district" required error={fieldErrors?.address_district}>
               <Select
                 id="address_district"
                 name="address_district"
                 required
+                error={hasFieldError("address_district")}
                 value={addressDistrict}
                 onChange={(event) => setAddressDistrict(event.target.value)}
                 disabled={!addressState}
@@ -422,13 +456,14 @@ export function QuickEditForm({
                 ))}
               </Select>
             </Field>
-            <Field label="City / Village" htmlFor="address_city" required>
+            <Field label="City / Village" htmlFor="address_city" required error={fieldErrors?.address_city}>
               <TextInput
                 id="address_city"
                 name="address_city"
                 required
                 defaultValue={registration.address_city ?? ""}
                 placeholder="City or village"
+                error={hasFieldError("address_city")}
               />
             </Field>
             <Field
@@ -445,29 +480,48 @@ export function QuickEditForm({
               />
             </Field>
           </div>
-          <Field label="Aadhaar Card Number" htmlFor="aadhaar_no" required>
-            <TextInput id="aadhaar_no" name="aadhaar_no" required defaultValue={registration.aadhaar_no ?? ""} />
+          <Field label="Aadhaar Card Number" htmlFor="aadhaar_no" required error={fieldErrors?.aadhaar_no}>
+            <TextInput
+              id="aadhaar_no"
+              name="aadhaar_no"
+              required
+              defaultValue={registration.aadhaar_no ?? ""}
+              error={hasFieldError("aadhaar_no")}
+            />
           </Field>
-          <Field label="Mobile Number" htmlFor="phone" required>
-            <TextInput id="phone" name="phone" required defaultValue={registration.phone ?? ""} />
+          <Field label="Mobile Number" htmlFor="phone" required error={fieldErrors?.phone}>
+            <TextInput
+              id="phone"
+              name="phone"
+              required
+              defaultValue={registration.phone ?? ""}
+              error={hasFieldError("phone")}
+            />
           </Field>
-          <Field label="WhatsApp Number" htmlFor="whatsapp" required>
-            <TextInput id="whatsapp" name="whatsapp" required defaultValue={registration.whatsapp ?? ""} />
+          <Field label="WhatsApp Number" htmlFor="whatsapp" required error={fieldErrors?.whatsapp}>
+            <TextInput
+              id="whatsapp"
+              name="whatsapp"
+              required
+              defaultValue={registration.whatsapp ?? ""}
+              error={hasFieldError("whatsapp")}
+            />
           </Field>
-          <Field label="Date of Birth" htmlFor="dob" required>
+          <Field label="Date of Birth" htmlFor="dob" required error={fieldErrors?.dob}>
             <TextInput
               id="dob"
               type="date"
               name="dob"
               required
               defaultValue={formatDate(registration.dob)}
+              error={hasFieldError("dob")}
               onChange={(event) => {
                 const computedAge = computeAgeFromDob(event.target.value);
                 setInputValue("age_years", computedAge === null ? "" : String(computedAge));
               }}
             />
           </Field>
-          <Field label="Age (years)" htmlFor="age_years" required>
+          <Field label="Age (years)" htmlFor="age_years" required error={fieldErrors?.age_years}>
             <TextInput
               id="age_years"
               type="number"
@@ -476,12 +530,14 @@ export function QuickEditForm({
               max={120}
               required
               defaultValue={registration.age_years ?? ""}
+              error={hasFieldError("age_years")}
             />
           </Field>
           <Field
             label="Height (cm)"
             htmlFor="height_cm"
             className={showRequiredOnly ? "hidden" : undefined}
+            error={fieldErrors?.height_cm}
           >
             <TextInput
               id="height_cm"
@@ -489,12 +545,14 @@ export function QuickEditForm({
               name="height_cm"
               step="0.1"
               defaultValue={registration.height_cm ?? ""}
+              error={hasFieldError("height_cm")}
             />
           </Field>
           <Field
             label="Weight (kg)"
             htmlFor="weight_kg"
             className={showRequiredOnly ? "hidden" : undefined}
+            error={fieldErrors?.weight_kg}
           >
             <TextInput
               id="weight_kg"
@@ -502,6 +560,7 @@ export function QuickEditForm({
               name="weight_kg"
               step="0.1"
               defaultValue={registration.weight_kg ?? ""}
+              error={hasFieldError("weight_kg")}
             />
           </Field>
           <Field
@@ -525,36 +584,50 @@ export function QuickEditForm({
 
       <FormSection title="Emergency / Companion Details" description="Required companion details and optional emergency contact.">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          <Field label="Companion Name" htmlFor="accompanying_name" required>
+          <Field label="Companion Name" htmlFor="accompanying_name" required error={fieldErrors?.accompanying_name}>
             <TextInput
               id="accompanying_name"
               name="accompanying_name"
               required
               defaultValue={registration.accompanying_name ?? ""}
+              error={hasFieldError("accompanying_name")}
             />
           </Field>
-          <Field label="Companion Father/Guardian" htmlFor="accompanying_guardian_name" required>
+          <Field
+            label="Companion Father/Guardian"
+            htmlFor="accompanying_guardian_name"
+            required
+            error={fieldErrors?.accompanying_guardian_name}
+          >
             <TextInput
               id="accompanying_guardian_name"
               name="accompanying_guardian_name"
               required
               defaultValue={registration.accompanying_guardian_name ?? ""}
+              error={hasFieldError("accompanying_guardian_name")}
             />
           </Field>
-          <Field label="Companion Resident of" htmlFor="accompanying_resident_of" required>
+          <Field
+            label="Companion Resident of"
+            htmlFor="accompanying_resident_of"
+            required
+            error={fieldErrors?.accompanying_resident_of}
+          >
             <TextInput
               id="accompanying_resident_of"
               name="accompanying_resident_of"
               required
               defaultValue={registration.accompanying_resident_of ?? ""}
+              error={hasFieldError("accompanying_resident_of")}
             />
           </Field>
-          <Field label="Companion Mobile" htmlFor="accompanying_phone" required>
+          <Field label="Companion Mobile" htmlFor="accompanying_phone" required error={fieldErrors?.accompanying_phone}>
             <TextInput
               id="accompanying_phone"
               name="accompanying_phone"
               required
               defaultValue={registration.accompanying_phone ?? ""}
+              error={hasFieldError("accompanying_phone")}
             />
           </Field>
           <Field
@@ -583,6 +656,7 @@ export function QuickEditForm({
             label="Emergency Contact Age (years)"
             htmlFor="emergency_contact_age_years"
             className={showRequiredOnly ? "hidden" : undefined}
+            error={fieldErrors?.emergency_contact_age_years}
           >
             <TextInput
               id="emergency_contact_age_years"
@@ -591,6 +665,7 @@ export function QuickEditForm({
               min={0}
               max={120}
               defaultValue={registration.emergency_contact_age_years ?? ""}
+              error={hasFieldError("emergency_contact_age_years")}
             />
           </Field>
           <Field
@@ -621,7 +696,7 @@ export function QuickEditForm({
 
       <FormSection title="Travel Details" description="Primary travel plan and reservation details.">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Travel Mode" htmlFor="travel_mode" required>
+          <Field label="Travel Mode" htmlFor="travel_mode" required error={fieldErrors?.travel_mode}>
             <Select
               id="travel_mode"
               name="travel_mode"
@@ -634,6 +709,7 @@ export function QuickEditForm({
                 }
               }}
               required
+              error={hasFieldError("travel_mode")}
             >
               <option value="">Select</option>
               <option value="train">Train</option>
@@ -645,6 +721,7 @@ export function QuickEditForm({
             htmlFor="train_class"
             required={resolvedTravelMode === "train"}
             className={resolvedTravelMode === "train" ? undefined : "hidden"}
+            error={fieldErrors?.train_class}
           >
             <Select
               id="train_class"
@@ -652,6 +729,7 @@ export function QuickEditForm({
               defaultValue={trainClassValue}
               required={resolvedTravelMode === "train"}
               disabled={resolvedTravelMode !== "train"}
+              error={hasFieldError("train_class")}
             >
               <option value="">Select</option>
               {hasCustomTrainClass && <option value={trainClassValue}>{trainClassValue}</option>}
@@ -662,8 +740,14 @@ export function QuickEditForm({
               ))}
             </Select>
           </Field>
-          <Field label="Reservation By" htmlFor="reservation_by" required>
-            <Select id="reservation_by" name="reservation_by" defaultValue={registration.reservation_by ?? ""} required>
+          <Field label="Reservation By" htmlFor="reservation_by" required error={fieldErrors?.reservation_by}>
+            <Select
+              id="reservation_by"
+              name="reservation_by"
+              defaultValue={registration.reservation_by ?? ""}
+              required
+              error={hasFieldError("reservation_by")}
+            >
               <option value="">Select</option>
               <option value="self">Self</option>
               <option value="committee">Committee</option>
@@ -695,6 +779,7 @@ export function QuickEditForm({
               checked={healthNone}
               onChange={(event) => setHealthNone(event.target.checked)}
               inputClassName="mt-0"
+              className={hasFieldError("health_none") ? "rounded-[10px] border border-red-500/40 p-3" : undefined}
             />
             <CheckboxRow
               name="health_heart"
@@ -741,6 +826,9 @@ export function QuickEditForm({
               disabled={healthNone}
             />
           </div>
+          {hasFieldError("health_none") && (
+            <div className="text-xs text-red-400">{fieldErrors?.health_none}</div>
+          )}
           <Field label="Medicines / notes" htmlFor="health_common_meds">
             <TextArea
               id="health_common_meds"
@@ -869,6 +957,11 @@ export function QuickEditForm({
             </button>
           }
         >
+          {fieldErrors?.receipts && (
+            <div className="mb-3 text-sm text-red-400" role="alert">
+              {fieldErrors.receipts}
+            </div>
+          )}
           {receipts.length === 0 ? (
             <div className="text-xs text-[color:var(--muted)]">
               No receipts added yet.
@@ -1002,7 +1095,12 @@ export function QuickEditForm({
             I declare that the information provided is correct and I agree to comply with the Yatra
             guidelines.
           </p>
-          <Field label="Declaration acceptance" htmlFor="declaration_accepted" required>
+          <Field
+            label="Declaration acceptance"
+            htmlFor="declaration_accepted"
+            required
+            error={fieldErrors?.declaration_accepted}
+          >
             <label className="flex items-center gap-2 text-sm text-[color:var(--muted)]">
               <input
                 id="declaration_accepted"
@@ -1015,7 +1113,7 @@ export function QuickEditForm({
               <span className="text-[color:var(--accent)]">I accept the declaration</span>
             </label>
           </Field>
-          <Field label="Signed at" htmlFor="declaration_signed_at">
+          <Field label="Signed at" htmlFor="declaration_signed_at" error={fieldErrors?.declaration_signed_at}>
             <div className="flex flex-wrap items-center gap-3">
               <TextInput
                 id="declaration_signed_at"

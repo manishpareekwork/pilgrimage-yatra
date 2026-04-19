@@ -2,3 +2,5 @@
 node_modules
 .next
 .local_node_modules
+pilgrimage/admin/test-results/
+pilgrimage/admin/playwright-report/
