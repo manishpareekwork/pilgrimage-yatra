@@ -83,7 +83,7 @@ export default async function ProtectedLayout({
       onLogoutAction={
         <form action={signOut}>
           <FormStatusOverlay message="Signing out..." />
-          <button type="submit" className="app-shell__logout">
+          <button type="submit" className="app-shell__logout" aria-label="Sign out">
             Logout
           </button>
         </form>

@@ -10,7 +10,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 NEXT_PUBLIC_ORCHESTRATOR_URL=https://pilgrimage-yatra.onrender.com
 ```
 
-You can also copy `admin/.env.template` and fill in values.
+Optional (non-production only): `NEXT_PUBLIC_SHOW_LOGIN_SEED_HINT=true` shows dev login hints on `/login`.
+
+Copy `pilgrimage/admin/.env.template` to `.env.local` and fill in values.
 
 ## Scripts
 - `npm run dev` — Next dev (Turbopack) with `TURBOPACK_ROOT` pinned to this folder.

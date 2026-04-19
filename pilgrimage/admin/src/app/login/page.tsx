@@ -3,7 +3,11 @@
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
-import { useState, FormEvent } from "react";
+import { useId, useState, FormEvent } from "react";
+
+const showLoginSeedHint =
+  process.env.NEXT_PUBLIC_SHOW_LOGIN_SEED_HINT === "true" ||
+  process.env.NODE_ENV === "development";
 
 export default function LoginPage() {
   const supabase = getBrowserSupabase();
@@ -11,10 +15,12 @@ export default function LoginPage() {
   const { startLoading, startNavigation } = useGlobalLoading();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
   const [retryAfterMs, setRetryAfterMs] = useState<number>(0);
+  const errorId = useId();
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,55 +69,32 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 16px",
-        backgroundImage: "linear-gradient(135deg, #0f172a, #0b2d3f)",
-        color: "#e2e8f0",
-      }}
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 px-4 py-10 text-slate-200"
     >
-      <div style={{ width: "100%", maxWidth: 420 }}>
-        <div style={{ textAlign: "center", marginBottom: 18 }}>
+      <div className="w-full max-w-md">
+        <div className="mb-5 text-center">
           <div
-            style={{
-              display: "inline-flex",
-              height: 48,
-              width: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 16,
-              background: "linear-gradient(135deg, #f97316, #0ea5e9)",
-              color: "#fff",
-              fontWeight: 700,
-              marginBottom: 8,
-            }}
+            className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-sky-500 text-lg font-bold text-white shadow-lg"
+            aria-hidden="true"
           >
             ॐ
           </div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: "#fff" }}>
-            Pilgrimage Admin
-          </div>
-          <div style={{ fontSize: 13, color: "#cbd5e1" }}>
-            Sign in to manage yatri registrations
-          </div>
+          <h1 className="text-xl font-semibold text-white">Pilgrimage Admin</h1>
+          <p className="mt-1 text-sm text-slate-400">Sign in to manage yatri registrations</p>
         </div>
 
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 18,
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            boxShadow: "0 16px 40px rgba(0,0,0,0.35)",
-          }}
-        >
-          <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label htmlFor="email" style={{ fontSize: 13, color: "#cbd5e1" }}>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur-sm">
+          <form
+            onSubmit={onSubmit}
+            className="grid gap-4"
+            aria-busy={loading}
+            aria-describedby={error ? errorId : undefined}
+          >
+            <div className="grid gap-2">
+              <label htmlFor="email" className="text-sm text-slate-300">
                 Email
               </label>
               <input
@@ -122,50 +105,46 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(255,255,255,0.12)",
-                  padding: "10px 12px",
-                  color: "#fff",
-                  fontSize: 14,
-                }}
+                disabled={loading}
+                aria-invalid={error ? true : undefined}
+                className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/80 focus:outline-none focus:ring-2 focus:ring-sky-400/80 disabled:opacity-60"
               />
             </div>
-            <div style={{ display: "grid", gap: 6 }}>
-              <label htmlFor="password" style={{ fontSize: 13, color: "#cbd5e1" }}>
+            <div className="grid gap-2">
+              <label htmlFor="password" className="text-sm text-slate-300">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(255,255,255,0.12)",
-                  padding: "10px 12px",
-                  color: "#fff",
-                  fontSize: 14,
-                }}
-              />
+              <div className="flex gap-2">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  aria-invalid={error ? true : undefined}
+                  className="min-w-0 flex-1 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/80 focus:outline-none focus:ring-2 focus:ring-sky-400/80 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="shrink-0 rounded-xl border border-white/15 bg-white/5 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-sky-400/80 disabled:opacity-60"
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  disabled={loading}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
             {error && (
               <div
-                style={{
-                  fontSize: 13,
-                  color: "#fecdd3",
-                  background: "rgba(190,24,93,0.15)",
-                  border: "1px solid rgba(190,24,93,0.4)",
-                  borderRadius: 10,
-                  padding: "8px 10px",
-                }}
+                id={errorId}
+                role="alert"
+                aria-live="polite"
+                className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-sm text-rose-100"
               >
                 {error}
               </div>
@@ -173,28 +152,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              style={{
-                width: "100%",
-                border: "none",
-                borderRadius: 12,
-                padding: "12px",
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#0f172a",
-                background: "linear-gradient(135deg, #f97316, #fb923c, #0ea5e9)",
-                boxShadow: "0 12px 30px rgba(249,115,22,0.35)",
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
+              className="w-full rounded-xl bg-gradient-to-r from-orange-500 via-orange-400 to-sky-500 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-orange-500/25 transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
-          <div style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "#94a3b8" }}>
-            Seeded users: admin@admin.com / 12345678
-          </div>
+          {showLoginSeedHint && (
+            <p className="mt-4 text-center text-xs text-slate-500">
+              Dev hint: seeded users may include <span className="text-slate-400">admin@admin.com</span> /{" "}
+              <span className="text-slate-400">12345678</span>
+            </p>
+          )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

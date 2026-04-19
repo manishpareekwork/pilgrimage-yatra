@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import React from "react";
+import { AppShellNavDesktop, AppShellNavMobile } from "@/components/AppShellNav";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 type NavItem = {
@@ -28,6 +28,9 @@ export function AppShell({
   ];
   const isAdmin = role === "admin";
   const isStaff = role === "admin" || role === "reviewer";
+  const visibleNav = nav.filter(
+    (item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff)
+  );
 
   return (
     <div className="app-shell">
@@ -49,14 +52,8 @@ export function AppShell({
               <div className="app-shell__subtitle">Jagannath Puri 2025</div>
             </div>
           </div>
-          <nav className="app-shell__nav-desktop">
-            {nav
-              .filter((item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff))
-              .map((item) => (
-                <Link key={item.href} href={item.href} className="app-shell__nav-link">
-                  {item.label}
-                </Link>
-              ))}
+          <nav className="app-shell__nav-desktop" aria-label="Primary">
+            <AppShellNavDesktop items={visibleNav} />
             <div className="app-shell__nav-actions">
               <ThemeToggle />
               {onLogoutAction}
@@ -64,15 +61,9 @@ export function AppShell({
           </nav>
         </div>
         <div className="app-shell__nav-mobile">
-          <div className="app-shell__nav-mobile-links">
-            {nav
-              .filter((item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff))
-              .map((item) => (
-                <Link key={item.href} href={item.href} className="app-shell__nav-chip">
-                  {item.label}
-                </Link>
-              ))}
-          </div>
+          <nav className="app-shell__nav-mobile-links" aria-label="Primary">
+            <AppShellNavMobile items={visibleNav} />
+          </nav>
           <div className="app-shell__nav-actions">
             <ThemeToggle />
             {onLogoutAction}
@@ -89,7 +80,9 @@ export function AppShell({
         </div>
       </header>
 
-      <main className="app-shell__main">{children}</main>
+      <main id="main-content" className="app-shell__main" tabIndex={-1}>
+        {children}
+      </main>
     </div>
   );
 }

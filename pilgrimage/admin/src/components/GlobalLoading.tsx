@@ -27,7 +27,12 @@ type LoadingContextValue = {
 const LoadingContext = createContext<LoadingContextValue | null>(null);
 
 const LoadingOverlay = ({ message }: { message: string }) => (
-  <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
+  <div
+    className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/40 backdrop-blur-sm"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
     <div className="flex min-w-[220px] flex-col items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] px-6 py-5 text-center shadow-[var(--shadow-soft)]">
       <ChakraSpinner className="h-8 w-8" title="Loading" />
       <div className="text-sm font-semibold text-[color:var(--ink)]">{message}</div>

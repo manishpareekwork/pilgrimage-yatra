@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 
 type ModalProps = {
   isOpen: boolean;
@@ -11,6 +11,7 @@ type ModalProps = {
 };
 
 export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: ModalProps) {
+  const titleId = useId();
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -47,17 +48,22 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: Mod
       <div
         className="modal-backdrop fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm transition-opacity duration-300"
         onClick={onClose}
-        style={{ 
-          animation: "fadeIn 0.2s ease-out"
+        aria-hidden="true"
+        style={{
+          animation: "fadeIn 0.2s ease-out",
         }}
       />
 
       {/* Modal Container - Centered on desktop, bottom sheet on mobile */}
-      <div 
+      <div
         className="fixed inset-0 z-[9999] flex items-end justify-center sm:items-center sm:p-4"
         onClick={onClose}
+        role="presentation"
       >
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? titleId : undefined}
           className={`
             modal-content
             relative w-full ${maxWidthClasses[maxWidth]}
@@ -96,9 +102,9 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: Mod
           {/* Title Section */}
           {title && (
             <div className="flex-shrink-0 border-b border-[color:var(--border)] px-6 sm:px-8 py-4 sm:py-5 bg-[color:var(--surface-muted)]/30">
-              <h3 className="text-sm sm:text-base font-bold text-[color:var(--ink)] uppercase tracking-wider pr-8">
+              <h2 id={titleId} className="text-sm sm:text-base font-bold text-[color:var(--ink)] uppercase tracking-wider pr-8">
                 {title}
-              </h3>
+              </h2>
             </div>
           )}
 
@@ -141,6 +147,15 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = "md" }: Mod
               transform: translateY(0);
               opacity: 1;
             }
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .modal-backdrop {
+            animation: none !important;
+          }
+          .modal-content {
+            animation: none !important;
           }
         }
 

@@ -1,6 +1,6 @@
 # Pilgrimage / Yatra Project — Progress & Next Steps Log
 
-_Last updated: 2026-01-19_
+_Last updated: 2026-04-19_
 
 Note: This document is the current source of truth; older versions are obsolete.
 
@@ -89,8 +89,10 @@ This document tracks all progress, configuration milestones, and next planned ac
 - [ ] Add upload flow via signed URL once available (currently direct to bucket).
 
 ### 5. Tooling & Docs
-- [ ] Add `.env.template` files for admin/cloud/mobile.
+- [x] Add `.env.template` for admin (`pilgrimage/admin/.env.template`).
+- [ ] Add `.env.template` files for cloud/mobile.
 - [ ] Add CI smoke tests: `npm run lint` in admin, `npm test` for cloud, `flutter analyze` for mobile.
+- **UX / UI / a11y tracking:** `pilgrimage/docs/UX_UI_A11Y_TRACKING.md` (screen-by-screen checklist + quality bar).
 - [x] Verify dashboard layout + report builder spacing; run `npm run build` for admin and cloud.
 
 ---
