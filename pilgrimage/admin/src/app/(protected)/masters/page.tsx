@@ -43,6 +43,18 @@ const coreOperations: OperationItem[] = [
     ),
   },
   {
+    title: "Railway forms",
+    description: "CM257 counter reservation (print/PDF)",
+    href: "/bookings/railway-reservation",
+    accent: "#0ea5e9",
+    icon: (
+      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
+        <rect x="4" y="3" width="16" height="18" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M7 8h10M7 12h8M7 16h6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+    ),
+  },
+  {
     title: "Bookings",
     description: "Tickets & accommodation tasks",
     href: "/booking-tasks",

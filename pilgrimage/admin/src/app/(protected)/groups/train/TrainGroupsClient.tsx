@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
@@ -413,9 +414,19 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
               placeholder="Group code, PNR, name"
             />
           </Field>
-          <button type="button" className="btn-secondary" onClick={exportCsv}>
-            Export CSV
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {isTrain && selectedTripId ? (
+              <Link
+                href={`/bookings/railway-reservation?tripId=${selectedTripId}`}
+                className="btn-secondary"
+              >
+                CM257 forms
+              </Link>
+            ) : null}
+            <button type="button" className="btn-secondary" onClick={exportCsv}>
+              Export CSV
+            </button>
+          </div>
         </div>
         <form
           className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_1fr_auto]"
