@@ -1159,6 +1159,12 @@ export function YatrisGrid({
     window.open(`/print/id-cards?ids=${ids}`, "_blank", "noopener");
   };
 
+  const openCm257ForSelected = () => {
+    if (!selectedIds.size) return;
+    const ids = Array.from(selectedIds).join(",");
+    window.open(`/bookings/railway-reservation?ids=${ids}`, "_blank", "noopener,noreferrer");
+  };
+
   const exportFiltered = async () => {
     setExportMessage(null);
     setExporting(true);
@@ -1312,6 +1318,13 @@ export function YatrisGrid({
                   onClick={printSelected}
                 >
                   Print ID Cards
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary min-h-[36px] w-full sm:w-auto"
+                  onClick={openCm257ForSelected}
+                >
+                  CM257 forms
                 </button>
               </div>
             )}

@@ -14,8 +14,17 @@ import {
   type TripRow,
 } from "@/lib/railwayReservation/mapRegistration";
 import { saveCm257PrintPayload } from "@/lib/railwayReservation/printStorage";
-import type { Cm257FormDraft, Cm257PrintPayload, IrClassCode, PassengerGender } from "@/lib/railwayReservation/types";
-import { CM257_MAX_PASSENGERS } from "@/lib/railwayReservation/types";
+import type {
+  Cm257FormDraft,
+  Cm257PrintLayout,
+  Cm257PrintPayload,
+  IrClassCode,
+  PassengerGender,
+} from "@/lib/railwayReservation/types";
+import {
+  CM257_MAX_PASSENGERS,
+  CM257_PRINT_LAYOUT_LABELS,
+} from "@/lib/railwayReservation/types";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 
 type Trip = TripRow & { mode: string };
@@ -44,14 +53,22 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       ? (searchParams.get("tripId") as string)
       : (trainTrips[0]?.id ?? "");
   const initialGroupId = searchParams.get("groupId") ?? "";
+  const initialIdsParam = searchParams.get("ids") ?? "";
+  const initialSelectedIds = initialIdsParam
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
 
   const [tripId, setTripId] = useState(initialTripId);
   const [source, setSource] = useState<"yatris" | "group">(
     initialGroupId ? "group" : "yatris"
   );
   const [yatriSearch, setYatriSearch] = useState("");
-  const [yatriResults, setYatriResults] = useState<RegistrationRow[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [travelFilter, setTravelFilter] = useState<"all" | "train">("all");
+  const [yatriList, setYatriList] = useState<RegistrationRow[]>([]);
+  const [yatriListLoading, setYatriListLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+  const [printLayout, setPrintLayout] = useState<Cm257PrintLayout>("full");
   const [groups, setGroups] = useState<CoTravelGroup[]>([]);
   const [groupId, setGroupId] = useState(initialGroupId);
   const [forms, setForms] = useState<Cm257FormDraft[]>([]);
@@ -105,33 +122,50 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   }, [tripId, supabase]);
 
   useEffect(() => {
-    if (!yatriSearch.trim()) {
-      setYatriResults([]);
-      return;
-    }
+    let active = true;
     const timer = setTimeout(async () => {
-      const needle = yatriSearch.trim();
-      const { data, error } = await supabase
+      setYatriListLoading(true);
+      let query = supabase
         .from("yatra_registrations")
         .select(REGISTRATION_SELECT)
-        .eq("travel_mode", "train")
-        .or(`name_hi.ilike.%${needle}%,phone.ilike.%${needle}%,aadhaar_no.ilike.%${needle}%`)
         .order("name_hi", { ascending: true })
-        .limit(40);
+        .limit(200);
+      if (travelFilter === "train") {
+        query = query.eq("travel_mode", "train");
+      }
+      const needle = yatriSearch.trim();
+      if (needle) {
+        query = query.or(
+          `name_hi.ilike.%${needle}%,phone.ilike.%${needle}%,aadhaar_no.ilike.%${needle}%,source_sheet.ilike.%${needle}%`
+        );
+      }
+      const { data, error } = await query;
+      if (!active) return;
+      setYatriListLoading(false);
       if (error) {
         setMessage(error.message);
+        setYatriList([]);
         return;
       }
-      setYatriResults((data ?? []) as RegistrationRow[]);
+      setYatriList((data ?? []) as RegistrationRow[]);
     }, 300);
-    return () => clearTimeout(timer);
-  }, [yatriSearch, supabase]);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [yatriSearch, travelFilter, supabase]);
 
   const toggleYatri = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
+
+  const selectAllVisible = () => {
+    setSelectedIds((prev) => [...new Set([...prev, ...yatriList.map((r) => r.id)])]);
+  };
+
+  const clearSelection = () => setSelectedIds([]);
 
   const loadFullRegistrations = useCallback(
     async (ids: string[]) => {
@@ -259,6 +293,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       tripName: selectedTrip?.trip_name ?? undefined,
       forms,
       generatedAt: new Date().toISOString(),
+      layout: printLayout,
     };
     saveCm257PrintPayload(payload);
     window.open("/print/railway-reservation", "_blank", "noopener,noreferrer");
@@ -278,7 +313,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     <div className="space-y-6">
       <PageHeader
         title="Railway reservation forms (CM257)"
-        subtitle={`Official Indian Railways requisition layout — max ${CM257_MAX_PASSENGERS} passengers per form, one form per printed page.`}
+        subtitle={`CM257 pre-fill from yatris or travel groups — max ${CM257_MAX_PASSENGERS} passengers per form. Choose print layout before PDF.`}
         kicker="PRS counter"
         actions={
           <Link href="/groups/train" className="btn-secondary">
@@ -321,37 +356,59 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
 
         {source === "yatris" ? (
           <div className="mt-4 space-y-3">
-            <Field label="Search yatris (train mode)" htmlFor="yatri_search">
-              <TextInput
-                id="yatri_search"
-                value={yatriSearch}
-                onChange={(e) => setYatriSearch(e.target.value)}
-                placeholder="Name, phone, or Aadhaar"
-              />
-            </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Filter list" htmlFor="yatri_search">
+                <TextInput
+                  id="yatri_search"
+                  value={yatriSearch}
+                  onChange={(e) => setYatriSearch(e.target.value)}
+                  placeholder="Name, phone, Aadhaar, or sheet"
+                />
+              </Field>
+              <Field label="Travel mode" htmlFor="travel_filter">
+                <Select
+                  id="travel_filter"
+                  value={travelFilter}
+                  onChange={(e) => setTravelFilter(e.target.value as "all" | "train")}
+                >
+                  <option value="all">All yatris (up to 200)</option>
+                  <option value="train">Train only</option>
+                </Select>
+              </Field>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
+              <span>
+                Selected: {selectedIds.length} · List: {yatriList.length}
+                {yatriListLoading ? " (loading…)" : ""}
+              </span>
+              <button type="button" className="btn-secondary min-h-[28px] px-2 py-1 text-xs" onClick={selectAllVisible}>
+                Select all in list
+              </button>
+              <button type="button" className="btn-secondary min-h-[28px] px-2 py-1 text-xs" onClick={clearSelection}>
+                Clear selection
+              </button>
+            </div>
             <p className="text-xs text-[color:var(--muted)]">
-              Selected: {selectedIds.length} · Will split into multiple CM257 forms if more than {CM257_MAX_PASSENGERS}.
+              Tip: select yatris on <Link href="/yatris" className="text-sky-400 underline">Yatris</Link> and use
+              &quot;CM257 forms&quot; to open here with them pre-selected.
             </p>
-            <div className="max-h-56 overflow-y-auto rounded-xl border border-[color:var(--border)]">
-              {yatriResults.length === 0 ? (
-                <p className="p-3 text-sm text-[color:var(--muted)]">Search to list train yatris.</p>
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-[color:var(--border)]">
+              {yatriList.length === 0 && !yatriListLoading ? (
+                <p className="p-3 text-sm text-[color:var(--muted)]">No yatris match this filter.</p>
               ) : (
                 <ul className="divide-y divide-[color:var(--border)]">
-                  {yatriResults.map((row) => {
+                  {yatriList.map((row) => {
                     const checked = selectedIds.includes(row.id);
                     return (
                       <li key={row.id}>
                         <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-[color:var(--surface-muted)]">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleYatri(row.id)}
-                          />
+                          <input type="checkbox" checked={checked} onChange={() => toggleYatri(row.id)} />
                           <span className="flex-1 text-sm">
                             <span className="font-medium">{row.name_hi}</span>
                             <span className="text-[color:var(--muted)]">
                               {" "}
-                              · {row.age_years ?? "—"} yrs · {row.phone ?? "—"}
+                              · {row.age_years ?? "—"} yrs · {row.train_class ?? row.travel_mode ?? "—"} ·{" "}
+                              {row.phone ?? "—"}
                             </span>
                           </span>
                         </label>
@@ -380,13 +437,29 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
           </div>
         )}
 
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Field label="Print layout (PDF)" htmlFor="print_layout">
+            <Select
+              id="print_layout"
+              value={printLayout}
+              onChange={(e) => setPrintLayout(e.target.value as Cm257PrintLayout)}
+            >
+              {(Object.keys(CM257_PRINT_LAYOUT_LABELS) as Cm257PrintLayout[]).map((key) => (
+                <option key={key} value={key}>
+                  {CM257_PRINT_LAYOUT_LABELS[key]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => void generateForms()}>
             Generate forms
           </button>
           {forms.length > 0 && (
             <button type="button" className="btn-secondary" onClick={openPrint}>
-              Print / Save PDF ({forms.length} page{forms.length > 1 ? "s" : ""})
+              Print / Save PDF ({forms.length} form{forms.length > 1 ? "s" : ""})
             </button>
           )}
         </div>

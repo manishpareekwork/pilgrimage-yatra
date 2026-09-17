@@ -1,6 +1,41 @@
+# OS / filesystem metadata (common on macOS + exFAT/APFS external drives)
 .DS_Store
-node_modules
-.next
-.local_node_modules
+**/.DS_Store
+._*
+**/._*
+__MACOSX/
+
+# Dependencies & build output
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+out/
+dist/
+.local_node_modules/
+.dart_tool/
+build/
+
+# Admin e2e artifacts
 pilgrimage/admin/test-results/
 pilgrimage/admin/playwright-report/
+
+# Local env & secrets (keep *.template tracked)
+.env
+.env.*
+!.env.template
+!**/.env.template
+
+# Supabase backups / dumps (PII — keep outside git)
+supabase-bk-up/
+**/*.backup.gz
+**/*.backup
+
+# IDE (optional local)
+.idea/
+*.iml
+
+# Logs & caches
+*.log
+.npm/
+**/.npm/

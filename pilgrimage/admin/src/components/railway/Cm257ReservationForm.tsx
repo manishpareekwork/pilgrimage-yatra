@@ -19,17 +19,19 @@ const CheckItem = ({ label, checked }: { label: string; checked?: boolean }) => 
 export function Cm257ReservationForm({
   draft,
   useBackgroundTemplate = false,
+  sheetClassName = "",
 }: {
   draft: Cm257FormDraft;
   /** When `/public/forms/cm257-en.png` exists, overlay fields on the official scan. */
   useBackgroundTemplate?: boolean;
+  sheetClassName?: string;
 }) {
   const { journey, passengers, applicant } = draft;
   const filledCount = passengers.filter((p) => p.nameOnTicket.trim()).length;
 
   return (
     <article
-      className={`cm257-sheet${useBackgroundTemplate ? " cm257-sheet--with-bg" : ""}`}
+      className={`cm257-sheet${useBackgroundTemplate ? " cm257-sheet--with-bg" : ""}${sheetClassName ? ` ${sheetClassName}` : ""}`}
       aria-label="Reservation Cancellation Requisition Form CM257"
     >
       {draft.formLabel ? <div className="cm257-form-label">{draft.formLabel}</div> : null}
