@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import type { ExportPayload, ExportResult } from "./actions";
+import { YatriBulkReservationPanel } from "./YatriBulkReservationPanel";
 import {
   COLUMN_FILTER_KEYS,
   COLUMN_FILTER_PREFIX,
@@ -86,6 +87,13 @@ const DEFAULT_COLUMNS: ColumnConfig = {
 
 const DEFAULT_VIEWS: SavedView[] = [
   { name: "Default", params: {} },
+  {
+    name: "Committee train (CM257)",
+    params: {
+      travel_mode: "train",
+      columnFilters: { reservation_by: "committee" },
+    },
+  },
   { name: "Missing Uploads", params: { missing: "any" } },
 ];
 
@@ -1229,7 +1237,7 @@ export function YatrisGrid({
   }, [views, recentView]);
 
   return (
-    <div className="yatris-grid yatris-list flex flex-col gap-6">
+    <div className="yatris-grid yatris-list page-stack flex flex-col">
       <PageHeader
         className="relative z-30 overflow-visible yatris-hero"
         title="Yatris"
@@ -1285,7 +1293,15 @@ export function YatrisGrid({
         </div>
       </div>
 
-      <div className="card relative z-20 p-6 space-y-4 overflow-visible filters-compact yatris-filters">
+      {selectedIds.size > 0 && (
+        <YatriBulkReservationPanel
+          selectedIds={Array.from(selectedIds)}
+          onClearSelection={() => setSelectedIds(new Set())}
+          onDone={() => router.refresh()}
+        />
+      )}
+
+      <div className="card relative z-20 p-6 sm:p-8 space-y-5 overflow-visible filters-compact yatris-filters">
         <div className="filters-header">
           <div className="filters-title">
             <div className="filters-kicker">Filters</div>
@@ -1344,6 +1360,12 @@ export function YatrisGrid({
                 >
                   CM257 forms
                 </button>
+                <Link
+                  href="/bookings/committee-train"
+                  className="btn-secondary inline-flex min-h-[36px] w-full sm:w-auto items-center justify-center"
+                >
+                  Train workflow
+                </Link>
                 <button
                   type="button"
                   className="btn-primary min-h-[36px] w-full sm:w-auto"

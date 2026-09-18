@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { PageHeader } from "@/components/ui";
 import { requireStaff } from "@/lib/roleGuard";
 import { RailwayReservationBuilder } from "./RailwayReservationBuilder";
@@ -13,7 +14,14 @@ export default async function RailwayReservationPage() {
     .order("journey_date", { ascending: false });
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/dashboard" },
+          { label: "Train booking", href: "/bookings/committee-train" },
+          { label: "CM257 forms" },
+        ]}
+      />
       {error && (
         <PageHeader
           title="Railway reservation forms"

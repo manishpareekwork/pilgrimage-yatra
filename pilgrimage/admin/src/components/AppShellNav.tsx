@@ -10,8 +10,17 @@ export type AppShellNavItem = {
 
 function isActivePath(pathname: string, href: string) {
   if (pathname === href) return true;
-  if (href === "/dashboard") return false;
-  return pathname.startsWith(`${href}/`);
+  if (href === "/dashboard") return pathname === "/dashboard";
+  if (href === "/bookings/committee-train") {
+    return (
+      pathname.startsWith("/bookings/committee-train") ||
+      pathname.startsWith("/bookings/railway-reservation")
+    );
+  }
+  if (href === "/masters") {
+    return pathname.startsWith("/masters") || pathname.startsWith("/groups") || pathname.startsWith("/booking-tasks");
+  }
+  return pathname.startsWith(`${href}/`) || pathname === href;
 }
 
 export function AppShellNavDesktop({ items }: { items: AppShellNavItem[] }) {
@@ -24,7 +33,7 @@ export function AppShellNavDesktop({ items }: { items: AppShellNavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
-            className="app-shell__nav-link"
+            className={`app-shell__nav-link${active ? " app-shell__nav-link--active" : ""}`}
             aria-current={active ? "page" : undefined}
           >
             {item.label}
@@ -45,7 +54,7 @@ export function AppShellNavMobile({ items }: { items: AppShellNavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
-            className="app-shell__nav-chip"
+            className={`app-shell__nav-chip${active ? " app-shell__nav-chip--active" : ""}`}
             aria-current={active ? "page" : undefined}
           >
             {item.label}

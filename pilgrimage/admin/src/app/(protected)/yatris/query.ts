@@ -128,7 +128,13 @@ export const parseListParams = (
   params: Record<string, string | string[] | undefined>
 ): YatrisListParams => {
   const q = sanitizeSearch(getParam(params.q));
-  const travel_mode = getParam(params.travel_mode);
+  let travel_mode = getParam(params.travel_mode);
+  const travelPreset = getParam(params.travel);
+  let columnFilters = parseColumnFilters(params);
+  if (travelPreset === "committee-train") {
+    travel_mode = "train";
+    columnFilters = { ...columnFilters, reservation_by: "committee" };
+  }
   const date_from = getParam(params.date_from);
   const date_to = getParam(params.date_to);
   const missing = getParam(params.missing);
@@ -141,8 +147,6 @@ export const parseListParams = (
   const pageSize = PAGE_SIZE_OPTIONS.includes(pageSizeRaw as (typeof PAGE_SIZE_OPTIONS)[number])
     ? pageSizeRaw
     : 25;
-  const columnFilters = parseColumnFilters(params);
-
   return {
     q,
     travel_mode,

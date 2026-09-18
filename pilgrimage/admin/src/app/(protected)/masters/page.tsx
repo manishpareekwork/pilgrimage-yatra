@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { QuickActionsBar } from "@/components/layout/QuickActionsBar";
+import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
+import { FormSection } from "@/components/ui";
 import { requireStaff } from "@/lib/roleGuard";
 
 const iconSize = 20;
@@ -43,9 +46,9 @@ const coreOperations: OperationItem[] = [
     ),
   },
   {
-    title: "Railway forms",
-    description: "CM257 counter reservation (print/PDF)",
-    href: "/bookings/railway-reservation",
+    title: "Committee train",
+    description: "Register → reservation → groups → CM257",
+    href: "/bookings/committee-train",
     accent: "#0ea5e9",
     icon: (
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} aria-hidden="true">
@@ -284,12 +287,20 @@ export default async function MastersPage() {
               </svg>
               New Registration
             </Link>
-            <Link href="/dashboard" className="ops-hero__link">
-              View Dashboard →
+            <Link href="/bookings/committee-train" className="ops-hero__link">
+              Train booking guide →
             </Link>
           </div>
         </div>
       </section>
+
+      <FormSection title="Quick actions" description="Common tasks without leaving Operations.">
+        <QuickActionsBar />
+      </FormSection>
+
+      <FormSection title="Committee train" description="End-to-end path to CM257 counter forms.">
+        <CommitteeTrainWorkflow currentStep="organize" compact />
+      </FormSection>
 
       {/* Core Operations */}
       <section className="ops-section">

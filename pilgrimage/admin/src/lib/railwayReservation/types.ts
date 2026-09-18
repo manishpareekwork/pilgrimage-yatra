@@ -45,28 +45,50 @@ export type Cm257FormDraft = {
   formLabel?: string;
 };
 
-/** Full A4 page — one CM257 per sheet (default). */
-export type Cm257PrintLayout = "full" | "two-up" | "a5-physical" | "mini-tile";
-
-export const CM257_PRINT_LAYOUT_LABELS: Record<Cm257PrintLayout, string> = {
-  full: "Full page — 1 enlarged form per A4 (screen-friendly)",
-  "two-up": "Compact — 2 scaled forms per A4",
-  "a5-physical": "Counter size — 1 CM257 per A4 (152×215 mm, IR tender spec)",
-  "mini-tile": "Counter size — max forms per A4 at 152×215 mm (usually 1)",
-};
+/** ISO A4 — full counter copy / committee archive. */
+export const CM257_A4_MM = { width: 210, height: 297 } as const;
 
 /**
- * Finished CM257 size per Indian Railways supply specs (~152 × 215 mm portrait).
- * @see MoR tender CM-257 (15.2 × 21.5 cm).
+ * Platform slip size (~5.8×8.3 in, ISO A5).
+ * Half the area of A4; used at PRS counters.
  */
-export const CM257_PHYSICAL_MM = { width: 152, height: 215 } as const;
+export const CM257_PLATFORM_MM = { width: 148, height: 210 } as const;
+
+/** @deprecated use CM257_PLATFORM_MM */
+export const CM257_PHYSICAL_MM = CM257_PLATFORM_MM;
+
+export type Cm257PrintLayout = "a4-full" | "a5-single" | "a5-double";
+
+export const CM257_PRINT_LAYOUT_LABELS: Record<Cm257PrintLayout, string> = {
+  "a4-full": "A4 full — 1 CM257 per sheet (210×297 mm, generous margins)",
+  "a5-single": "Platform slip — 1 per A4 (148×210 mm, centred)",
+  "a5-double": "Platform slip — 2 per A4 (each 148×210 mm content, fitted to half-page)",
+};
 
 export type Cm257PrintPayload = {
   tripId?: string;
   tripName?: string;
   forms: Cm257FormDraft[];
   generatedAt: string;
-  layout?: Cm257PrintLayout;
+  layout?: Cm257PrintLayout | string;
 };
 
 export const CM257_PRINT_STORAGE_KEY = "pilgrimage:cm257-print";
+
+/** Map legacy sessionStorage layout values to current templates. */
+export function normalizeCm257PrintLayout(raw: string | undefined): Cm257PrintLayout {
+  switch (raw) {
+    case "a4-full":
+    case "full":
+      return "a4-full";
+    case "a5-single":
+    case "a5-physical":
+    case "mini-tile":
+      return "a5-single";
+    case "a5-double":
+    case "two-up":
+      return "a5-double";
+    default:
+      return "a4-full";
+  }
+}

@@ -1,11 +1,20 @@
-# Official CM257 form background (optional)
+# CM257 print templates (HTML/CSS — no image required)
 
-For **pixel-perfect** alignment with the Indian Railways **Reservation / Cancellation Requisition Form (CM257)** accepted at PRS counters:
+Official reference PDF (field order & legal text):
 
-1. Obtain the current English PDF from your railway division or [Indian Railways](https://indianrailways.gov.in) publications.
-2. Export page 1 as **PNG**, 300 DPI, cropped to A4 (210×297 mm).
-3. Save as: `cm257-en.png` in this folder.
+- [SCR CM257 PDF](https://scr.indianrailways.gov.in/cris/uploads/files/1359527784660-res_form.pdf)
+- Local mirror: `cm257-official.pdf`
 
-When `cm257-en.png` is present, print view overlays passenger and journey data on the official scan.
+## Admin print templates
 
-Without the file, the app renders a faithful HTML reproduction of the same layout (one form per A4 page).
+The app draws CM257 in pure CSS (no scan overlay). Choose in **Print template**:
+
+| Template | Size | Use |
+|----------|------|-----|
+| **A4 full** | 210×297 mm | One large form per sheet — committee copy / easy reading |
+| **Platform slip — 1 per A4** | 148×210 mm (ISO A5) | Counter-sized slip centred on A4 |
+| **Platform slip — 2 per A4** | Two 148×210 mm slips | Typical PRS batch print (two half-pages on one A4) |
+
+148×210 mm ≈ 5.8×8.3 in — half the area of A4, matching forms used at railway reservation counters.
+
+Optional: export the official PDF page as `cm257-en.png` only if you later want a scan overlay (not used by default).

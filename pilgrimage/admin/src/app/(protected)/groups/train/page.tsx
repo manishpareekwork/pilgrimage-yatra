@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { PageHeader, FormSection } from "@/components/ui";
 import { requireStaff } from "@/lib/roleGuard";
 import { TrainGroupsClient } from "./TrainGroupsClient";
@@ -13,10 +14,22 @@ export default async function TrainGroupsPage() {
     .order("journey_date", { ascending: false });
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/dashboard" },
+          { label: "Operations", href: "/masters" },
+          { label: "Travel groups" },
+        ]}
+      />
       <PageHeader
         title="Travel Groups"
-        subtitle="Manage train/flight co-travel groups, in-charges, and members."
+        subtitle="Step 3 of committee train flow — build co-travel groups (up to 6 per CM257), then open CM257 forms per group."
+        actions={
+          <Link href="/bookings/railway-reservation" className="btn-primary">
+            CM257 builder
+          </Link>
+        }
       />
 
       {error && (

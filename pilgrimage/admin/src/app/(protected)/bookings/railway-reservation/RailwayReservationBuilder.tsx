@@ -35,6 +35,10 @@ import {
   formatTripSelectLabel,
   YATRA_OUTBOUND_JOURNEY_DATE,
 } from "@/lib/tripDisplay";
+import { CM257_OFFICIAL_PDF_URL } from "@/lib/railwayReservation/cm257Official";
+import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
+
+type PassengerSource = "yatris" | "group" | "sheet";
 
 type Trip = TripRow & { mode: string; trip_kind?: string | null };
 
@@ -92,8 +96,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     .filter(Boolean);
 
   const [tripId, setTripId] = useState(initialTripId);
-  const [source, setSource] = useState<"yatris" | "group">(
-    initialGroupId ? "group" : "yatris"
+  const [source, setSource] = useState<PassengerSource>(
+    initialGroupId ? "group" : initialSheet.trim() ? "sheet" : "yatris"
   );
   const [yatriSearch, setYatriSearch] = useState("");
   const [travelFilter, setTravelFilter] = useState<"all" | "train" | "committee-train">("committee-train");
@@ -101,7 +105,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const [yatriList, setYatriList] = useState<RegistrationRow[]>([]);
   const [yatriListLoading, setYatriListLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
-  const [printLayout, setPrintLayout] = useState<Cm257PrintLayout>("full");
+  const [printLayout, setPrintLayout] = useState<Cm257PrintLayout>("a5-double");
   const [groups, setGroups] = useState<CoTravelGroup[]>([]);
   const [groupId, setGroupId] = useState(initialGroupId);
   const [selectedGroupMemberRegIds, setSelectedGroupMemberRegIds] = useState<string[]>([]);
@@ -278,7 +282,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       if (!active || error) return;
       const rows = (data ?? []) as RegistrationRow[];
       setSelectedIds(rows.map((r) => r.id));
-      setSource("yatris");
+      setSource("sheet");
       setSheetFilter(sheet);
       setTravelFilter("committee-train");
     })();
@@ -475,7 +479,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     if (!autoGenerate || autoRanRef.current) return;
     if (!selectedTrip) return;
     if (source === "group" && (!groupId || selectedGroupMemberRegIds.length === 0)) return;
-    if (source === "yatris" && selectedIds.length === 0 && !initialSheet) return;
+    if ((source === "yatris" || source === "sheet") && selectedIds.length === 0 && !initialSheet)
+      return;
     autoRanRef.current = true;
     const stop = startLoading("Building CM257 PDF…");
     void (async () => {
@@ -553,17 +558,34 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <PageHeader
         title="Railway reservation forms (CM257)"
-        subtitle={`Committee train bookings only. Select passengers, then generate — Indian Railways allows max ${CM257_MAX_PASSENGERS} per CM257 (extra passengers split into more forms).`}
+        subtitle={`Step 4: select passengers, generate forms, print. Max ${CM257_MAX_PASSENGERS} passengers per official CM257 — extra passengers become additional forms.`}
         kicker="PRS counter"
         actions={
-          <Link href="/groups/train" className="btn-secondary">
-            Travel groups
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/bookings/committee-train" className="btn-secondary">
+              Full workflow
+            </Link>
+            <a
+              href={CM257_OFFICIAL_PDF_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary"
+            >
+              Official PDF
+            </a>
+          </div>
         }
       />
+
+      <FormSection
+        title="Where you are in the journey"
+        description="Use the earlier steps if roster, reservation fields, or groups are not ready yet."
+      >
+        <CommitteeTrainWorkflow currentStep="cm257" compact />
+      </FormSection>
 
       {message && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
@@ -571,8 +593,11 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         </div>
       )}
 
-      <FormSection title="1. Trip & source" description="Pick journey details and who to include.">
-        <div className="grid gap-4 md:grid-cols-2">
+      <FormSection
+        title="Trip & passengers"
+        description="Choose outbound or return trip, then pick how to select yatris (roster search, import sheet bucket, or co-travel group)."
+      >
+        <div className="grid gap-6 md:grid-cols-2">
           <Field label="Train trip" htmlFor="trip_id">
             <Select
               id="trip_id"
@@ -589,16 +614,85 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               ))}
             </Select>
           </Field>
-          <Field label="Passenger source" htmlFor="source">
-            <Select id="source" value={source} onChange={(e) => setSource(e.target.value as "yatris" | "group")}>
-              <option value="yatris">Selected yatris (search)</option>
+          <Field
+            label="How to select passengers"
+            htmlFor="source"
+            helperText="Sheet = import bucket (SFS-1). Group = co-travel list with berths."
+          >
+            <Select
+              id="source"
+              value={source}
+              onChange={(e) => setSource(e.target.value as PassengerSource)}
+            >
+              <option value="yatris">Roster search (pick individuals)</option>
+              <option value="sheet">Import sheet / bucket</option>
               <option value="group">Co-travel group</option>
             </Select>
           </Field>
         </div>
 
-        {source === "yatris" ? (
-          <div className="mt-4 space-y-3">
+        {source === "sheet" ? (
+          <div className="mt-6 space-y-4">
+            <Field
+              label="Import sheet code"
+              htmlFor="sheet_only"
+              helperText="Loads committee + train yatris on this sheet. Uncheck anyone who should not be on the CM257."
+            >
+              <TextInput
+                id="sheet_only"
+                value={sheetFilter}
+                onChange={(e) => setSheetFilter(normalizeImportSheet(e.target.value))}
+                placeholder="e.g. SFS-1, Family, Kath-1"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--muted)]">
+              <span>
+                Selected: {selectedIds.length} · Eligible: {selectedEligibleCount}
+                {estimatedFormCount > 0
+                  ? ` → ${estimatedFormCount} form${estimatedFormCount > 1 ? "s" : ""}`
+                  : ""}
+              </span>
+              <button type="button" className="btn-secondary" onClick={selectAllVisible}>
+                Select all on sheet
+              </button>
+              <button type="button" className="btn-secondary" onClick={clearSelection}>
+                Clear
+              </button>
+            </div>
+            <div className="cm257-passenger-list">
+              {yatriList.length === 0 && !yatriListLoading ? (
+                <p className="p-4 text-sm text-[color:var(--muted)]">
+                  Enter a sheet code above to load yatris.
+                </p>
+              ) : (
+                <ul className="divide-y divide-[color:var(--border)]">
+                  {yatriList.map((row) => {
+                    const checked = selectedIds.includes(row.id);
+                    const eligible = isEligibleForCommitteeCm257(row);
+                    return (
+                      <li key={row.id}>
+                        <label
+                          className={`flex cursor-pointer items-center gap-3 hover:bg-[color:var(--surface-muted)] ${!eligible ? "opacity-70" : ""}`}
+                        >
+                          <input type="checkbox" checked={checked} onChange={() => toggleYatri(row.id)} />
+                          <span className="flex-1 text-sm">
+                            <span className="font-medium">{row.name_hi}</span>
+                            <span className="text-[color:var(--muted)]">
+                              {" "}
+                              · {row.age_years ?? "—"} yrs · {row.train_class ?? "—"} · {row.phone ?? "—"}
+                              {!eligible ? " · not CM257-eligible" : ""}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : source === "yatris" ? (
+          <div className="mt-6 space-y-4">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               <Field label="Filter list" htmlFor="yatri_search">
                 <TextInput
@@ -650,7 +744,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               Tip: select yatris on <Link href="/yatris" className="text-sky-400 underline">Yatris</Link> and use
               &quot;CM257 forms&quot; to open here with them pre-selected.
             </p>
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-[color:var(--border)]">
+            <div className="cm257-passenger-list">
               {yatriList.length === 0 && !yatriListLoading ? (
                 <p className="p-3 text-sm text-[color:var(--muted)]">No yatris match this filter.</p>
               ) : (
@@ -678,7 +772,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             </div>
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className="mt-6 space-y-4">
             <Field label="Co-travel group" htmlFor="group_id">
               <Select
                 id="group_id"
@@ -733,7 +827,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               Tick the members to include, then use Generate forms. More than {CM257_MAX_PASSENGERS}{" "}
               passengers are split automatically per railway rules.
             </p>
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-[color:var(--border)]">
+            <div className="cm257-passenger-list">
               {!activeGroup || activeGroup.members.length === 0 ? (
                 <p className="p-3 text-sm text-[color:var(--muted)]">No members in this group.</p>
               ) : (
@@ -774,7 +868,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
           </div>
         )}
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
           <Field label="Print layout (PDF)" htmlFor="print_layout">
             <Select
               id="print_layout"
@@ -790,7 +884,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
           </Field>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           {estimatedFormCount > 0 && (
             <span className="text-xs text-[color:var(--muted)]">
               Ready: {selectedEligibleCount} passenger{selectedEligibleCount !== 1 ? "s" : ""} →{" "}
@@ -940,7 +1034,10 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                   <summary className="cursor-pointer text-[color:var(--accent)]">Preview this form</summary>
                   <div className="mt-4 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[#e8e8e8] p-4">
                     <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "210mm" }}>
-                      <Cm257ReservationForm draft={form} />
+                      <Cm257ReservationForm
+                        draft={form}
+                        template={printLayout === "a4-full" ? "a4" : "a5"}
+                      />
                     </div>
                   </div>
                 </details>

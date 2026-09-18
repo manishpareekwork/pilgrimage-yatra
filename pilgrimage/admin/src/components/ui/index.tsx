@@ -4,7 +4,7 @@ const cn = (...classes: Array<string | undefined | false | null>) =>
   classes.filter(Boolean).join(" ");
 
 const inputBaseClass =
-  "w-full min-h-[44px] rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-3.5 py-2.5 text-[14px] leading-[1.35] text-[color:var(--ink)] shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
+  "w-full min-h-[48px] rounded-[10px] border border-[color:var(--border)] bg-[color:var(--surface-muted)] px-4 py-3 text-[15px] leading-[1.4] text-[color:var(--ink)] shadow-[0_1px_2px_rgba(15,23,42,0.04)] placeholder:text-[color:var(--subtle)] transition-colors focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)] focus:border-[color:var(--accent)] disabled:opacity-60 disabled:cursor-not-allowed";
 const inputErrorClass =
   "border-red-500/70 focus:ring-red-400 focus:border-red-500/70";
 
@@ -29,7 +29,7 @@ export function PageHeader({
   
   return (
     <div 
-      className={cn("card p-6 sm:p-8", className)} 
+      className={cn("card p-7 sm:p-9 lg:p-10", className)} 
       style={
         hasBackground
           ? {
@@ -83,13 +83,13 @@ export function FormSection({
 }) {
   return (
     <section
-      className={cn("card space-y-7 p-6 sm:p-8", className)}
+      className={cn("card space-y-8 p-7 sm:p-9 lg:p-10", className)}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1.5">
           <div className="text-base font-semibold text-[color:var(--ink)]">{title}</div>
           {description && (
-            <p className="text-xs text-[color:var(--muted)]">{description}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--muted)]">{description}</p>
           )}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

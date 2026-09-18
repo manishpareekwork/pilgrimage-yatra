@@ -2,6 +2,8 @@ import type { Cm257FormDraft } from "@/lib/railwayReservation/types";
 import { IR_CLASS_CODES } from "@/lib/railwayReservation/mapRegistration";
 import "./cm257-print.css";
 
+export type Cm257Template = "a4" | "a5";
+
 const ClassCheckbox = ({ code, selected }: { code: string; selected: boolean }) => (
   <span className="cm257-class-item">
     <span className={`cm257-box${selected ? " cm257-box--checked" : ""}`} aria-hidden />
@@ -18,20 +20,21 @@ const CheckItem = ({ label, checked }: { label: string; checked?: boolean }) => 
 
 export function Cm257ReservationForm({
   draft,
-  useBackgroundTemplate = false,
+  template = "a4",
   sheetClassName = "",
 }: {
   draft: Cm257FormDraft;
-  /** When `/public/forms/cm257-en.png` exists, overlay fields on the official scan. */
-  useBackgroundTemplate?: boolean;
+  /** `a4` = full sheet; `a5` = platform slip 148×210 mm (native CSS, no image). */
+  template?: Cm257Template;
   sheetClassName?: string;
 }) {
   const { journey, passengers, applicant } = draft;
   const filledCount = passengers.filter((p) => p.nameOnTicket.trim()).length;
+  const templateClass = template === "a5" ? "cm257-sheet--template-a5" : "cm257-sheet--template-a4";
 
   return (
     <article
-      className={`cm257-sheet${useBackgroundTemplate ? " cm257-sheet--with-bg" : ""}${sheetClassName ? ` ${sheetClassName}` : ""}`}
+      className={`cm257-sheet ${templateClass}${sheetClassName ? ` ${sheetClassName}` : ""}`}
       aria-label="Reservation Cancellation Requisition Form CM257"
     >
       {draft.formLabel ? <div className="cm257-form-label">{draft.formLabel}</div> : null}
@@ -39,14 +42,14 @@ export function Cm257ReservationForm({
       <header className="cm257-header">
         <div className="cm257-header__hindi">भारतीय रेल</div>
         <div className="cm257-header__english">INDIAN RAILWAYS</div>
-        <div className="cm257-header__english" style={{ marginTop: "1mm" }}>
+        <div className="cm257-header__english cm257-header__title-line">
           RESERVATION / CANCELLATION REQUISITION FORM
         </div>
         <div className="cm257-header__subtitle">(To be filled in by the applicant in BLOCK LETTERS)</div>
         <div className="cm257-form-no">Form No. CM257</div>
       </header>
 
-      <div className={useBackgroundTemplate ? "cm257-overlay-fields" : undefined}>
+      <div className="cm257-body">
         <p className="cm257-block-hint">Journey details</p>
 
         <div className="cm257-row">
@@ -87,12 +90,12 @@ export function Cm257ReservationForm({
         <table className="cm257-table">
           <thead>
             <tr>
-              <th style={{ width: "6%" }}>S.No.</th>
-              <th style={{ width: "38%" }}>Name of passenger (BLOCK LETTERS)</th>
-              <th style={{ width: "8%" }}>Sex</th>
-              <th style={{ width: "8%" }}>Age</th>
-              <th style={{ width: "12%" }}>Concession*</th>
-              <th style={{ width: "28%" }}>Berth / seat preference (LB/MB/UB/SL/SU)</th>
+              <th>S.No.</th>
+              <th>Name of passenger (BLOCK LETTERS)</th>
+              <th>Sex</th>
+              <th>Age</th>
+              <th>Concession*</th>
+              <th>Berth / seat preference</th>
             </tr>
           </thead>
           <tbody>
@@ -124,27 +127,23 @@ export function Cm257ReservationForm({
           <CheckItem label="No choice" checked={!draft.choiceIfBerthNotAvailable} />
         </div>
 
-        <div className="cm257-row">
+        <div className="cm257-row cm257-row--wrap">
           <span className="cm257-label">Vikalp scheme</span>
           <CheckItem label="Yes" checked={draft.vikalpOptIn === true} />
           <CheckItem label="No" checked={draft.vikalpOptIn === false} />
-          <span className="cm257-label" style={{ marginLeft: "4mm" }}>
-            Meal (Rajdhani / Shatabdi / Duronto)
-          </span>
+          <span className="cm257-label cm257-label--spaced">Meal (Rajdhani / Shatabdi / Duronto)</span>
           <span className="cm257-field cm257-field--md">{draft.mealPreference}</span>
         </div>
 
         <section className="cm257-applicant" aria-label="Applicant details">
-          <p className="cm257-section-title" style={{ marginTop: 0 }}>
-            Applicant (contact person for this requisition)
-          </p>
+          <p className="cm257-section-title cm257-section-title--flush">Applicant (contact person)</p>
           <div className="cm257-row">
             <span className="cm257-label">Name</span>
             <span className="cm257-field">{applicant.name}</span>
           </div>
           <div className="cm257-label">Full address</div>
           <div className="cm257-applicant-address">{applicant.address}</div>
-          <div className="cm257-row" style={{ marginTop: "2mm" }}>
+          <div className="cm257-row cm257-row--tight">
             <span className="cm257-label">Telephone / Mobile</span>
             <span className="cm257-field">{applicant.phone}</span>
             <span className="cm257-label">Date</span>

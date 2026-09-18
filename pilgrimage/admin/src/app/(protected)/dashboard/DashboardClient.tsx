@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
+import { QuickActionsBar } from "@/components/layout/QuickActionsBar";
+import { FormSection } from "@/components/ui";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 
 type DashboardMetrics = {
@@ -48,8 +52,8 @@ export function DashboardClient() {
         throw new Error(payload.error || "Unable to load dashboard data.");
       }
       setData(payload);
-    } catch (err: any) {
-      setError(err?.message || "Unable to load dashboard data.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unable to load dashboard data.");
       setData(null);
     } finally {
       setLoading(false);
@@ -64,137 +68,109 @@ export function DashboardClient() {
 
   const metrics = data?.metrics;
   const displayValue = (value?: number) => {
-    if (!data) return loading ? "..." : "--";
-    return loading ? "..." : formatNumber(value ?? 0);
+    if (!data) return loading ? "…" : "—";
+    return loading ? "…" : formatNumber(value ?? 0);
   };
-  const detailValue = (value: string) => {
-    if (!data) return loading ? "..." : "--";
-    return loading ? "..." : value;
-  };
-
-  const reservationsTotal = metrics?.reservations.total ?? 0;
-  const reservationsPendingTotal =
-    (metrics?.reservations.pending_self ?? 0) +
-    (metrics?.reservations.pending_committee ?? 0);
 
   const dbConnected = data?.connected ?? false;
-  const dbLabel = dbConnected ? "Database connected" : "Database disconnected";
-  const dbDot = dbConnected ? "bg-emerald-400" : "bg-rose-400";
 
-  const cards = [
+  const statCards = [
+    { label: "Registrations", value: displayValue(metrics?.registrations.total), hint: "All yatris" },
     {
-      title: "Registrations",
-      value: displayValue(metrics?.registrations.total),
-      detail: "All time",
+      label: "Train + committee",
+      value: displayValue(metrics?.reservations.committee),
+      hint: "CM257-eligible pool",
     },
     {
-      title: "Hotels",
-      value: displayValue(metrics?.hotels.total),
-      detail: "Total properties",
-    },
-    {
-      title: "Rooms",
-      value: displayValue(metrics?.rooms.total),
-      detail: "Total rooms",
-    },
-    {
-      title: "Yatri buckets",
-      value: displayValue(metrics?.categories.total),
-      detail: "Categories",
-    },
-    {
-      title: "Reservations logged",
-      value: displayValue(reservationsTotal),
-      detail: detailValue(
-        `Self ${formatNumber(metrics?.reservations.self ?? 0)} · Committee ${formatNumber(metrics?.reservations.committee ?? 0)}`
-      ),
-    },
-    {
-      title: "Reservations pending",
-      value: displayValue(reservationsPendingTotal),
-      detail: detailValue(
-        `Self ${formatNumber(metrics?.reservations.pending_self ?? 0)} · Committee ${formatNumber(metrics?.reservations.pending_committee ?? 0)}`
-      ),
-    },
-    {
-      title: "Train yatris",
+      label: "Train yatris",
       value: displayValue(metrics?.train.registrations),
-      detail: "Travel mode: train",
+      hint: "Travel mode train",
     },
     {
-      title: "Train groups",
+      label: "Co-travel groups",
       value: displayValue(metrics?.train.groups),
-      detail: detailValue(
-        `Target ${formatNumber(metrics?.train.group_target ?? 0)} (6/group) · Gap ${formatNumber(metrics?.train.group_gap ?? 0)}`
-      ),
+      hint: `Gap ${displayValue(metrics?.train.group_gap)} vs target`,
     },
+    {
+      label: "Pending reservations",
+      value: displayValue(
+        (metrics?.reservations.pending_self ?? 0) + (metrics?.reservations.pending_committee ?? 0)
+      ),
+      hint: "Needs booking data",
+    },
+    { label: "Hotels / rooms", value: displayValue(metrics?.hotels.total), hint: `${displayValue(metrics?.rooms.total)} rooms` },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="page-stack">
       <section
-        className="card card--hover dashboard-hero min-h-[220px]"
+        className="card dashboard-hero min-h-[200px] p-8 sm:p-10"
         style={{
           backgroundImage: "url('/banner.png')",
           backgroundSize: "cover",
           backgroundPosition: "top center",
-          padding: "24px",
         }}
       >
-        <div className="grid min-h-[220px] gap-6">
+        <div className="relative z-[1] flex flex-col gap-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-white">Analytics Dashboard</h1>
-              <p className="mt-2 text-sm text-white/80">
-                Live snapshot across registrations, reservations, and lodging.
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/85">Staff home</p>
+              <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pilgrimage operations</h1>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/80">
+                Register yatris, set committee train reservations, build groups, and print CM257 forms for the
+                counter.
               </p>
             </div>
-            <span className="pill pill--contrast pill--wide sm:self-start">
-              <span className={`h-2 w-2 rounded-full ${dbDot}`} />
-              {dbLabel}
+            <span className="pill pill--contrast pill--wide">
+              <span className={`h-2 w-2 rounded-full ${dbConnected ? "bg-emerald-400" : "bg-rose-400"}`} />
+              {dbConnected ? "Database connected" : "Database disconnected"}
             </span>
           </div>
-
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="pill pill--contrast pill--metric pill--wide">
-                <span className="pill__metric">
-                  {displayValue(metrics?.registrations.total)}
-                </span>
-                <span>Total registrations</span>
-              </span>
-              <span className="pill pill--contrast pill--metric pill--wide">
-                <span className="pill__metric">
-                  {displayValue(metrics?.reservations.total)}
-                </span>
-                <span>Reservations logged</span>
-              </span>
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/yatris/new" className="ops-hero__cta">
+              New registration
+            </Link>
+            <Link href="/bookings/committee-train" className="ops-hero__link">
+              Train booking guide
+            </Link>
           </div>
         </div>
       </section>
 
+      <FormSection title="Quick actions" description="Jump to the task you need — no hunting through menus.">
+        <QuickActionsBar />
+      </FormSection>
+
+      <FormSection
+        title="Committee train workflow"
+        description="Recommended order for train 20824 (outbound 7 Dec · return 13 Dec)."
+      >
+        <CommitteeTrainWorkflow currentStep="register" compact />
+      </FormSection>
+
       {error && (
-        <section className="card dashboard-card border border-rose-400/40 bg-rose-500/10 p-4 sm:p-5">
-          <div className="text-sm text-rose-700 dark:text-rose-200">
-            Failed to load: {error}
-          </div>
+        <section className="card border border-rose-400/40 bg-rose-500/10 p-5 text-sm text-rose-800 dark:text-rose-200">
+          Failed to load metrics: {error}
         </section>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <section key={card.title} className="card dashboard-card space-y-2 p-4 sm:p-5">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--muted)]">
-              {card.title}
+      <section className="ops-section">
+        <div className="ops-section__header">
+          <h2 className="ops-section__title">Live metrics</h2>
+          <p className="ops-section__desc">Snapshot from Supabase — refresh the page to update.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {statCards.map((card) => (
+            <div key={card.label} className="card dashboard-card space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                {card.label}
+              </div>
+              <div className="text-2xl font-semibold text-[color:var(--ink)]">{card.value}</div>
+              <div className="text-sm text-[color:var(--muted)]">{card.hint}</div>
             </div>
-            <div className="text-xl font-semibold text-[color:var(--ink)]">
-              {card.value}
-            </div>
-            <div className="text-[11px] text-[color:var(--muted)]">{card.detail}</div>
-          </section>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

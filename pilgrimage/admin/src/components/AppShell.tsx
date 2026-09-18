@@ -1,14 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
-import { AppShellNavDesktop, AppShellNavMobile } from "@/components/AppShellNav";
+import { AppShellNavDesktop } from "@/components/AppShellNav";
+import { AppShellMobileDrawer } from "@/components/AppShellMobileDrawer";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-type NavItem = {
-  href: string;
-  label: string;
-  requireAdmin?: boolean;
-  requireStaff?: boolean;
-};
+import { PRIMARY_NAV } from "@/lib/adminNav";
 
 export function AppShell({
   children,
@@ -21,59 +17,50 @@ export function AppShell({
   role?: string;
   onLogoutAction: React.ReactNode;
 }) {
-  const nav: NavItem[] = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/masters", label: "Operations", requireStaff: true },
-    { href: "/reports", label: "Reports", requireStaff: true },
-  ];
-  const isAdmin = role === "admin";
   const isStaff = role === "admin" || role === "reviewer";
-  const visibleNav = nav.filter(
-    (item) => (!item.requireAdmin || isAdmin) && (!item.requireStaff || isStaff)
-  );
+  const nav = PRIMARY_NAV.filter((item) => item.href !== "/reports" || isStaff);
 
   return (
     <div className="app-shell">
       <header className="app-shell__header">
         <div className="app-shell__inner">
           <div className="app-shell__brand">
-            <div className="app-shell__logo">
-              <Image
-                src="/logo.png"
-                alt="Pilgrimage Admin"
-                width={40}
-                height={40}
-                className="app-shell__logo-image rounded-xl"
-                unoptimized
-              />
-            </div>
-            <div>
-              <div className="app-shell__title">Pilgrimage Admin</div>
-              <div className="app-shell__subtitle">Jagannath Puri 2025</div>
-            </div>
+            <Link href="/dashboard" className="app-shell__brand-link">
+              <div className="app-shell__logo">
+                <Image
+                  src="/logo.png"
+                  alt="Pilgrimage Admin"
+                  width={40}
+                  height={40}
+                  className="app-shell__logo-image rounded-xl"
+                  unoptimized
+                />
+              </div>
+              <div>
+                <div className="app-shell__title">Pilgrimage Admin</div>
+                <div className="app-shell__subtitle">Jagannath Puri Yatra</div>
+              </div>
+            </Link>
           </div>
           <nav className="app-shell__nav-desktop" aria-label="Primary">
-            <AppShellNavDesktop items={visibleNav} />
-            <div className="app-shell__nav-actions">
+            <AppShellNavDesktop items={[...nav]} />
+            <div className="app-shell__nav-actions app-shell__nav-actions--desktop">
               <ThemeToggle />
               {onLogoutAction}
             </div>
           </nav>
-        </div>
-        <div className="app-shell__nav-mobile">
-          <nav className="app-shell__nav-mobile-links" aria-label="Primary">
-            <AppShellNavMobile items={visibleNav} />
-          </nav>
-          <div className="app-shell__nav-actions">
-            <ThemeToggle />
-            {onLogoutAction}
+          <div className="app-shell__nav-mobile-bar md:hidden">
+            <AppShellMobileDrawer items={[...nav]} />
+            <div className="app-shell__nav-actions">
+              <ThemeToggle />
+              {onLogoutAction}
+            </div>
           </div>
         </div>
         <div className="app-shell__meta">
           <div className="app-shell__inner">
             <div className="app-shell__meta-text">
-              Signed in as <span className="app-shell__meta-highlight">{email}</span> ·
-              Role:{" "}
+              Signed in as <span className="app-shell__meta-highlight">{email}</span> · Role:{" "}
               <span className="app-shell__meta-role">{role || "yatri"}</span>
             </div>
           </div>
