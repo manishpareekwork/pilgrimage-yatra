@@ -40,3 +40,16 @@ That writes into **`supabase/sql/`** (same names `00_`…`14_`).
 ## Alternate generator
 
 `scripts/split_pilgrimage_sql.py` can emit commit-aligned chunks under **`_alternate_split_by_commit/`** (optional; filenames differ from `00_core_bootstrap.sql`, etc.). The canonical split for this repo is **`scripts/split_pilgrimage.sh`** into this directory.
+
+## Post-handoff migrations (additive)
+
+| File | Purpose |
+|------|---------|
+| `17_fix_staff_rls_fn_is_staff.sql` | Staff RLS via `fn_is_staff()` |
+| `18_admin_upsert_password.sql` | Admin user upsert |
+| `19_train_rake_berth_schema.sql` | Train rakes, coaches, berths, capacity view |
+| `20_seed_train_20824.sql` | Train 20824 master + RAKE-1 berths |
+| `21_train_route_enrichment.sql` | Routes, stop day fields, coach classes, views |
+| `22_seed_train_20824_route.sql` | Full 44-stop route (etrain source JSON) |
+
+See `../../docs/train-master-20824.md`, `../data/train_20824_route_stops.json`, and `../scripts/validate_train_20824.sql`.

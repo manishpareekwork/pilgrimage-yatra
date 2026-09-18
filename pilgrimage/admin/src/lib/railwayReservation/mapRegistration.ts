@@ -24,6 +24,8 @@ export type RegistrationRow = {
   age_years: number | null;
   train_class: string | null;
   travel_mode: string | null;
+  reservation_by: string | null;
+  source_sheet: string | null;
   aadhaar_no: string | null;
 };
 

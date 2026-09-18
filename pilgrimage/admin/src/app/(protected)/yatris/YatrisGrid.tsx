@@ -1159,10 +1159,28 @@ export function YatrisGrid({
     window.open(`/print/id-cards?ids=${ids}`, "_blank", "noopener");
   };
 
-  const openCm257ForSelected = () => {
+  const openCm257ForSelected = (autoPdf = false) => {
     if (!selectedIds.size) return;
-    const ids = Array.from(selectedIds).join(",");
-    window.open(`/bookings/railway-reservation?ids=${ids}`, "_blank", "noopener,noreferrer");
+    const selectedRows = rows.filter((row) => selectedIds.has(row.id));
+    const eligible = selectedRows.filter(
+      (row) => row.travel_mode === "train" && row.reservation_by === "committee"
+    );
+    if (eligible.length === 0) {
+      window.alert(
+        "None of the selected yatris are eligible. CM257 batch needs travel mode train and reservation by committee."
+      );
+      return;
+    }
+    const skipped = selectedRows.length - eligible.length;
+    if (skipped > 0) {
+      const ok = window.confirm(
+        `${skipped} selected yatri(s) will be skipped (not train + committee). Continue with ${eligible.length}?`
+      );
+      if (!ok) return;
+    }
+    const ids = eligible.map((row) => row.id).join(",");
+    const auto = autoPdf ? "&auto=1" : "";
+    window.open(`/bookings/railway-reservation?ids=${ids}${auto}`, "_blank", "noopener,noreferrer");
   };
 
   const exportFiltered = async () => {
@@ -1322,9 +1340,16 @@ export function YatrisGrid({
                 <button
                   type="button"
                   className="btn-secondary min-h-[36px] w-full sm:w-auto"
-                  onClick={openCm257ForSelected}
+                  onClick={() => openCm257ForSelected(false)}
                 >
                   CM257 forms
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary min-h-[36px] w-full sm:w-auto"
+                  onClick={() => openCm257ForSelected(true)}
+                >
+                  CM257 PDF
                 </button>
               </div>
             )}

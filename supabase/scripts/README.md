@@ -32,6 +32,19 @@ The dashboard runner often mis-parses **PL/pgSQL**. Prefer `**LANGUAGE sql`** fo
 | **0** | `../sql/` (00→14) or `../pilgrimage.sql` via `psql` | Full schema                              |
 | **1** | `../sql/15_clear_public_and_auth.sql`               | Truncate `public`; delete Auth users     |
 | **2** | `../sql/16_seed_dev_admin.sql`                      | Dev admin `admin@admin.com` / `12345678` |
+| **3** | `../sql/18_admin_upsert_password.sql`               | Upsert admin (see file for password)     |
+
+## Jagannath Kath.xlsx import
+
+Upserts roster rows with `import_batch = jagannath_kath_xlsx` (key: sheet + serial no).
+
+```bash
+export SUPABASE_URL="https://YOUR_REF.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="your_service_role_key"
+python3 supabase/scripts/run_jagannath_import.py "/path/to/Jagannath Kath.xlsx"
+```
+
+Requires unique constraint `yatra_registrations_import_line_unique` on `(import_batch, source_sheet, source_sr_no)`.
 
 
 ## Storage
@@ -68,4 +81,14 @@ Notes
 - District IDs are generated as `<state_code>-<district_name>`; suffixes are added if collisions occur.
 - The build script still generates `address_pincodes.csv`, but the pincode table is removed and the file is unused.
 - If the CSVs change, refresh the seed section in `supabase/pilgrimage.sql`.
+
+## Train 20824 master data
+
+After `../sql/19`–`22` (rake/berth + route enrichment):
+
+```bash
+psql "$DATABASE_URL" -f supabase/scripts/validate_train_20824.sql
+```
+
+Documentation: `../../docs/train-master-20824.md`.
 

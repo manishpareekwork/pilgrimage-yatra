@@ -472,8 +472,20 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
                     PNR: {group.pnr || "—"} · Status: {group.booking_status ?? "planned"}
                   </div>
                 </div>
-                <div className={`text-xs ${overLimit ? "text-rose-300" : "text-[color:var(--muted)]"}`}>
-                  Members: {memberCount} / {limit}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className={`text-xs ${overLimit ? "text-rose-300" : "text-[color:var(--muted)]"}`}>
+                    Members: {memberCount} / {limit}
+                  </div>
+                  {isTrain ? (
+                    <Link
+                      href={`/bookings/railway-reservation?tripId=${encodeURIComponent(selectedTripId)}&groupId=${encodeURIComponent(group.id)}&auto=1`}
+                      className="btn-secondary min-h-[28px] px-2 py-1 text-xs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      CM257 PDF
+                    </Link>
+                  ) : null}
                 </div>
               </div>
 

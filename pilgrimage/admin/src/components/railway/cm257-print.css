@@ -378,9 +378,46 @@
   background: #fff;
 }
 
+.cm257-print-page--a5-physical {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+.cm257-a5-slot {
+  width: 152mm;
+  height: 215mm;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 0.2mm dashed #ccc;
+  position: relative;
+}
+
+@media print {
+  .cm257-a5-slot {
+    border-color: transparent;
+  }
+}
+
+.cm257-a5-slot .cm257-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0;
+  transform: scale(0.724);
+  transform-origin: top left;
+  box-shadow: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 .cm257-mini-slot {
-  width: 105mm;
-  height: 138mm;
+  width: 152mm;
+  height: 215mm;
   overflow: hidden;
   box-sizing: border-box;
   border: 0.2mm dashed #ccc;
@@ -397,7 +434,7 @@
   width: 210mm;
   min-height: 297mm;
   margin: 0;
-  transform: scale(0.465);
+  transform: scale(0.724);
   transform-origin: top left;
   box-shadow: none;
   position: absolute;

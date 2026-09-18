@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Cm257ReservationForm } from "@/components/railway/Cm257ReservationForm";
 import { Field, FormSection, PageHeader, Select, TextInput } from "@/components/ui";
 import { useGlobalLoading } from "@/components/GlobalLoading";
@@ -13,6 +13,11 @@ import {
   type RegistrationRow,
   type TripRow,
 } from "@/lib/railwayReservation/mapRegistration";
+import {
+  eligibilitySkipMessage,
+  filterEligibleRegistrations,
+  isEligibleForCommitteeCm257,
+} from "@/lib/railwayReservation/eligibility";
 import { saveCm257PrintPayload } from "@/lib/railwayReservation/printStorage";
 import type {
   Cm257FormDraft,
@@ -40,7 +45,17 @@ type CoTravelGroup = {
 };
 
 const REGISTRATION_SELECT =
-  "id, name_hi, father_name_hi, address_hi, address_state, address_district, address_city, address_pin, phone, whatsapp, dob, age_years, train_class, travel_mode, aadhaar_no";
+  "id, name_hi, father_name_hi, address_hi, address_state, address_district, address_city, address_pin, phone, whatsapp, dob, age_years, train_class, travel_mode, reservation_by, source_sheet, aadhaar_no";
+
+/** Map URL aliases like SFS1 → import sheet SFS-1 */
+function normalizeImportSheet(raw: string): string {
+  const t = raw.trim();
+  if (!t) return t;
+  const upper = t.toUpperCase().replace(/\s+/g, "");
+  if (upper === "SFS1" || upper === "SFS-1") return "SFS-1";
+  if (upper === "SFS2" || upper === "SFS-2") return "SFS-2";
+  return t;
+}
 
 export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
@@ -53,6 +68,9 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       ? (searchParams.get("tripId") as string)
       : (trainTrips[0]?.id ?? "");
   const initialGroupId = searchParams.get("groupId") ?? "";
+  const initialGroupCode = searchParams.get("groupCode") ?? "";
+  const initialSheet = searchParams.get("sheet") ?? "";
+  const autoGenerate = searchParams.get("auto") === "1";
   const initialIdsParam = searchParams.get("ids") ?? "";
   const initialSelectedIds = initialIdsParam
     .split(",")
@@ -64,7 +82,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     initialGroupId ? "group" : "yatris"
   );
   const [yatriSearch, setYatriSearch] = useState("");
-  const [travelFilter, setTravelFilter] = useState<"all" | "train">("all");
+  const [travelFilter, setTravelFilter] = useState<"all" | "train" | "committee-train">("committee-train");
+  const [sheetFilter, setSheetFilter] = useState(normalizeImportSheet(initialSheet));
   const [yatriList, setYatriList] = useState<RegistrationRow[]>([]);
   const [yatriListLoading, setYatriListLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
@@ -73,6 +92,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const [groupId, setGroupId] = useState(initialGroupId);
   const [forms, setForms] = useState<Cm257FormDraft[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const autoRanRef = useRef(false);
 
   const selectedTrip = useMemo(
     () => trainTrips.find((t) => t.id === tripId) ?? null,
@@ -113,13 +133,26 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         return { ...g, members } as CoTravelGroup;
       });
       setGroups(normalized);
-      setGroupId((prev) => (prev && normalized.some((g) => g.id === prev) ? prev : normalized[0]?.id ?? ""));
+      const codeNeedle = initialGroupCode.trim().toLowerCase();
+      const byCode = codeNeedle
+        ? normalized.find((g) => g.group_code.toLowerCase() === codeNeedle)
+        : undefined;
+      const byId = initialGroupId
+        ? normalized.find((g) => g.id === initialGroupId)
+        : undefined;
+      const pick = byCode ?? byId;
+      if (pick) {
+        setGroupId(pick.id);
+        setSource("group");
+      } else {
+        setGroupId((prev) => (prev && normalized.some((g) => g.id === prev) ? prev : normalized[0]?.id ?? ""));
+      }
     };
     void load();
     return () => {
       active = false;
     };
-  }, [tripId, supabase]);
+  }, [tripId, supabase, initialGroupCode, initialGroupId]);
 
   useEffect(() => {
     let active = true;
@@ -132,6 +165,12 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         .limit(200);
       if (travelFilter === "train") {
         query = query.eq("travel_mode", "train");
+      } else if (travelFilter === "committee-train") {
+        query = query.eq("travel_mode", "train").eq("reservation_by", "committee");
+      }
+      const sheet = sheetFilter.trim();
+      if (sheet) {
+        query = query.eq("source_sheet", sheet);
       }
       const needle = yatriSearch.trim();
       if (needle) {
@@ -153,7 +192,30 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [yatriSearch, travelFilter, supabase]);
+  }, [yatriSearch, travelFilter, sheetFilter, supabase]);
+
+  useEffect(() => {
+    const sheet = normalizeImportSheet(initialSheet);
+    if (!sheet) return;
+    let active = true;
+    void (async () => {
+      const { data, error } = await supabase
+        .from("yatra_registrations")
+        .select(REGISTRATION_SELECT)
+        .eq("source_sheet", sheet)
+        .eq("travel_mode", "train")
+        .eq("reservation_by", "committee");
+      if (!active || error) return;
+      const rows = (data ?? []) as RegistrationRow[];
+      setSelectedIds(rows.map((r) => r.id));
+      setSource("yatris");
+      setSheetFilter(sheet);
+      setTravelFilter("committee-train");
+    })();
+    return () => {
+      active = false;
+    };
+  }, [initialSheet, supabase]);
 
   const toggleYatri = (id: string) => {
     setSelectedIds((prev) =>
@@ -180,65 +242,154 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     [supabase]
   );
 
-  const generateForms = async () => {
+  const buildFormsCore = useCallback(async (): Promise<Cm257FormDraft[]> => {
     if (!selectedTrip) {
-      setMessage("Select a train trip.");
-      return;
+      throw new Error("Select a train trip.");
     }
-    const stop = startLoading("Building CM257 forms...");
-    try {
-      if (source === "group") {
-        const group = groups.find((g) => g.id === groupId);
-        if (!group || group.members.length === 0) {
-          setMessage("Select a group with at least one member.");
-          setForms([]);
-          return;
-        }
-        const members = group.members;
-        let built = buildFormsFromGroupMembers(selectedTrip, members);
-        if (group.class_code || group.boarding_station_code || group.reservation_upto_station_code) {
-          built = built.map((f) => ({
-            ...f,
-            journey: {
-              ...f.journey,
-              classCode: (group.class_code as IrClassCode) || f.journey.classCode,
-              boardingStation: group.boarding_station_code ?? f.journey.boardingStation,
-              reservationUpto: group.reservation_upto_station_code ?? f.journey.reservationUpto,
-            },
-          }));
-        }
-        setForms(built);
-        setMessage(
+    if (source === "group") {
+      const group = groups.find((g) => g.id === groupId);
+      if (!group || group.members.length === 0) {
+        throw new Error("Select a group with at least one member.");
+      }
+      const allMembers = group.members;
+      const members = allMembers.filter((m) =>
+        m.registration ? isEligibleForCommitteeCm257(m.registration) : false
+      );
+      if (members.length === 0) {
+        throw new Error("No eligible members (train + committee reservation) in this group.");
+      }
+      let built = buildFormsFromGroupMembers(selectedTrip, members);
+      if (group.class_code || group.boarding_station_code || group.reservation_upto_station_code) {
+        built = built.map((f) => ({
+          ...f,
+          journey: {
+            ...f.journey,
+            classCode: (group.class_code as IrClassCode) || f.journey.classCode,
+            boardingStation: group.boarding_station_code ?? f.journey.boardingStation,
+            reservationUpto: group.reservation_upto_station_code ?? f.journey.reservationUpto,
+          },
+        }));
+      }
+      const skipNote = eligibilitySkipMessage(allMembers.length, members.length);
+      setMessage(
+        [
+          skipNote,
           built.length > 1
             ? `${members.length} passengers → ${built.length} forms (max ${CM257_MAX_PASSENGERS} per form).`
-            : null
-        );
-        return;
-      }
-
-      const ids = selectedIds;
-      if (ids.length === 0) {
-        setMessage("Select at least one yatri.");
-        setForms([]);
-        return;
-      }
-      const registrations = await loadFullRegistrations(ids);
-      const ordered = ids
-        .map((id) => registrations.find((r) => r.id === id))
-        .filter(Boolean) as RegistrationRow[];
-      const built = buildFormsFromRegistrations(selectedTrip, ordered);
-      setForms(built);
-      setMessage(
-        built.length > 1
-          ? `${ordered.length} passengers → ${built.length} forms (max ${CM257_MAX_PASSENGERS} per form).`
-          : null
+            : `${members.length} passenger(s) on ${built.length} form(s).`,
+        ]
+          .filter(Boolean)
+          .join(" ")
       );
+      return built;
+    }
+
+    const ids = selectedIds;
+    if (ids.length === 0) {
+      throw new Error("Select at least one yatri.");
+    }
+    const registrations = await loadFullRegistrations(ids);
+    const ordered = ids
+      .map((id) => registrations.find((r) => r.id === id))
+      .filter(Boolean) as RegistrationRow[];
+    const eligible = filterEligibleRegistrations(ordered);
+    if (eligible.length === 0) {
+      throw new Error("No eligible yatris (train travel + committee reservation).");
+    }
+    const built = buildFormsFromRegistrations(selectedTrip, eligible);
+    const skipNote = eligibilitySkipMessage(ordered.length, eligible.length);
+    setMessage(
+      [
+        skipNote,
+        built.length > 1
+          ? `${eligible.length} passengers → ${built.length} forms (max ${CM257_MAX_PASSENGERS} per form).`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+    return built;
+  }, [
+    selectedTrip,
+    source,
+    groups,
+    groupId,
+    selectedIds,
+    loadFullRegistrations,
+  ]);
+
+  const openPrintWithForms = (built: Cm257FormDraft[]) => {
+    if (built.length === 0) {
+      setMessage("No forms to print.");
+      return;
+    }
+    const missingGender = built.some((f) =>
+      f.passengers.some((p) => p.nameOnTicket.trim() && !p.sex)
+    );
+    if (missingGender) {
+      const proceed = window.confirm(
+        "Some passengers are missing Sex (M/F). Counters may reject the form. Continue anyway?"
+      );
+      if (!proceed) return;
+    }
+    const payload: Cm257PrintPayload = {
+      tripId,
+      tripName: selectedTrip?.trip_name ?? undefined,
+      forms: built,
+      generatedAt: new Date().toISOString(),
+      layout: printLayout,
+    };
+    saveCm257PrintPayload(payload);
+    window.open("/print/railway-reservation?autoprint=1", "_blank", "noopener,noreferrer");
+  };
+
+  const generateForms = async () => {
+    const stop = startLoading("Building CM257 forms...");
+    try {
+      const built = await buildFormsCore();
+      setForms(built);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Failed to build forms.");
+      setForms([]);
     } finally {
       stop();
     }
   };
+
+  const generateAndPrint = async () => {
+    const stop = startLoading("Building CM257 PDF…");
+    try {
+      const built = await buildFormsCore();
+      setForms(built);
+      openPrintWithForms(built);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Failed to build forms.");
+      setForms([]);
+    } finally {
+      stop();
+    }
+  };
+
+  useEffect(() => {
+    if (!autoGenerate || autoRanRef.current) return;
+    if (!selectedTrip) return;
+    if (source === "group" && !groupId) return;
+    if (source === "yatris" && selectedIds.length === 0 && !initialSheet) return;
+    autoRanRef.current = true;
+    const stop = startLoading("Building CM257 PDF…");
+    void (async () => {
+      try {
+        const built = await buildFormsCore();
+        setForms(built);
+        openPrintWithForms(built);
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : "Failed to build forms.");
+      } finally {
+        stop();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when URL auto=1 and prerequisites are ready
+  }, [autoGenerate, selectedTrip, source, groupId, selectedIds.length, initialSheet]);
 
   const updatePassenger = (
     formIndex: number,
@@ -279,24 +430,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       setMessage("Generate forms before printing.");
       return;
     }
-    const missingGender = forms.some((f) =>
-      f.passengers.some((p) => p.nameOnTicket.trim() && !p.sex)
-    );
-    if (missingGender) {
-      const proceed = window.confirm(
-        "Some passengers are missing Sex (M/F). Counters may reject the form. Continue anyway?"
-      );
-      if (!proceed) return;
-    }
-    const payload: Cm257PrintPayload = {
-      tripId,
-      tripName: selectedTrip?.trip_name ?? undefined,
-      forms,
-      generatedAt: new Date().toISOString(),
-      layout: printLayout,
-    };
-    saveCm257PrintPayload(payload);
-    window.open("/print/railway-reservation", "_blank", "noopener,noreferrer");
+    openPrintWithForms(forms);
   };
 
   if (trainTrips.length === 0) {
@@ -313,7 +447,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     <div className="space-y-6">
       <PageHeader
         title="Railway reservation forms (CM257)"
-        subtitle={`CM257 pre-fill from yatris or travel groups — max ${CM257_MAX_PASSENGERS} passengers per form. Choose print layout before PDF.`}
+        subtitle={`Committee train bookings only — max ${CM257_MAX_PASSENGERS} passengers per CM257. Use co-travel group, import sheet (e.g. SFS-1), or pick yatris.`}
         kicker="PRS counter"
         actions={
           <Link href="/groups/train" className="btn-secondary">
@@ -356,7 +490,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
 
         {source === "yatris" ? (
           <div className="mt-4 space-y-3">
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
               <Field label="Filter list" htmlFor="yatri_search">
                 <TextInput
                   id="yatri_search"
@@ -365,15 +499,26 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                   placeholder="Name, phone, Aadhaar, or sheet"
                 />
               </Field>
-              <Field label="Travel mode" htmlFor="travel_filter">
+              <Field label="Eligibility filter" htmlFor="travel_filter">
                 <Select
                   id="travel_filter"
                   value={travelFilter}
-                  onChange={(e) => setTravelFilter(e.target.value as "all" | "train")}
+                  onChange={(e) =>
+                    setTravelFilter(e.target.value as "all" | "train" | "committee-train")
+                  }
                 >
-                  <option value="all">All yatris (up to 200)</option>
+                  <option value="committee-train">Train + committee books (CM257)</option>
                   <option value="train">Train only</option>
+                  <option value="all">All yatris (up to 200)</option>
                 </Select>
+              </Field>
+              <Field label="Import sheet (optional)" htmlFor="sheet_filter">
+                <TextInput
+                  id="sheet_filter"
+                  value={sheetFilter}
+                  onChange={(e) => setSheetFilter(normalizeImportSheet(e.target.value))}
+                  placeholder="e.g. SFS-1, Family, Kath-1"
+                />
               </Field>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
@@ -408,7 +553,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                             <span className="text-[color:var(--muted)]">
                               {" "}
                               · {row.age_years ?? "—"} yrs · {row.train_class ?? row.travel_mode ?? "—"} ·{" "}
-                              {row.phone ?? "—"}
+                              {row.reservation_by ?? "—"} · {row.source_sheet ?? "—"} · {row.phone ?? "—"}
                             </span>
                           </span>
                         </label>
@@ -456,6 +601,9 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => void generateForms()}>
             Generate forms
+          </button>
+          <button type="button" className="btn-primary" onClick={() => void generateAndPrint()}>
+            Generate &amp; PDF
           </button>
           {forms.length > 0 && (
             <button type="button" className="btn-secondary" onClick={openPrint}>

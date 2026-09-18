@@ -46,16 +46,20 @@ export type Cm257FormDraft = {
 };
 
 /** Full A4 page — one CM257 per sheet (default). */
-export type Cm257PrintLayout = "full" | "two-up" | "mini-tile";
+export type Cm257PrintLayout = "full" | "two-up" | "a5-physical" | "mini-tile";
 
 export const CM257_PRINT_LAYOUT_LABELS: Record<Cm257PrintLayout, string> = {
-  full: "Full page — 1 form per A4",
-  "two-up": "Compact — 2 forms per A4",
-  "mini-tile": "Counter size — tiled on A4 (max per sheet)",
+  full: "Full page — 1 enlarged form per A4 (screen-friendly)",
+  "two-up": "Compact — 2 scaled forms per A4",
+  "a5-physical": "Counter size — 1 CM257 per A4 (152×215 mm, IR tender spec)",
+  "mini-tile": "Counter size — max forms per A4 at 152×215 mm (usually 1)",
 };
 
-/** Approx. physical CM257 slip size used for mini-tile (mm). Adjust if your division uses another print. */
-export const CM257_PHYSICAL_MM = { width: 105, height: 138 } as const;
+/**
+ * Finished CM257 size per Indian Railways supply specs (~152 × 215 mm portrait).
+ * @see MoR tender CM-257 (15.2 × 21.5 cm).
+ */
+export const CM257_PHYSICAL_MM = { width: 152, height: 215 } as const;
 
 export type Cm257PrintPayload = {
   tripId?: string;

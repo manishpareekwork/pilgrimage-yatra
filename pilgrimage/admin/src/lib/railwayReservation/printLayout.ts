@@ -34,6 +34,7 @@ export function groupFormsForPrint(
   layout: Cm257PrintLayout
 ): Cm257FormDraft[][] {
   if (layout === "two-up") return chunkArray(forms, 2);
+  if (layout === "a5-physical") return forms.map((f) => [f]);
   if (layout === "mini-tile") return chunkArray(forms, miniFormsPerPage());
   return forms.map((f) => [f]);
 }

@@ -38,6 +38,14 @@ export function RailwayReservationPrintClient() {
     }
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("autoprint") !== "1" || !payload?.forms.length) return;
+    const t = window.setTimeout(() => window.print(), 400);
+    return () => window.clearTimeout(t);
+  }, [payload]);
+
   if (!payload || payload.forms.length === 0) {
     return (
       <div className="p-8 text-center text-sm text-[color:var(--muted)]">
@@ -58,7 +66,9 @@ export function RailwayReservationPrintClient() {
       ? `${payload.forms.length} page(s) — one CM257 per A4.`
       : layout === "two-up"
         ? `${pages.length} A4 sheet(s) — 2 forms each (${payload.forms.length} forms total).`
-        : `${pages.length} A4 sheet(s) — up to ${miniFormsPerPage()} counter-size forms (${CM257_PHYSICAL_MM.width}×${CM257_PHYSICAL_MM.height} mm) per sheet.`;
+        : layout === "a5-physical"
+          ? `${payload.forms.length} A4 sheet(s) — one ${CM257_PHYSICAL_MM.width}×${CM257_PHYSICAL_MM.height} mm form each.`
+          : `${pages.length} A4 sheet(s) — up to ${miniFormsPerPage()} counter-size forms (${CM257_PHYSICAL_MM.width}×${CM257_PHYSICAL_MM.height} mm) per sheet.`;
 
   return (
     <div className="cm257-root">
@@ -120,15 +130,25 @@ export function RailwayReservationPrintClient() {
                 {pair.length === 1 ? <div className="cm257-two-up-slot" aria-hidden /> : null}
               </div>
             ))
-          : pages.map((group, pageIndex) => (
-              <div key={`mini-${pageIndex}`} className="cm257-print-page cm257-print-page--mini">
-                {group.map((form, index) => (
-                  <div key={`${form.formLabel ?? "form"}-${index}`} className="cm257-mini-slot">
-                    <Cm257ReservationForm draft={form} useBackgroundTemplate={useBg && layout === "full"} />
-                  </div>
-                ))}
-              </div>
-            ))}
+          : layout === "a5-physical"
+            ? pages.map((group, pageIndex) => (
+                <div key={`a5-${pageIndex}`} className="cm257-print-page cm257-print-page--a5-physical">
+                  {group.map((form, index) => (
+                    <div key={`${form.formLabel ?? "form"}-${index}`} className="cm257-a5-slot">
+                      <Cm257ReservationForm draft={form} useBackgroundTemplate={useBg} />
+                    </div>
+                  ))}
+                </div>
+              ))
+            : pages.map((group, pageIndex) => (
+                <div key={`mini-${pageIndex}`} className="cm257-print-page cm257-print-page--mini">
+                  {group.map((form, index) => (
+                    <div key={`${form.formLabel ?? "form"}-${index}`} className="cm257-mini-slot">
+                      <Cm257ReservationForm draft={form} useBackgroundTemplate={useBg} />
+                    </div>
+                  ))}
+                </div>
+              ))}
     </div>
   );
 }
