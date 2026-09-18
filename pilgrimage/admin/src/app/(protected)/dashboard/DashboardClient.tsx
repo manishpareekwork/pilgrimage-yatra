@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
 import { QuickActionsBar } from "@/components/layout/QuickActionsBar";
 import { FormSection } from "@/components/ui";
 import { useGlobalLoading } from "@/components/GlobalLoading";
@@ -139,13 +138,6 @@ export function DashboardClient() {
 
       <FormSection title="Quick actions" description="Jump to the task you need — no hunting through menus.">
         <QuickActionsBar />
-      </FormSection>
-
-      <FormSection
-        title="Committee train workflow"
-        description="Recommended order for train 20824 (outbound 7 Dec · return 13 Dec)."
-      >
-        <CommitteeTrainWorkflow currentStep="register" compact />
       </FormSection>
 
       {error && (

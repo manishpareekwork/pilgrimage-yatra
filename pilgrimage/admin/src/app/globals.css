@@ -1986,6 +1986,119 @@ a {
     margin-top: auto;
   }
 
+  .train-step-bar {
+    padding: 12px 16px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+
+  .train-step-bar__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 4px;
+  }
+
+  .train-step-bar__item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .train-step-bar__sep {
+    width: 1.25rem;
+    height: 1px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+
+  .train-step-bar__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .train-step-bar__pill:hover {
+    color: var(--ink);
+    border-color: var(--accent);
+  }
+
+  .train-step-bar__pill--done {
+    color: var(--ink);
+  }
+
+  .train-step-bar__pill--active {
+    color: var(--ink);
+    border-color: rgba(14, 165, 233, 0.5);
+    background: rgba(14, 165, 233, 0.08);
+  }
+
+  .train-step-bar__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    font-size: 11px;
+    background: var(--surface-muted);
+  }
+
+  .cm257-alert {
+    border-radius: var(--radius-card);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.12);
+    padding: 14px 18px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .cm257-alert--success {
+    border-color: rgba(16, 185, 129, 0.45);
+    background: rgba(16, 185, 129, 0.1);
+  }
+
+  .cm257-action-bar {
+    position: sticky;
+    bottom: 12px;
+    z-index: 40;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    padding: 16px 20px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  .cm257-action-bar__summary {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .cm257-action-bar__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .cm257-passenger-list {
     max-height: 22rem;
     overflow-y: auto;

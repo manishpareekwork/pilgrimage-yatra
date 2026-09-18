@@ -36,7 +36,7 @@ import {
   YATRA_OUTBOUND_JOURNEY_DATE,
 } from "@/lib/tripDisplay";
 import { CM257_OFFICIAL_PDF_URL } from "@/lib/railwayReservation/cm257Official";
-import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
+import { CommitteeTrainStepBar } from "@/components/workflow/CommitteeTrainStepBar";
 
 type PassengerSource = "yatris" | "group" | "sheet";
 
@@ -97,7 +97,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
 
   const [tripId, setTripId] = useState(initialTripId);
   const [source, setSource] = useState<PassengerSource>(
-    initialGroupId ? "group" : initialSheet.trim() ? "sheet" : "yatris"
+    initialGroupId ? "group" : "sheet"
   );
   const [yatriSearch, setYatriSearch] = useState("");
   const [travelFilter, setTravelFilter] = useState<"all" | "train" | "committee-train">("committee-train");
@@ -113,6 +113,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const [message, setMessage] = useState<string | null>(null);
   const autoRanRef = useRef(false);
   const groupSelectionInitRef = useRef<string | null>(null);
+  const sheetAutoSelectKeyRef = useRef("");
+  const [printPageUrl, setPrintPageUrl] = useState<string | null>(null);
 
   const selectedTrip = useMemo(
     () => trainTrips.find((t) => t.id === tripId) ?? null,
@@ -152,6 +154,16 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     initialGroupCode,
     initialSelectedIds,
   ]);
+
+  const listEligibleCount = useMemo(() => {
+    if (source === "group") {
+      if (!activeGroup) return 0;
+      return activeGroup.members.filter(
+        (m) => m.registration && isEligibleForCommitteeCm257(m.registration)
+      ).length;
+    }
+    return yatriList.filter(isEligibleForCommitteeCm257).length;
+  }, [source, activeGroup, yatriList]);
 
   const selectedEligibleCount = useMemo(() => {
     if (source === "group") {
@@ -231,27 +243,39 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   useEffect(() => {
     let active = true;
     const timer = setTimeout(async () => {
+      const sheet = sheetFilter.trim();
+      if (source === "sheet" && !sheet) {
+        setYatriList([]);
+        setYatriListLoading(false);
+        return;
+      }
+
       setYatriListLoading(true);
       let query = supabase
         .from("yatra_registrations")
         .select(REGISTRATION_SELECT)
         .order("name_hi", { ascending: true })
-        .limit(200);
-      if (travelFilter === "train") {
-        query = query.eq("travel_mode", "train");
-      } else if (travelFilter === "committee-train") {
-        query = query.eq("travel_mode", "train").eq("reservation_by", "committee");
-      }
-      const sheet = sheetFilter.trim();
-      if (sheet) {
+        .limit(source === "sheet" ? 500 : 200);
+
+      if (source === "sheet") {
         query = query.eq("source_sheet", sheet);
+      } else {
+        if (travelFilter === "train") {
+          query = query.eq("travel_mode", "train");
+        } else if (travelFilter === "committee-train") {
+          query = query.eq("travel_mode", "train").eq("reservation_by", "committee");
+        }
+        if (sheet) {
+          query = query.eq("source_sheet", sheet);
+        }
+        const needle = yatriSearch.trim();
+        if (needle) {
+          query = query.or(
+            `name_hi.ilike.%${needle}%,phone.ilike.%${needle}%,aadhaar_no.ilike.%${needle}%,source_sheet.ilike.%${needle}%`
+          );
+        }
       }
-      const needle = yatriSearch.trim();
-      if (needle) {
-        query = query.or(
-          `name_hi.ilike.%${needle}%,phone.ilike.%${needle}%,aadhaar_no.ilike.%${needle}%,source_sheet.ilike.%${needle}%`
-        );
-      }
+
       const { data, error } = await query;
       if (!active) return;
       setYatriListLoading(false);
@@ -266,7 +290,25 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [yatriSearch, travelFilter, sheetFilter, supabase]);
+  }, [yatriSearch, travelFilter, sheetFilter, supabase, source]);
+
+  useEffect(() => {
+    if (source !== "sheet") return;
+    const sheet = sheetFilter.trim();
+    if (!sheet || yatriListLoading) return;
+    const key = `${sheet}:${yatriList.length}`;
+    if (sheetAutoSelectKeyRef.current === key) return;
+    sheetAutoSelectKeyRef.current = key;
+    const eligibleIds = yatriList.filter(isEligibleForCommitteeCm257).map((r) => r.id);
+    setSelectedIds(eligibleIds);
+    if (eligibleIds.length === 0 && yatriList.length > 0) {
+      setMessage(
+        `${yatriList.length} on sheet “${sheet}” — none have Train + committee reservation yet. Open the roster to fix, then return here.`
+      );
+    } else if (eligibleIds.length > 0) {
+      setMessage(null);
+    }
+  }, [source, sheetFilter, yatriListLoading, yatriList]);
 
   useEffect(() => {
     const sheet = normalizeImportSheet(initialSheet);
@@ -298,7 +340,11 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   };
 
   const selectAllVisible = () => {
-    setSelectedIds((prev) => [...new Set([...prev, ...yatriList.map((r) => r.id)])]);
+    const ids =
+      source === "sheet"
+        ? yatriList.filter(isEligibleForCommitteeCm257).map((r) => r.id)
+        : yatriList.map((r) => r.id);
+    setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
   };
 
   const clearSelection = () => setSelectedIds([]);
@@ -445,10 +491,38 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       layout: printLayout,
     };
     saveCm257PrintPayload(payload);
-    window.open("/print/railway-reservation?autoprint=1", "_blank", "noopener,noreferrer");
+    const printUrl = "/print/railway-reservation?autoprint=1";
+    setPrintPageUrl(printUrl);
+    const popup = window.open(printUrl, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      setMessage(
+        "Pop-up blocked — use “Open print page” below, then choose Save as PDF in the print dialog."
+      );
+    }
+  };
+
+  const assertCanGenerate = (): boolean => {
+    if (!selectedTrip) {
+      setMessage("Choose a train trip first.");
+      return false;
+    }
+    if (selectedEligibleCount === 0) {
+      if (source === "sheet" && listEligibleCount === 0 && yatriList.length > 0) {
+        setMessage(
+          "No CM257-eligible yatris on this sheet. Set Travel mode = Train and Reservation = Committee on the roster, then try again."
+        );
+      } else {
+        setMessage(
+          "Select at least one passenger (train travel + committee reservation). “Eligible on list” shows who can go on a CM257."
+        );
+      }
+      return false;
+    }
+    return true;
   };
 
   const generateForms = async () => {
+    if (!assertCanGenerate()) return;
     const stop = startLoading("Building CM257 forms...");
     try {
       const built = await buildFormsCore();
@@ -462,6 +536,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   };
 
   const generateAndPrint = async () => {
+    if (!assertCanGenerate()) return;
     const stop = startLoading("Building CM257 PDF…");
     try {
       const built = await buildFormsCore();
@@ -560,42 +635,52 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   return (
     <div className="page-stack">
       <PageHeader
-        title="Railway reservation forms (CM257)"
-        subtitle={`Step 4: select passengers, generate forms, print. Max ${CM257_MAX_PASSENGERS} passengers per official CM257 — extra passengers become additional forms.`}
-        kicker="PRS counter"
+        title="CM257 — print at PRS counter"
+        subtitle={`Pick passengers → Generate & PDF → in the print dialog choose “Save as PDF”. Up to ${CM257_MAX_PASSENGERS} passengers per form.`}
+        kicker="Step 4 · Train booking"
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Link href="/bookings/committee-train" className="btn-secondary">
-              Full workflow
-            </Link>
-            <a
-              href={CM257_OFFICIAL_PDF_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary"
-            >
-              Official PDF
-            </a>
-          </div>
+          <a
+            href={CM257_OFFICIAL_PDF_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary"
+          >
+            Official blank (SCR)
+          </a>
         }
       />
 
-      <FormSection
-        title="Where you are in the journey"
-        description="Use the earlier steps if roster, reservation fields, or groups are not ready yet."
-      >
-        <CommitteeTrainWorkflow currentStep="cm257" compact />
-      </FormSection>
+      <CommitteeTrainStepBar currentStep="cm257" />
 
       {message && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100">
+        <div className="cm257-alert" role="status">
           {message}
+          {message.includes("roster") || message.includes("Reservation") ? (
+            <span className="mt-2 block">
+              <Link
+                href={`/yatris?travel=committee-train&travel_mode=train${sheetFilter.trim() ? `&source_sheet=${encodeURIComponent(sheetFilter.trim())}` : ""}`}
+                className="text-sky-400 underline"
+              >
+                Open roster to fix reservation fields
+              </Link>
+            </span>
+          ) : null}
+        </div>
+      )}
+
+      {printPageUrl && (
+        <div className="cm257-alert cm257-alert--success">
+          PDF ready —{" "}
+          <Link href={printPageUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+            Open print page
+          </Link>{" "}
+          (then Save as PDF). Layout: {CM257_PRINT_LAYOUT_LABELS[printLayout]}.
         </div>
       )}
 
       <FormSection
-        title="Trip & passengers"
-        description="Choose outbound or return trip, then pick how to select yatris (roster search, import sheet bucket, or co-travel group)."
+        title="1. Trip & passengers"
+        description="Import sheet (e.g. Family, SFS-1) is fastest for committee batches."
       >
         <div className="grid gap-6 md:grid-cols-2">
           <Field label="Train trip" htmlFor="trip_id">
@@ -624,8 +709,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               value={source}
               onChange={(e) => setSource(e.target.value as PassengerSource)}
             >
+              <option value="sheet">Import sheet / bucket (recommended)</option>
               <option value="yatris">Roster search (pick individuals)</option>
-              <option value="sheet">Import sheet / bucket</option>
               <option value="group">Co-travel group</option>
             </Select>
           </Field>
@@ -636,24 +721,41 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             <Field
               label="Import sheet code"
               htmlFor="sheet_only"
-              helperText="Loads committee + train yatris on this sheet. Uncheck anyone who should not be on the CM257."
+              helperText="Everyone on this import sheet loads here. Only Train + committee reservation can appear on a CM257."
             >
               <TextInput
                 id="sheet_only"
                 value={sheetFilter}
-                onChange={(e) => setSheetFilter(normalizeImportSheet(e.target.value))}
+                onChange={(e) => {
+                  sheetAutoSelectKeyRef.current = "";
+                  setSheetFilter(normalizeImportSheet(e.target.value));
+                  setForms([]);
+                }}
                 placeholder="e.g. SFS-1, Family, Kath-1"
               />
             </Field>
+            {yatriList.length > 0 && listEligibleCount < yatriList.length ? (
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                {yatriList.length - listEligibleCount} on this sheet are not CM257-ready (need Train + committee).{" "}
+                <Link
+                  href={`/yatris?source_sheet=${encodeURIComponent(sheetFilter.trim())}`}
+                  className="underline"
+                >
+                  Fix on roster
+                </Link>
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--muted)]">
               <span>
-                Selected: {selectedIds.length} · Eligible: {selectedEligibleCount}
+                On sheet: {yatriList.length}
+                {yatriListLoading ? " (loading…)" : ""} · CM257-ready: {listEligibleCount} · Selected for print:{" "}
+                {selectedEligibleCount}
                 {estimatedFormCount > 0
                   ? ` → ${estimatedFormCount} form${estimatedFormCount > 1 ? "s" : ""}`
                   : ""}
               </span>
               <button type="button" className="btn-secondary" onClick={selectAllVisible}>
-                Select all on sheet
+                Select all CM257-ready
               </button>
               <button type="button" className="btn-secondary" onClick={clearSelection}>
                 Clear
@@ -726,12 +828,12 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
               <span>
-                Selected: {selectedIds.length} (eligible for CM257: {selectedEligibleCount}
+                List: {yatriList.length}
+                {yatriListLoading ? " (loading…)" : ""} · CM257-ready on list: {listEligibleCount} · Selected for
+                print: {selectedEligibleCount}
                 {estimatedFormCount > 0
                   ? ` → ${estimatedFormCount} form${estimatedFormCount > 1 ? "s" : ""}`
                   : ""}
-                ) · List: {yatriList.length}
-                {yatriListLoading ? " (loading…)" : ""}
               </span>
               <button type="button" className="btn-secondary min-h-[28px] px-2 py-1 text-xs" onClick={selectAllVisible}>
                 Select all in list
@@ -869,7 +971,11 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         )}
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
-          <Field label="Print layout (PDF)" htmlFor="print_layout">
+          <Field
+            label="Print layout"
+            htmlFor="print_layout"
+            helperText="Opens in a new tab — use the browser print dialog and Save as PDF."
+          >
             <Select
               id="print_layout"
               value={printLayout}
@@ -882,26 +988,6 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               ))}
             </Select>
           </Field>
-        </div>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {estimatedFormCount > 0 && (
-            <span className="text-xs text-[color:var(--muted)]">
-              Ready: {selectedEligibleCount} passenger{selectedEligibleCount !== 1 ? "s" : ""} →{" "}
-              {estimatedFormCount} form{estimatedFormCount > 1 ? "s" : ""}
-            </span>
-          )}
-          <button type="button" className="btn-primary" onClick={() => void generateForms()}>
-            Generate forms
-          </button>
-          <button type="button" className="btn-primary" onClick={() => void generateAndPrint()}>
-            Generate &amp; PDF
-          </button>
-          {forms.length > 0 && (
-            <button type="button" className="btn-secondary" onClick={openPrint}>
-              Print / Save PDF ({forms.length} form{forms.length > 1 ? "s" : ""})
-            </button>
-          )}
         </div>
       </FormSection>
 
@@ -1053,13 +1139,41 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         </FormSection>
       )}
 
-      <FormSection title="Counter-ready PDF">
-        <p className="text-sm text-[color:var(--muted)]">
-          For pixel-perfect alignment with the printed CM257 issued by Indian Railways, place a scan at{" "}
-          <code className="text-xs">public/forms/cm257-en.png</code> (300 DPI, cropped to A4). The app will overlay
-          your data on that template when the file exists.
-        </p>
-      </FormSection>
+      <div className="cm257-action-bar print:hidden">
+        <div className="cm257-action-bar__summary">
+          {selectedEligibleCount > 0 ? (
+            <>
+              <strong>{selectedEligibleCount}</strong> passenger{selectedEligibleCount !== 1 ? "s" : ""} →{" "}
+              <strong>{estimatedFormCount}</strong> CM257 form{estimatedFormCount !== 1 ? "s" : ""}
+            </>
+          ) : (
+            <span>Select passengers above to enable PDF</span>
+          )}
+        </div>
+        <div className="cm257-action-bar__actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={selectedEligibleCount === 0}
+            onClick={() => void generateForms()}
+          >
+            Preview only
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={selectedEligibleCount === 0}
+            onClick={() => void generateAndPrint()}
+          >
+            Generate &amp; PDF
+          </button>
+          {forms.length > 0 ? (
+            <button type="button" className="btn-secondary" onClick={openPrint}>
+              Re-open print
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

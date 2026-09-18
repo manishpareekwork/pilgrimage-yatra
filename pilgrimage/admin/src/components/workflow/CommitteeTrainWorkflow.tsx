@@ -51,13 +51,15 @@ export function CommitteeTrainWorkflow({
       className={`committee-flow ${compact ? "committee-flow--compact" : ""}`}
       aria-label="Committee train booking workflow"
     >
-      <div className="committee-flow__intro">
-        <p className="committee-flow__kicker">End-to-end flow</p>
-        <p className="committee-flow__lead">
-          Register → set committee train reservation → group or bucket → print official{" "}
-          <strong>CM257</strong> at the PRS counter.
-        </p>
-      </div>
+      {!compact ? (
+        <div className="committee-flow__intro">
+          <p className="committee-flow__kicker">End-to-end flow</p>
+          <p className="committee-flow__lead">
+            Register → set committee train reservation → group or bucket → print official{" "}
+            <strong>CM257</strong> at the PRS counter.
+          </p>
+        </div>
+      ) : null}
       <ol className="committee-flow__steps">
         {STEPS.map((step) => {
           const active = step.id === currentStep;
@@ -73,12 +75,18 @@ export function CommitteeTrainWorkflow({
                 ) : null}
               </div>
               <p className="committee-flow__step-summary">{step.summary}</p>
-              <Link
-                href={step.href}
-                className={active ? "btn-primary committee-flow__cta" : "btn-secondary committee-flow__cta"}
-              >
-                {step.cta}
-              </Link>
+              {active && step.id === "cm257" ? (
+                <span className="text-xs text-[color:var(--muted)]">
+                  Use the passenger list and <strong>Generate &amp; PDF</strong> below.
+                </span>
+              ) : (
+                <Link
+                  href={step.href}
+                  className={active ? "btn-primary committee-flow__cta" : "btn-secondary committee-flow__cta"}
+                >
+                  {step.cta}
+                </Link>
+              )}
             </li>
           );
         })}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CommitteeTrainWorkflow } from "@/components/workflow/CommitteeTrainWorkflow";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
-import { QuickActionsBar } from "@/components/layout/QuickActionsBar";
+import { CommitteeTrainStepBar } from "@/components/workflow/CommitteeTrainStepBar";
 import { FormSection, PageHeader } from "@/components/ui";
 import {
   CM257_LOCAL_PDF_PATH,
@@ -31,15 +31,13 @@ export default async function CommitteeTrainHubPage() {
         }
       />
 
-      <FormSection title="Quick actions">
-        <QuickActionsBar />
-      </FormSection>
+      <CommitteeTrainStepBar currentStep="register" />
 
       <FormSection
-        title="Workflow"
-        description="Follow these steps in order. You can jump back to any step when data changes."
+        title="What to do at each step"
+        description="Register yatris → set train + committee reservation on the roster → optional co-travel groups → generate CM257 and Save as PDF at the counter."
       >
-        <CommitteeTrainWorkflow currentStep="register" />
+        <CommitteeTrainWorkflow currentStep="register" compact />
       </FormSection>
 
       <FormSection
