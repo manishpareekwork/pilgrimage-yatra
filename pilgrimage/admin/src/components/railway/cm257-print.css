@@ -2,7 +2,7 @@
 
 @page {
   size: A4 portrait;
-  margin: 5mm;
+  margin: 0;
 }
 
 @media print {
@@ -51,14 +51,15 @@
     min-height: 0;
   }
 
-  .cm257-root > .cm257-print-page:not(:last-of-type) {
-    page-break-after: always;
-    break-after: page;
+  /* Break before page 2+ only — avoids blank sheet after each page (break-after bug) */
+  .cm257-root > .cm257-print-page {
+    page-break-after: avoid;
+    break-after: avoid;
   }
 
-  .cm257-root > .cm257-print-page:last-of-type {
-    page-break-after: auto;
-    break-after: auto;
+  .cm257-root > .cm257-print-page + .cm257-print-page {
+    page-break-before: always;
+    break-before: page;
   }
 
   .cm257-sheet {

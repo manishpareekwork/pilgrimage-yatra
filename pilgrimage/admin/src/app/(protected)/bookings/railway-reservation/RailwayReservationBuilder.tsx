@@ -510,7 +510,7 @@ export function RailwayReservationBuilder({
       layout: printLayout,
     };
     saveCm257PrintPayload(payload);
-    const printUrl = "/print/railway-reservation?autoprint=1";
+    const printUrl = "/print/railway-reservation?download=1";
     setPrintPageUrl(printUrl);
     if (missingGender) {
       setMessage(
@@ -523,7 +523,7 @@ export function RailwayReservationBuilder({
       return;
     }
     setMessage(
-      `Opened print page with ${built.length} form(s). In the print dialog choose Destination → Save as PDF.`
+      `Building PDF for ${built.length} form(s) — download should start in the new tab (no print dialog).`
     );
   };
 
@@ -563,7 +563,7 @@ export function RailwayReservationBuilder({
 
   const generateAndPrint = async () => {
     if (!assertCanGenerate()) return;
-    const stop = startLoading("Building CM257 PDF…");
+    const stop = startLoading("Building CM257 download…");
     try {
       const built = await buildFormsCore();
       setForms(built);
@@ -583,7 +583,7 @@ export function RailwayReservationBuilder({
     if ((source === "yatris" || source === "sheet") && selectedIds.length === 0 && !initialSheet)
       return;
     autoRanRef.current = true;
-    const stop = startLoading("Building CM257 PDF…");
+    const stop = startLoading("Building CM257 download…");
     void (async () => {
       try {
         const built = await buildFormsCore();
@@ -662,7 +662,7 @@ export function RailwayReservationBuilder({
     <div className="page-stack">
       <PageHeader
         title="CM257 — print at PRS counter"
-        subtitle={`Pick passengers → Generate & PDF → in the print dialog choose “Save as PDF”. Up to ${CM257_MAX_PASSENGERS} passengers per form.`}
+        subtitle={`Pick passengers → Generate & download PDF (direct file). Up to ${CM257_MAX_PASSENGERS} passengers per form.`}
         kicker="Step 4 · Train booking"
         actions={
           <a
@@ -696,11 +696,11 @@ export function RailwayReservationBuilder({
 
       {printPageUrl && (
         <div className="cm257-alert cm257-alert--success">
-          PDF ready —{" "}
+          PDF page —{" "}
           <Link href={printPageUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
-            Open print page
-          </Link>{" "}
-          (then Save as PDF). Layout: {CM257_PRINT_LAYOUT_LABELS[printLayout]}.
+            Download again
+          </Link>
+          . Layout: {CM257_PRINT_LAYOUT_LABELS[printLayout]}.
         </div>
       )}
 
@@ -995,7 +995,7 @@ export function RailwayReservationBuilder({
           <Field
             label="Print layout"
             htmlFor="print_layout"
-            helperText="Opens in a new tab — use the browser print dialog and Save as PDF."
+            helperText="Used when building the PDF file (A4 full vs platform slip layout)."
           >
             <Select
               id="print_layout"
@@ -1186,11 +1186,11 @@ export function RailwayReservationBuilder({
             disabled={selectedEligibleCount === 0}
             onClick={() => void generateAndPrint()}
           >
-            Generate &amp; PDF
+            Generate &amp; download PDF
           </button>
           {forms.length > 0 ? (
             <button type="button" className="btn-secondary" onClick={openPrint}>
-              Re-open print
+              Download again
             </button>
           ) : null}
         </div>
