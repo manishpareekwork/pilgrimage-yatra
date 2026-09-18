@@ -36,7 +36,9 @@ import {
   YATRA_OUTBOUND_JOURNEY_DATE,
 } from "@/lib/tripDisplay";
 import { CM257_OFFICIAL_PDF_URL } from "@/lib/railwayReservation/cm257Official";
+import { ImportBucketSelect } from "@/components/forms/ImportBucketSelect";
 import { CommitteeTrainStepBar } from "@/components/workflow/CommitteeTrainStepBar";
+import { pickDefaultImportBucket, type ImportBucketOption } from "@/lib/importBuckets";
 
 type PassengerSource = "yatris" | "group" | "sheet";
 
@@ -65,7 +67,13 @@ function normalizeImportSheet(raw: string): string {
   return t;
 }
 
-export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
+export function RailwayReservationBuilder({
+  trips,
+  importBuckets,
+}: {
+  trips: Trip[];
+  importBuckets: ImportBucketOption[];
+}) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
   const { startLoading } = useGlobalLoading();
   const searchParams = useSearchParams();
@@ -101,7 +109,11 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   );
   const [yatriSearch, setYatriSearch] = useState("");
   const [travelFilter, setTravelFilter] = useState<"all" | "train" | "committee-train">("committee-train");
-  const [sheetFilter, setSheetFilter] = useState(normalizeImportSheet(initialSheet));
+  const [sheetFilter, setSheetFilter] = useState(() => {
+    const fromUrl = normalizeImportSheet(initialSheet);
+    if (fromUrl) return fromUrl;
+    return pickDefaultImportBucket(importBuckets)?.name ?? "";
+  });
   const [yatriList, setYatriList] = useState<RegistrationRow[]>([]);
   const [yatriListLoading, setYatriListLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
@@ -309,6 +321,12 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       setMessage(null);
     }
   }, [source, sheetFilter, yatriListLoading, yatriList]);
+
+  const pickSheet = (name: string) => {
+    sheetAutoSelectKeyRef.current = "";
+    setSheetFilter(normalizeImportSheet(name));
+    setForms([]);
+  };
 
   useEffect(() => {
     const sheet = normalizeImportSheet(initialSheet);
@@ -682,7 +700,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         title="1. Trip & passengers"
         description="Import sheet (e.g. Family, SFS-1) is fastest for committee batches."
       >
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="form-grid form-grid--2">
           <Field label="Train trip" htmlFor="trip_id">
             <Select
               id="trip_id"
@@ -699,11 +717,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
               ))}
             </Select>
           </Field>
-          <Field
-            label="How to select passengers"
-            htmlFor="source"
-            helperText="Sheet = import bucket (SFS-1). Group = co-travel list with berths."
-          >
+          <Field label="How to select passengers" htmlFor="source">
             <Select
               id="source"
               value={source}
@@ -717,23 +731,14 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
         </div>
 
         {source === "sheet" ? (
-          <div className="mt-6 space-y-4">
-            <Field
-              label="Import sheet code"
-              htmlFor="sheet_only"
-              helperText="Everyone on this import sheet loads here. Only Train + committee reservation can appear on a CM257."
-            >
-              <TextInput
-                id="sheet_only"
-                value={sheetFilter}
-                onChange={(e) => {
-                  sheetAutoSelectKeyRef.current = "";
-                  setSheetFilter(normalizeImportSheet(e.target.value));
-                  setForms([]);
-                }}
-                placeholder="e.g. SFS-1, Family, Kath-1"
-              />
-            </Field>
+          <div className="cm257-sheet-panel">
+            <ImportBucketSelect
+              id="sheet_only"
+              buckets={importBuckets}
+              value={sheetFilter}
+              onChange={pickSheet}
+              required
+            />
             {yatriList.length > 0 && listEligibleCount < yatriList.length ? (
               <p className="text-sm text-amber-800 dark:text-amber-200">
                 {yatriList.length - listEligibleCount} on this sheet are not CM257-ready (need Train + committee).{" "}
@@ -745,26 +750,32 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                 </Link>
               </p>
             ) : null}
-            <div className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--muted)]">
-              <span>
-                On sheet: {yatriList.length}
-                {yatriListLoading ? " (loading…)" : ""} · CM257-ready: {listEligibleCount} · Selected for print:{" "}
-                {selectedEligibleCount}
+            <div className="cm257-sheet-toolbar">
+              <p className="cm257-sheet-toolbar__stats">
+                On sheet: <strong>{yatriList.length}</strong>
+                {yatriListLoading ? " (loading…)" : ""} · CM257-ready:{" "}
+                <strong>{listEligibleCount}</strong> · Selected: <strong>{selectedEligibleCount}</strong>
                 {estimatedFormCount > 0
                   ? ` → ${estimatedFormCount} form${estimatedFormCount > 1 ? "s" : ""}`
                   : ""}
-              </span>
-              <button type="button" className="btn-secondary" onClick={selectAllVisible}>
-                Select all CM257-ready
-              </button>
-              <button type="button" className="btn-secondary" onClick={clearSelection}>
-                Clear
-              </button>
+              </p>
+              <div className="cm257-sheet-toolbar__actions">
+                <button type="button" className="btn-secondary" onClick={selectAllVisible}>
+                  Select all CM257-ready
+                </button>
+                <button type="button" className="btn-secondary" onClick={clearSelection}>
+                  Clear
+                </button>
+              </div>
             </div>
             <div className="cm257-passenger-list">
-              {yatriList.length === 0 && !yatriListLoading ? (
-                <p className="p-4 text-sm text-[color:var(--muted)]">
-                  Enter a sheet code above to load yatris.
+              {!sheetFilter.trim() ? (
+                <p className="p-5 text-sm text-[color:var(--muted)]">
+                  Choose a bucket from the list above (or tap a chip).
+                </p>
+              ) : yatriList.length === 0 && !yatriListLoading ? (
+                <p className="p-5 text-sm text-[color:var(--muted)]">
+                  No yatris on this sheet yet. Assign the bucket on the roster.
                 </p>
               ) : (
                 <ul className="divide-y divide-[color:var(--border)]">
@@ -794,8 +805,8 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             </div>
           </div>
         ) : source === "yatris" ? (
-          <div className="mt-6 space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="cm257-sheet-panel">
+            <div className="form-grid form-grid--3">
               <Field label="Filter list" htmlFor="yatri_search">
                 <TextInput
                   id="yatri_search"
@@ -817,14 +828,16 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                   <option value="all">All yatris (up to 200)</option>
                 </Select>
               </Field>
-              <Field label="Import sheet (optional)" htmlFor="sheet_filter">
-                <TextInput
-                  id="sheet_filter"
-                  value={sheetFilter}
-                  onChange={(e) => setSheetFilter(normalizeImportSheet(e.target.value))}
-                  placeholder="e.g. SFS-1, Family, Kath-1"
-                />
-              </Field>
+              <ImportBucketSelect
+                id="sheet_filter"
+                label="Limit to bucket (optional)"
+                buckets={importBuckets}
+                value={sheetFilter}
+                onChange={pickSheet}
+                showChips={false}
+                emptyLabel="All buckets"
+                helperText="Optional — narrow the roster list to one import sheet."
+              />
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
               <span>
@@ -970,7 +983,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
           </div>
         )}
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="form-grid form-grid--2">
           <Field
             label="Print layout"
             htmlFor="print_layout"

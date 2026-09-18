@@ -82,19 +82,15 @@ export function FormSection({
   className?: string;
 }) {
   return (
-    <section
-      className={cn("card space-y-8 p-7 sm:p-9 lg:p-10", className)}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1.5">
-          <div className="text-base font-semibold text-[color:var(--ink)]">{title}</div>
-          {description && (
-            <p className="text-sm leading-relaxed text-[color:var(--muted)]">{description}</p>
-          )}
+    <section className={cn("form-section card", className)}>
+      <div className="form-section__header">
+        <div className="form-section__titles">
+          <div className="form-section__title">{title}</div>
+          {description && <p className="form-section__desc">{description}</p>}
         </div>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {children}
+      <div className="form-section__body">{children}</div>
     </section>
   );
 }
@@ -117,19 +113,14 @@ export function Field({
   className?: string;
 }) {
   return (
-    <div className={cn("form-field flex flex-col gap-1.5", className)}>
-      <label
-        htmlFor={htmlFor}
-        className="text-sm font-medium text-[color:var(--ink)]"
-      >
+    <div className={cn("form-field", className)}>
+      <label htmlFor={htmlFor} className="form-field__label">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>
-      {helperText && (
-        <p className="text-xs text-[color:var(--subtle)]">{helperText}</p>
-      )}
-      {children}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      <div className="form-field__control">{children}</div>
+      {helperText && <p className="form-field__helper">{helperText}</p>}
+      {error && <p className="form-field__error">{error}</p>}
     </div>
   );
 }
