@@ -1138,14 +1138,14 @@ export function RailwayReservationBuilder({
                 </div>
 
                 <details className="text-sm">
-                  <summary className="cursor-pointer text-[color:var(--accent)]">Preview this form</summary>
-                  <div className="mt-4 overflow-x-auto rounded-lg border border-[color:var(--border)] bg-[#e8e8e8] p-4">
-                    <div style={{ transform: "scale(0.55)", transformOrigin: "top left", width: "210mm" }}>
-                      <Cm257ReservationForm
-                        draft={form}
-                        template={printLayout === "a4-full" ? "a4" : "a5"}
-                      />
-                    </div>
+                  <summary className="cursor-pointer text-[color:var(--accent)]">
+                    Preview this form (table grid — matches print/PDF)
+                  </summary>
+                  <div className="cm257-preview-frame mt-4">
+                    <Cm257ReservationForm
+                      draft={form}
+                      template={printLayout === "a4-full" ? "a4" : "a5"}
+                    />
                   </div>
                 </details>
               </div>

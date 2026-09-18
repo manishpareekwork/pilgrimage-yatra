@@ -1,4 +1,4 @@
-/* CM257 — pure HTML/CSS (no scan overlay). Templates: A4 full + platform A5 (148×210 mm). */
+/* CM257 — table-grid layout aligned to official CM257 field structure (SCR). */
 
 @page {
   size: A4 portrait;
@@ -28,18 +28,35 @@
   }
 
   .cm257-root {
+    min-height: 0 !important;
     padding: 0 !important;
     background: #fff !important;
   }
 
   .cm257-print-page {
-    page-break-after: always;
-    break-after: page;
     box-shadow: none !important;
     margin: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
-  .cm257-print-page:last-child {
+  /* Exactly one A4 sheet per wrapper — avoid min-height + break-after doubling pages */
+  .cm257-print-page--a4-full,
+  .cm257-print-page--a5-single,
+  .cm257-print-page--a5-double {
+    height: 297mm;
+    max-height: 297mm;
+    min-height: 0;
+  }
+
+  .cm257-root > .cm257-print-page:not(:last-of-type) {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .cm257-root > .cm257-print-page:last-of-type {
     page-break-after: auto;
     break-after: auto;
   }
@@ -47,6 +64,12 @@
   .cm257-sheet {
     box-shadow: none !important;
     margin: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cm257-sheet--template-a5 {
+    margin-bottom: 0 !important;
   }
 }
 
@@ -66,29 +89,37 @@
   justify-content: space-between;
 }
 
-/* --- Shared form chrome --- */
+.cm257-layout-hint {
+  font-size: 12px;
+  color: #555;
+  max-width: 210mm;
+  margin: 0 auto 12px;
+  line-height: 1.5;
+}
+
+/* --- Sheet shell --- */
 .cm257-sheet {
   box-sizing: border-box;
   background: #fff;
   color: #000;
   font-family: "Times New Roman", Times, serif;
-  line-height: 1.25;
+  line-height: 1.2;
   position: relative;
-  border: 0.35mm solid #000;
+  border: 0.4mm solid #000;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
 }
 
 .cm257-body {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2.5mm;
 }
 
 .cm257-header {
   text-align: center;
   border-bottom: 0.4mm solid #000;
   padding-bottom: 2.5mm;
-  margin-bottom: 3mm;
+  margin-bottom: 2mm;
 }
 
 .cm257-header__hindi {
@@ -113,6 +144,7 @@
 .cm257-form-no {
   text-align: right;
   margin-top: 1.5mm;
+  font-weight: 600;
 }
 
 .cm257-form-label {
@@ -120,194 +152,221 @@
   top: 3mm;
   right: 5mm;
   color: #444;
+  font-size: 7pt;
 }
 
-.cm257-block-hint {
+/* --- Unified table grid (official-style borders) --- */
+.cm257-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 0.35mm solid #000;
+}
+
+.cm257-grid th,
+.cm257-grid td {
+  border: 0.25mm solid #000;
+  vertical-align: middle;
+  padding: 1.4mm 2mm;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cm257-grid-section {
   font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 2mm;
+  text-align: center;
+  background: #f0f0f0;
+  padding: 1.6mm 2mm;
+  letter-spacing: 0.02em;
 }
 
-.cm257-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 2mm 3mm;
-  margin-bottom: 2mm;
+.cm257-grid-section--office {
+  background: #e8e8e8;
 }
 
-.cm257-row--wrap {
-  align-items: center;
+.cm257-cell-label {
+  font-weight: 600;
+  background: #fafafa;
+  width: 22%;
 }
 
-.cm257-row--tight {
-  margin-top: 2mm;
+.cm257-cell-label--inline {
+  display: inline;
+  background: transparent;
+  font-weight: 600;
 }
 
-.cm257-label {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.cm257-label--spaced {
-  margin-left: 2mm;
-}
-
-.cm257-field {
-  flex: 1;
-  min-width: 18mm;
-  border-bottom: 0.25mm solid #000;
-  min-height: 5mm;
-  padding: 0 1mm 0.8mm;
+.cm257-cell-value {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  word-break: break-word;
+  min-height: 6mm;
 }
 
-.cm257-field--sm {
-  flex: 0 0 20mm;
-  min-width: 20mm;
+.cm257-cell-value--short {
+  width: 18%;
 }
 
-.cm257-field--md {
-  flex: 0 0 28mm;
+.cm257-cell-value--classes {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+  line-height: 1.35;
 }
 
-.cm257-field--lg {
-  flex: 1 1 45mm;
+.cm257-cell-value--address {
+  min-height: 14mm;
+  white-space: pre-wrap;
+  vertical-align: top;
 }
 
-.cm257-classes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2mm 3mm;
-  margin: 1.5mm 0 2.5mm;
+.cm257-cell-value--signature {
+  min-height: 10mm;
 }
 
+.cm257-cell-value--office {
+  min-height: 11mm;
+  text-transform: none;
+}
+
+.cm257-cell-center {
+  text-align: center;
+  font-weight: 600;
+}
+
+.cm257-cell-name {
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.cm257-cell-check {
+  vertical-align: top;
+  padding: 1.2mm 2mm;
+}
+
+.cm257-cell-inline-value {
+  display: inline-block;
+  min-width: 18mm;
+  border-bottom: 0.25mm solid #000;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0 1mm;
+}
+
+.cm257-inline-gap {
+  display: inline-block;
+  width: 4mm;
+}
+
+.cm257-inline-gap--wide {
+  width: 8mm;
+}
+
+/* Journey 4-column grid */
+.cm257-col-label {
+  width: 22%;
+}
+
+.cm257-col-value {
+  width: 28%;
+}
+
+/* Passenger columns (fixed like counter form) */
+.cm257-col-sno {
+  width: 7%;
+}
+
+.cm257-col-name {
+  width: 38%;
+}
+
+.cm257-col-sex {
+  width: 8%;
+}
+
+.cm257-col-age {
+  width: 8%;
+}
+
+.cm257-col-conc {
+  width: 14%;
+}
+
+.cm257-col-berth {
+  width: 25%;
+}
+
+.cm257-grid--passengers thead th {
+  font-weight: 700;
+  text-align: center;
+  background: #f0f0f0;
+  font-size: 0.92em;
+  padding: 1.2mm 1.5mm;
+}
+
+.cm257-pax-row {
+  height: 8mm;
+}
+
+.cm257-pax-row td {
+  height: 8mm;
+}
+
+.cm257-grid--choices td {
+  width: 50%;
+}
+
+.cm257-grid--applicant .cm257-cell-label {
+  width: 20%;
+}
+
+.cm257-grid--office td {
+  width: 33.33%;
+  text-align: center;
+}
+
+.cm257-office-data-row td {
+  height: 12mm;
+}
+
+/* Checkboxes */
 .cm257-class-item {
   display: inline-flex;
   align-items: center;
-  gap: 1mm;
+  gap: 0.8mm;
+  margin-right: 2.5mm;
+  white-space: nowrap;
+}
+
+.cm257-check-item {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 1.5mm;
+  line-height: 1.25;
 }
 
 .cm257-box {
   display: inline-block;
-  width: 3.5mm;
-  height: 3.5mm;
+  flex-shrink: 0;
+  width: 3.2mm;
+  height: 3.2mm;
   border: 0.25mm solid #000;
-  vertical-align: middle;
   text-align: center;
-  line-height: 3.2mm;
+  line-height: 3mm;
   font-weight: 700;
+  font-size: 0.85em;
 }
 
 .cm257-box--checked::after {
   content: "✓";
-  line-height: 3.2mm;
-}
-
-.cm257-section-title {
-  font-weight: 700;
-  margin: 3mm 0 1.5mm;
-  text-decoration: underline;
-}
-
-.cm257-section-title--flush {
-  margin-top: 0;
-}
-
-.cm257-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 2mm 0;
-}
-
-.cm257-table th,
-.cm257-table td {
-  border: 0.25mm solid #000;
-  padding: 1.2mm 1.5mm;
-  vertical-align: middle;
-}
-
-.cm257-table th {
-  font-weight: 700;
-  text-align: center;
-  background: #f3f3f3;
-}
-
-.cm257-table td.cm257-pax-name {
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.cm257-table td.cm257-center {
-  text-align: center;
 }
 
 .cm257-footnote {
-  margin: 1mm 0 2mm;
-}
-
-.cm257-checklist {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1mm 3mm;
-  margin-bottom: 2.5mm;
-}
-
-.cm257-check-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5mm;
-}
-
-.cm257-applicant {
-  border: 0.25mm solid #000;
-  padding: 2.5mm;
-  margin-top: 2.5mm;
-}
-
-.cm257-applicant-address {
-  min-height: 12mm;
-  border-bottom: 0.25mm solid #000;
-  padding: 1mm;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  white-space: pre-wrap;
-}
-
-.cm257-office {
-  margin-top: 2.5mm;
-  border: 0.25mm solid #000;
-  padding: 2.5mm;
-}
-
-.cm257-office-title {
-  text-align: center;
-  font-weight: 700;
-  margin-bottom: 2mm;
-}
-
-.cm257-office-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 2mm;
-}
-
-.cm257-office-cell {
-  border-bottom: 0.25mm solid #000;
-  min-height: 9mm;
-}
-
-.cm257-layout-hint {
-  font-size: 12px;
-  color: #555;
-  max-width: 210mm;
-  margin: 0 auto 12px;
-  line-height: 1.5;
+  margin: 0.5mm 0 0;
+  font-size: 0.88em;
+  line-height: 1.35;
 }
 
 /* ========== Template A4 (210 × 297 mm) ========== */
@@ -315,8 +374,8 @@
   width: 210mm;
   min-height: 297mm;
   margin: 0 auto 20px;
-  padding: 12mm 14mm 10mm;
-  font-size: 9.5pt;
+  padding: 10mm 12mm 8mm;
+  font-size: 9pt;
 }
 
 .cm257-sheet--template-a4 .cm257-header__hindi {
@@ -332,36 +391,11 @@
   font-size: 8pt;
 }
 
-.cm257-sheet--template-a4 .cm257-block-hint {
-  font-size: 8pt;
-}
-
-.cm257-sheet--template-a4 .cm257-label {
+.cm257-sheet--template-a4 .cm257-grid {
   font-size: 8.5pt;
 }
 
-.cm257-sheet--template-a4 .cm257-field {
-  font-size: 9.5pt;
-}
-
-.cm257-sheet--template-a4 .cm257-classes {
-  font-size: 8pt;
-}
-
-.cm257-sheet--template-a4 .cm257-table {
-  font-size: 8pt;
-}
-
-.cm257-sheet--template-a4 .cm257-footnote,
-.cm257-sheet--template-a4 .cm257-checklist {
-  font-size: 7.5pt;
-}
-
-.cm257-sheet--template-a4 .cm257-applicant-address {
-  font-size: 9pt;
-}
-
-.cm257-sheet--template-a4 .cm257-office-grid {
+.cm257-sheet--template-a4 .cm257-footnote {
   font-size: 7.5pt;
 }
 
@@ -370,101 +404,67 @@
   width: 148mm;
   height: 210mm;
   margin: 0 auto;
-  padding: 5mm 6mm 4mm;
-  font-size: 7pt;
+  padding: 4mm 5mm 3mm;
+  font-size: 6.5pt;
   overflow: hidden;
 }
 
 .cm257-sheet--template-a5 .cm257-header__hindi {
-  font-size: 9pt;
+  font-size: 8.5pt;
 }
 
 .cm257-sheet--template-a5 .cm257-header__english {
-  font-size: 7.5pt;
+  font-size: 7pt;
 }
 
 .cm257-sheet--template-a5 .cm257-header__subtitle,
 .cm257-sheet--template-a5 .cm257-form-no {
+  font-size: 5.5pt;
+}
+
+.cm257-sheet--template-a5 .cm257-grid {
   font-size: 6pt;
 }
 
-.cm257-sheet--template-a5 .cm257-block-hint {
-  font-size: 6.5pt;
-  margin-bottom: 1.5mm;
+.cm257-sheet--template-a5 .cm257-grid th,
+.cm257-sheet--template-a5 .cm257-grid td {
+  padding: 0.9mm 1.2mm;
 }
 
-.cm257-sheet--template-a5 .cm257-label {
-  font-size: 6.5pt;
-}
-
-.cm257-sheet--template-a5 .cm257-field {
-  font-size: 7pt;
-  min-height: 4mm;
-}
-
-.cm257-sheet--template-a5 .cm257-classes {
-  font-size: 6pt;
-  gap: 1mm 2mm;
+.cm257-sheet--template-a5 .cm257-pax-row,
+.cm257-sheet--template-a5 .cm257-pax-row td {
+  height: 6mm;
 }
 
 .cm257-sheet--template-a5 .cm257-box {
-  width: 2.8mm;
-  height: 2.8mm;
-  line-height: 2.6mm;
+  width: 2.6mm;
+  height: 2.6mm;
+  line-height: 2.4mm;
 }
 
-.cm257-sheet--template-a5 .cm257-table {
-  font-size: 6pt;
-}
-
-.cm257-sheet--template-a5 .cm257-table th,
-.cm257-sheet--template-a5 .cm257-table td {
-  padding: 0.8mm 1mm;
+.cm257-sheet--template-a5 .cm257-class-item {
+  margin-right: 1.5mm;
 }
 
 .cm257-sheet--template-a5 .cm257-footnote {
   font-size: 5.5pt;
 }
 
-.cm257-sheet--template-a5 .cm257-checklist {
-  font-size: 5.5pt;
-  grid-template-columns: 1fr;
-  gap: 0.5mm;
+.cm257-sheet--template-a5 .cm257-cell-value--address {
+  min-height: 9mm;
 }
 
-.cm257-sheet--template-a5 .cm257-applicant {
-  padding: 2mm;
-  margin-top: 2mm;
-}
-
-.cm257-sheet--template-a5 .cm257-applicant-address {
-  min-height: 8mm;
-  font-size: 6.5pt;
-}
-
-.cm257-sheet--template-a5 .cm257-office {
-  padding: 2mm;
-  margin-top: 2mm;
-}
-
-.cm257-sheet--template-a5 .cm257-office-cell {
-  min-height: 6mm;
-}
-
-.cm257-sheet--template-a5 .cm257-office-grid {
-  font-size: 5.5pt;
-}
-
-.cm257-sheet--template-a5 .cm257-section-title {
-  margin: 2mm 0 1mm;
+.cm257-sheet--template-a5 .cm257-office-data-row td {
+  height: 8mm;
 }
 
 /* --- Print pages --- */
 .cm257-print-page--a4-full {
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
   margin: 0 auto 20px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .cm257-print-page--a4-full .cm257-sheet--template-a4 {
@@ -473,33 +473,31 @@
 
 .cm257-print-page--a5-single {
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;
   margin: 0 auto 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
   background: #fff;
+  overflow: hidden;
 }
 
 .cm257-print-page--a5-double {
   width: 210mm;
   height: 297mm;
   margin: 0 auto 20px;
-  padding: 4mm 0;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 3mm;
+  justify-content: flex-start;
+  gap: 0;
   background: #fff;
+  overflow: hidden;
 }
 
-/**
- * Each half holds one 148×210 mm slip; scale fits 210 mm height into ~143.5 mm half-page.
- * (297 − margins − gap) / 2 ≈ 143.5 mm; 143.5 / 210 ≈ 0.683
- */
 .cm257-a5-double-slot {
   width: 210mm;
   height: 143.5mm;
@@ -524,4 +522,19 @@
 .cm257-a5-double-slot .cm257-sheet--template-a5 {
   transform: scale(0.683);
   transform-origin: top center;
+}
+
+/* Builder preview — full width scroll, no squashed scale */
+.cm257-preview-frame {
+  overflow: auto;
+  max-height: 80vh;
+  padding: 16px;
+  background: #d8d8d8;
+  border-radius: 8px;
+  border: 1px solid var(--border, #ccc);
+}
+
+.cm257-preview-frame .cm257-sheet--template-a4 {
+  margin: 0 auto;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
 }

@@ -24,7 +24,6 @@ export function Cm257ReservationForm({
   sheetClassName = "",
 }: {
   draft: Cm257FormDraft;
-  /** `a4` = full sheet; `a5` = platform slip 148×210 mm (native CSS, no image). */
   template?: Cm257Template;
   sheetClassName?: string;
 }) {
@@ -50,45 +49,71 @@ export function Cm257ReservationForm({
       </header>
 
       <div className="cm257-body">
-        <p className="cm257-block-hint">Journey details</p>
+        <table className="cm257-grid cm257-grid--journey" aria-label="Journey details">
+          <colgroup>
+            <col className="cm257-col-label" />
+            <col className="cm257-col-value" />
+            <col className="cm257-col-label" />
+            <col className="cm257-col-value" />
+          </colgroup>
+          <tbody>
+            <tr>
+              <td colSpan={4} className="cm257-grid-section">
+                Journey details
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Train No. &amp; Name</td>
+              <td colSpan={3} className="cm257-cell-value">
+                {journey.trainNoAndName}
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Date of Journey (DD/MM/YY)</td>
+              <td className="cm257-cell-value cm257-cell-value--short">{journey.journeyDate}</td>
+              <td className="cm257-cell-label">No. of berths / seats</td>
+              <td className="cm257-cell-value cm257-cell-value--short">
+                {journey.berthCount || String(filledCount)}
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Class</td>
+              <td colSpan={3} className="cm257-cell-value cm257-cell-value--classes">
+                {IR_CLASS_CODES.map((code) => (
+                  <ClassCheckbox key={code} code={code} selected={journey.classCode === code} />
+                ))}
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">From (Station)</td>
+              <td className="cm257-cell-value">{journey.fromStation}</td>
+              <td className="cm257-cell-label">To (Station)</td>
+              <td className="cm257-cell-value">{journey.toStation}</td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Boarding at (if different)</td>
+              <td className="cm257-cell-value">{journey.boardingStation}</td>
+              <td className="cm257-cell-label">Reservation upto</td>
+              <td className="cm257-cell-value">{journey.reservationUpto}</td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div className="cm257-row">
-          <span className="cm257-label">Train No. &amp; Name</span>
-          <span className="cm257-field cm257-field--lg">{journey.trainNoAndName}</span>
-        </div>
-
-        <div className="cm257-row">
-          <span className="cm257-label">Date of Journey (DD/MM/YY)</span>
-          <span className="cm257-field cm257-field--sm">{journey.journeyDate}</span>
-          <span className="cm257-label">No. of berths / seats</span>
-          <span className="cm257-field cm257-field--sm">{journey.berthCount || String(filledCount)}</span>
-        </div>
-
-        <div className="cm257-label">Class</div>
-        <div className="cm257-classes" aria-label="Class of travel">
-          {IR_CLASS_CODES.map((code) => (
-            <ClassCheckbox key={code} code={code} selected={journey.classCode === code} />
-          ))}
-        </div>
-
-        <div className="cm257-row">
-          <span className="cm257-label">From (Station)</span>
-          <span className="cm257-field">{journey.fromStation}</span>
-          <span className="cm257-label">To (Station)</span>
-          <span className="cm257-field">{journey.toStation}</span>
-        </div>
-
-        <div className="cm257-row">
-          <span className="cm257-label">Boarding at (if different)</span>
-          <span className="cm257-field">{journey.boardingStation}</span>
-          <span className="cm257-label">Reservation upto</span>
-          <span className="cm257-field">{journey.reservationUpto}</span>
-        </div>
-
-        <p className="cm257-section-title">Passenger details (maximum 6 per form)</p>
-
-        <table className="cm257-table">
+        <table className="cm257-grid cm257-grid--passengers" aria-label="Passenger details">
+          <colgroup>
+            <col className="cm257-col-sno" />
+            <col className="cm257-col-name" />
+            <col className="cm257-col-sex" />
+            <col className="cm257-col-age" />
+            <col className="cm257-col-conc" />
+            <col className="cm257-col-berth" />
+          </colgroup>
           <thead>
+            <tr>
+              <th colSpan={6} className="cm257-grid-section">
+                Passenger details (maximum 6 per form)
+              </th>
+            </tr>
             <tr>
               <th>S.No.</th>
               <th>Name of passenger (BLOCK LETTERS)</th>
@@ -100,13 +125,13 @@ export function Cm257ReservationForm({
           </thead>
           <tbody>
             {passengers.map((pax) => (
-              <tr key={pax.serialNo}>
-                <td className="cm257-center">{pax.serialNo}</td>
-                <td className="cm257-pax-name">{pax.nameOnTicket}</td>
-                <td className="cm257-center">{pax.sex}</td>
-                <td className="cm257-center">{pax.age}</td>
-                <td className="cm257-center">{pax.concession}</td>
-                <td className="cm257-center">{pax.berthPreference}</td>
+              <tr key={pax.serialNo} className="cm257-pax-row">
+                <td className="cm257-cell-center">{pax.serialNo}</td>
+                <td className="cm257-cell-name">{pax.nameOnTicket}</td>
+                <td className="cm257-cell-center">{pax.sex}</td>
+                <td className="cm257-cell-center">{pax.age}</td>
+                <td className="cm257-cell-center">{pax.concession}</td>
+                <td className="cm257-cell-center">{pax.berthPreference}</td>
               </tr>
             ))}
           </tbody>
@@ -116,60 +141,107 @@ export function Cm257ReservationForm({
           * Concession codes as per Railway rules. Age proof / ID may be required at the counter.
         </p>
 
-        <p className="cm257-section-title">If choice of berth is NOT available</p>
-        <div className="cm257-checklist">
-          <CheckItem label="Travel without berth" />
-          <CheckItem label="Any one lower berth" />
-          <CheckItem label="All middle berths" />
-          <CheckItem label="All upper berths" />
-          <CheckItem label="All side lower berths" />
-          <CheckItem label="Book if all berths in same coach not available" />
-          <CheckItem label="No choice" checked={!draft.choiceIfBerthNotAvailable} />
-        </div>
+        <table className="cm257-grid cm257-grid--choices" aria-label="Berth preferences if unavailable">
+          <tbody>
+            <tr>
+              <td colSpan={2} className="cm257-grid-section">
+                If choice of berth is NOT available
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-check">
+                <CheckItem label="Travel without berth" />
+              </td>
+              <td className="cm257-cell-check">
+                <CheckItem label="Any one lower berth" />
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-check">
+                <CheckItem label="All middle berths" />
+              </td>
+              <td className="cm257-cell-check">
+                <CheckItem label="All upper berths" />
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-check">
+                <CheckItem label="All side lower berths" />
+              </td>
+              <td className="cm257-cell-check">
+                <CheckItem label="Book if all berths in same coach not available" />
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={2} className="cm257-cell-check">
+                <CheckItem label="No choice" checked={!draft.choiceIfBerthNotAvailable} />
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Vikalp scheme</td>
+              <td className="cm257-cell-value">
+                <CheckItem label="Yes" checked={draft.vikalpOptIn === true} />
+                <span className="cm257-inline-gap" />
+                <CheckItem label="No" checked={draft.vikalpOptIn === false} />
+                <span className="cm257-inline-gap cm257-inline-gap--wide" />
+                <span className="cm257-cell-label cm257-cell-label--inline">Meal (Rajdhani / Shatabdi / Duronto)</span>
+                <span className="cm257-cell-inline-value">{draft.mealPreference}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div className="cm257-row cm257-row--wrap">
-          <span className="cm257-label">Vikalp scheme</span>
-          <CheckItem label="Yes" checked={draft.vikalpOptIn === true} />
-          <CheckItem label="No" checked={draft.vikalpOptIn === false} />
-          <span className="cm257-label cm257-label--spaced">Meal (Rajdhani / Shatabdi / Duronto)</span>
-          <span className="cm257-field cm257-field--md">{draft.mealPreference}</span>
-        </div>
+        <table className="cm257-grid cm257-grid--applicant" aria-label="Applicant details">
+          <tbody>
+            <tr>
+              <td colSpan={4} className="cm257-grid-section">
+                Applicant (contact person)
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Name</td>
+              <td colSpan={3} className="cm257-cell-value">
+                {applicant.name}
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Full address</td>
+              <td colSpan={3} className="cm257-cell-value cm257-cell-value--address">
+                {applicant.address}
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Telephone / Mobile</td>
+              <td className="cm257-cell-value">{applicant.phone}</td>
+              <td className="cm257-cell-label">Date</td>
+              <td className="cm257-cell-value cm257-cell-value--short">{applicant.date}</td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">Signature</td>
+              <td colSpan={3} className="cm257-cell-value cm257-cell-value--signature" />
+            </tr>
+          </tbody>
+        </table>
 
-        <section className="cm257-applicant" aria-label="Applicant details">
-          <p className="cm257-section-title cm257-section-title--flush">Applicant (contact person)</p>
-          <div className="cm257-row">
-            <span className="cm257-label">Name</span>
-            <span className="cm257-field">{applicant.name}</span>
-          </div>
-          <div className="cm257-label">Full address</div>
-          <div className="cm257-applicant-address">{applicant.address}</div>
-          <div className="cm257-row cm257-row--tight">
-            <span className="cm257-label">Telephone / Mobile</span>
-            <span className="cm257-field">{applicant.phone}</span>
-            <span className="cm257-label">Date</span>
-            <span className="cm257-field cm257-field--sm">{applicant.date}</span>
-            <span className="cm257-label">Signature</span>
-            <span className="cm257-field cm257-field--lg" />
-          </div>
-        </section>
-
-        <section className="cm257-office" aria-label="For office use only">
-          <p className="cm257-office-title">FOR OFFICE USE ONLY</p>
-          <div className="cm257-office-grid">
-            <div>
-              <span className="cm257-label">PNR / Transaction No.</span>
-              <div className="cm257-office-cell" />
-            </div>
-            <div>
-              <span className="cm257-label">Amount / Mode</span>
-              <div className="cm257-office-cell" />
-            </div>
-            <div>
-              <span className="cm257-label">Counter signature &amp; stamp</span>
-              <div className="cm257-office-cell" />
-            </div>
-          </div>
-        </section>
+        <table className="cm257-grid cm257-grid--office" aria-label="For office use only">
+          <tbody>
+            <tr>
+              <td colSpan={3} className="cm257-grid-section cm257-grid-section--office">
+                FOR OFFICE USE ONLY
+              </td>
+            </tr>
+            <tr>
+              <td className="cm257-cell-label">PNR / Transaction No.</td>
+              <td className="cm257-cell-label">Amount / Mode</td>
+              <td className="cm257-cell-label">Counter signature &amp; stamp</td>
+            </tr>
+            <tr className="cm257-office-data-row">
+              <td className="cm257-cell-value cm257-cell-value--office" />
+              <td className="cm257-cell-value cm257-cell-value--office" />
+              <td className="cm257-cell-value cm257-cell-value--office" />
+            </tr>
+          </tbody>
+        </table>
       </div>
     </article>
   );
