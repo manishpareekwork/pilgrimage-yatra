@@ -51,5 +51,6 @@ That writes into **`supabase/sql/`** (same names `00_`…`14_`).
 | `20_seed_train_20824.sql` | Train 20824 master + RAKE-1 berths |
 | `21_train_route_enrichment.sql` | Routes, stop day fields, coach classes, views |
 | `22_seed_train_20824_route.sql` | Full 44-stop route (etrain source JSON) |
+| `23_seed_default_yatra_trips.sql` | Default trip instances: 20824 outbound 2026-12-07, return 2026-12-13 |
 
 See `../../docs/train-master-20824.md`, `../data/train_20824_route_stops.json`, and `../scripts/validate_train_20824.sql`.

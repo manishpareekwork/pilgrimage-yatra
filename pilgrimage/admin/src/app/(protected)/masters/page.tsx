@@ -141,7 +141,7 @@ const travelMasters: OperationItem[] = [
   },
   {
     title: "Trips",
-    description: "Trip instances",
+    description: "Outbound 7 Dec · return 13 Dec (20824)",
     href: "/masters/trips",
     accent: "#0ea5e9",
     icon: (

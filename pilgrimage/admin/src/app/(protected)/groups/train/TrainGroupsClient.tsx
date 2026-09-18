@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useGlobalLoading } from "@/components/GlobalLoading";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
 import { ChakraSpinner, Field, Select, TextInput } from "@/components/ui";
+import { formatTripSelectLabel } from "@/lib/tripDisplay";
 
 type Trip = {
   id: string;
   mode: "train" | "air";
   trip_name: string;
+  trip_kind?: string | null;
   journey_date: string;
   train_no: string | null;
   flight_no: string | null;
@@ -399,7 +401,7 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
                     : [trip.from_station_code, trip.to_station_code].filter(Boolean).join(" → ");
                 return (
                   <option key={trip.id} value={trip.id}>
-                    {trip.trip_name} · {trip.mode.toUpperCase()} · {ref || "--"} · {trip.journey_date}
+                    {formatTripSelectLabel(trip)}
                     {route ? ` · ${route}` : ""}
                   </option>
                 );
@@ -478,12 +480,12 @@ export function TrainGroupsClient({ trips }: { trips: Trip[] }) {
                   </div>
                   {isTrain ? (
                     <Link
-                      href={`/bookings/railway-reservation?tripId=${encodeURIComponent(selectedTripId)}&groupId=${encodeURIComponent(group.id)}&auto=1`}
+                      href={`/bookings/railway-reservation?tripId=${encodeURIComponent(selectedTripId)}&groupId=${encodeURIComponent(group.id)}`}
                       className="btn-secondary min-h-[28px] px-2 py-1 text-xs"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      CM257 PDF
+                      CM257 forms
                     </Link>
                   ) : null}
                 </div>

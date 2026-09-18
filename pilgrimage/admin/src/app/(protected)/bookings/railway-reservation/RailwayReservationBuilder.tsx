@@ -31,8 +31,12 @@ import {
   CM257_PRINT_LAYOUT_LABELS,
 } from "@/lib/railwayReservation/types";
 import { getBrowserSupabase } from "@/lib/supabaseBrowser";
+import {
+  formatTripSelectLabel,
+  YATRA_OUTBOUND_JOURNEY_DATE,
+} from "@/lib/tripDisplay";
 
-type Trip = TripRow & { mode: string };
+type Trip = TripRow & { mode: string; trip_kind?: string | null };
 
 type CoTravelGroup = {
   id: string;
@@ -63,10 +67,20 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const searchParams = useSearchParams();
   const trainTrips = useMemo(() => trips.filter((t) => t.mode === "train"), [trips]);
 
+  const defaultTrainTripId = useMemo(() => {
+    const preferred = trainTrips.find(
+      (t) =>
+        t.trip_kind === "outbound" &&
+        (t.journey_date?.slice(0, 10) === YATRA_OUTBOUND_JOURNEY_DATE ||
+          t.journey_date === YATRA_OUTBOUND_JOURNEY_DATE)
+    );
+    return preferred?.id ?? trainTrips[0]?.id ?? "";
+  }, [trainTrips]);
+
   const initialTripId =
     searchParams.get("tripId") && trainTrips.some((t) => t.id === searchParams.get("tripId"))
       ? (searchParams.get("tripId") as string)
-      : (trainTrips[0]?.id ?? "");
+      : defaultTrainTripId;
   const initialGroupId = searchParams.get("groupId") ?? "";
   const initialGroupCode = searchParams.get("groupCode") ?? "";
   const initialSheet = searchParams.get("sheet") ?? "";
@@ -90,14 +104,70 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   const [printLayout, setPrintLayout] = useState<Cm257PrintLayout>("full");
   const [groups, setGroups] = useState<CoTravelGroup[]>([]);
   const [groupId, setGroupId] = useState(initialGroupId);
+  const [selectedGroupMemberRegIds, setSelectedGroupMemberRegIds] = useState<string[]>([]);
   const [forms, setForms] = useState<Cm257FormDraft[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const autoRanRef = useRef(false);
+  const groupSelectionInitRef = useRef<string | null>(null);
 
   const selectedTrip = useMemo(
     () => trainTrips.find((t) => t.id === tripId) ?? null,
     [trainTrips, tripId]
   );
+
+  const activeGroup = useMemo(
+    () => groups.find((g) => g.id === groupId) ?? null,
+    [groups, groupId]
+  );
+
+  useEffect(() => {
+    if (!activeGroup) {
+      setSelectedGroupMemberRegIds([]);
+      return;
+    }
+    if (groupSelectionInitRef.current === activeGroup.id) return;
+    groupSelectionInitRef.current = activeGroup.id;
+
+    const memberRegIds = new Set(activeGroup.members.map((m) => m.registration_id));
+    const defaultEligible = activeGroup.members
+      .filter((m) => m.registration && isEligibleForCommitteeCm257(m.registration))
+      .map((m) => m.registration_id);
+
+    const fromUrl =
+      initialSelectedIds.length > 0 &&
+      (activeGroup.id === initialGroupId ||
+        (initialGroupCode &&
+          activeGroup.group_code.toLowerCase() === initialGroupCode.trim().toLowerCase()))
+        ? initialSelectedIds.filter((id) => memberRegIds.has(id))
+        : [];
+
+    setSelectedGroupMemberRegIds(fromUrl.length > 0 ? fromUrl : defaultEligible);
+  }, [
+    activeGroup,
+    initialGroupId,
+    initialGroupCode,
+    initialSelectedIds,
+  ]);
+
+  const selectedEligibleCount = useMemo(() => {
+    if (source === "group") {
+      if (!activeGroup) return 0;
+      return activeGroup.members.filter(
+        (m) =>
+          selectedGroupMemberRegIds.includes(m.registration_id) &&
+          m.registration &&
+          isEligibleForCommitteeCm257(m.registration)
+      ).length;
+    }
+    return yatriList.filter(
+      (r) => selectedIds.includes(r.id) && isEligibleForCommitteeCm257(r)
+    ).length;
+  }, [source, activeGroup, selectedGroupMemberRegIds, yatriList, selectedIds]);
+
+  const estimatedFormCount =
+    selectedEligibleCount > 0
+      ? Math.ceil(selectedEligibleCount / CM257_MAX_PASSENGERS)
+      : 0;
 
   useEffect(() => {
     if (!tripId) return;
@@ -229,6 +299,30 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
 
   const clearSelection = () => setSelectedIds([]);
 
+  const toggleGroupMember = (registrationId: string) => {
+    setSelectedGroupMemberRegIds((prev) =>
+      prev.includes(registrationId)
+        ? prev.filter((id) => id !== registrationId)
+        : [...prev, registrationId]
+    );
+  };
+
+  const selectAllEligibleGroupMembers = () => {
+    if (!activeGroup) return;
+    setSelectedGroupMemberRegIds(
+      activeGroup.members
+        .filter((m) => m.registration && isEligibleForCommitteeCm257(m.registration))
+        .map((m) => m.registration_id)
+    );
+  };
+
+  const selectAllGroupMembers = () => {
+    if (!activeGroup) return;
+    setSelectedGroupMemberRegIds(activeGroup.members.map((m) => m.registration_id));
+  };
+
+  const clearGroupMemberSelection = () => setSelectedGroupMemberRegIds([]);
+
   const loadFullRegistrations = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return [] as RegistrationRow[];
@@ -251,12 +345,18 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       if (!group || group.members.length === 0) {
         throw new Error("Select a group with at least one member.");
       }
-      const allMembers = group.members;
+      if (selectedGroupMemberRegIds.length === 0) {
+        throw new Error("Select at least one group member, then generate.");
+      }
+      const selectedSet = new Set(selectedGroupMemberRegIds);
+      const allMembers = group.members.filter((m) => selectedSet.has(m.registration_id));
       const members = allMembers.filter((m) =>
         m.registration ? isEligibleForCommitteeCm257(m.registration) : false
       );
       if (members.length === 0) {
-        throw new Error("No eligible members (train + committee reservation) in this group.");
+        throw new Error(
+          "No eligible members among your selection (need train travel + committee reservation)."
+        );
       }
       let built = buildFormsFromGroupMembers(selectedTrip, members);
       if (group.class_code || group.boarding_station_code || group.reservation_upto_station_code) {
@@ -314,6 +414,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     source,
     groups,
     groupId,
+    selectedGroupMemberRegIds,
     selectedIds,
     loadFullRegistrations,
   ]);
@@ -373,7 +474,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
   useEffect(() => {
     if (!autoGenerate || autoRanRef.current) return;
     if (!selectedTrip) return;
-    if (source === "group" && !groupId) return;
+    if (source === "group" && (!groupId || selectedGroupMemberRegIds.length === 0)) return;
     if (source === "yatris" && selectedIds.length === 0 && !initialSheet) return;
     autoRanRef.current = true;
     const stop = startLoading("Building CM257 PDF…");
@@ -389,7 +490,15 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when URL auto=1 and prerequisites are ready
-  }, [autoGenerate, selectedTrip, source, groupId, selectedIds.length, initialSheet]);
+  }, [
+    autoGenerate,
+    selectedTrip,
+    source,
+    groupId,
+    selectedGroupMemberRegIds.length,
+    selectedIds.length,
+    initialSheet,
+  ]);
 
   const updatePassenger = (
     formIndex: number,
@@ -447,7 +556,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
     <div className="space-y-6">
       <PageHeader
         title="Railway reservation forms (CM257)"
-        subtitle={`Committee train bookings only — max ${CM257_MAX_PASSENGERS} passengers per CM257. Use co-travel group, import sheet (e.g. SFS-1), or pick yatris.`}
+        subtitle={`Committee train bookings only. Select passengers, then generate — Indian Railways allows max ${CM257_MAX_PASSENGERS} per CM257 (extra passengers split into more forms).`}
         kicker="PRS counter"
         actions={
           <Link href="/groups/train" className="btn-secondary">
@@ -475,7 +584,7 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             >
               {trainTrips.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.trip_name} — {t.journey_date} ({t.train_no ?? "train"})
+                  {formatTripSelectLabel(t)}
                 </option>
               ))}
             </Select>
@@ -523,7 +632,11 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
               <span>
-                Selected: {selectedIds.length} · List: {yatriList.length}
+                Selected: {selectedIds.length} (eligible for CM257: {selectedEligibleCount}
+                {estimatedFormCount > 0
+                  ? ` → ${estimatedFormCount} form${estimatedFormCount > 1 ? "s" : ""}`
+                  : ""}
+                ) · List: {yatriList.length}
                 {yatriListLoading ? " (loading…)" : ""}
               </span>
               <button type="button" className="btn-secondary min-h-[28px] px-2 py-1 text-xs" onClick={selectAllVisible}>
@@ -565,9 +678,17 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
             </div>
           </div>
         ) : (
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             <Field label="Co-travel group" htmlFor="group_id">
-              <Select id="group_id" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <Select
+                id="group_id"
+                value={groupId}
+                onChange={(e) => {
+                  groupSelectionInitRef.current = null;
+                  setGroupId(e.target.value);
+                  setForms([]);
+                }}
+              >
                 {groups.length === 0 ? (
                   <option value="">No groups for this trip</option>
                 ) : (
@@ -579,6 +700,77 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
                 )}
               </Select>
             </Field>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--muted)]">
+              <span>
+                Members selected: {selectedGroupMemberRegIds.length} · Eligible: {selectedEligibleCount}
+                {estimatedFormCount > 0
+                  ? ` → ${estimatedFormCount} CM257 form${estimatedFormCount > 1 ? "s" : ""} (max ${CM257_MAX_PASSENGERS}/form)`
+                  : ""}
+              </span>
+              <button
+                type="button"
+                className="btn-secondary min-h-[28px] px-2 py-1 text-xs"
+                onClick={selectAllEligibleGroupMembers}
+              >
+                Select all eligible
+              </button>
+              <button
+                type="button"
+                className="btn-secondary min-h-[28px] px-2 py-1 text-xs"
+                onClick={selectAllGroupMembers}
+              >
+                Select all in group
+              </button>
+              <button
+                type="button"
+                className="btn-secondary min-h-[28px] px-2 py-1 text-xs"
+                onClick={clearGroupMemberSelection}
+              >
+                Clear selection
+              </button>
+            </div>
+            <p className="text-xs text-[color:var(--muted)]">
+              Tick the members to include, then use Generate forms. More than {CM257_MAX_PASSENGERS}{" "}
+              passengers are split automatically per railway rules.
+            </p>
+            <div className="max-h-72 overflow-y-auto rounded-xl border border-[color:var(--border)]">
+              {!activeGroup || activeGroup.members.length === 0 ? (
+                <p className="p-3 text-sm text-[color:var(--muted)]">No members in this group.</p>
+              ) : (
+                <ul className="divide-y divide-[color:var(--border)]">
+                  {activeGroup.members.map((member) => {
+                    const reg = member.registration;
+                    const eligible = reg ? isEligibleForCommitteeCm257(reg) : false;
+                    const checked = selectedGroupMemberRegIds.includes(member.registration_id);
+                    const displayName =
+                      member.passenger_name_on_ticket?.trim() || reg?.name_hi || member.registration_id;
+                    return (
+                      <li key={member.registration_id}>
+                        <label
+                          className={`flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-[color:var(--surface-muted)] ${!eligible ? "opacity-70" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleGroupMember(member.registration_id)}
+                          />
+                          <span className="flex-1 text-sm">
+                            <span className="font-medium">{displayName}</span>
+                            <span className="text-[color:var(--muted)]">
+                              {" "}
+                              · {member.passenger_age_on_ticket ?? reg?.age_years ?? "—"} yrs ·{" "}
+                              {member.berth_type ?? "—"} · {reg?.train_class ?? reg?.travel_mode ?? "—"} ·{" "}
+                              {reg?.reservation_by ?? "—"}
+                              {!eligible ? " · not CM257-eligible" : ""}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
         )}
 
@@ -598,7 +790,13 @@ export function RailwayReservationBuilder({ trips }: { trips: Trip[] }) {
           </Field>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {estimatedFormCount > 0 && (
+            <span className="text-xs text-[color:var(--muted)]">
+              Ready: {selectedEligibleCount} passenger{selectedEligibleCount !== 1 ? "s" : ""} →{" "}
+              {estimatedFormCount} form{estimatedFormCount > 1 ? "s" : ""}
+            </span>
+          )}
           <button type="button" className="btn-primary" onClick={() => void generateForms()}>
             Generate forms
           </button>

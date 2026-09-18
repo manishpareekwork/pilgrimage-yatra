@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader, FormSection } from "@/components/ui";
 import { requireStaff } from "@/lib/roleGuard";
 import { TrainGroupsClient } from "./TrainGroupsClient";
@@ -7,7 +8,7 @@ export default async function TrainGroupsPage() {
   const { data: trips, error } = await supabase
     .from("yatra_trips")
     .select(
-      "id, trip_name, journey_date, mode, train_no, flight_no, from_station_code, to_station_code, from_airport_code, to_airport_code"
+      "id, trip_name, trip_kind, journey_date, mode, train_no, flight_no, from_station_code, to_station_code, from_airport_code, to_airport_code"
     )
     .order("journey_date", { ascending: false });
 
@@ -28,8 +29,11 @@ export default async function TrainGroupsPage() {
 
       {!error && (!trips || trips.length === 0) && (
         <FormSection title="No trips">
-          <div className="text-sm text-[color:var(--muted)]">
-            Create a trip before assigning groups.
+          <div className="space-y-2 text-sm text-[color:var(--muted)]">
+            <p>Create outbound (7 Dec) and return (13 Dec) legs first.</p>
+            <Link href="/masters/trips" className="text-sky-400 underline">
+              Masters → Trip instances
+            </Link>
           </div>
         </FormSection>
       )}
@@ -40,6 +44,7 @@ export default async function TrainGroupsPage() {
             id: trip.id,
             mode: trip.mode,
             trip_name: trip.trip_name,
+            trip_kind: trip.trip_kind,
             journey_date: trip.journey_date,
             train_no: trip.train_no,
             flight_no: trip.flight_no,

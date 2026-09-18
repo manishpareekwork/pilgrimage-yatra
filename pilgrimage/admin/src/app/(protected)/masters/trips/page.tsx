@@ -1,8 +1,12 @@
-import { PageHeader, FormSection, Select, TextInput } from "@/components/ui";
-import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { requireStaff } from "@/lib/roleGuard";
 import { getActionSupabase } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
+import {
+  YATRA_OUTBOUND_JOURNEY_DATE,
+  YATRA_RETURN_JOURNEY_DATE,
+  YATRA_TRAIN_NO,
+} from "@/lib/tripDisplay";
+import { MasterTripsClient } from "./MasterTripsClient";
 
 const toText = (value: FormDataEntryValue | null) =>
   value ? value.toString().trim() : "";
@@ -10,15 +14,6 @@ const toText = (value: FormDataEntryValue | null) =>
 const toOptional = (value: FormDataEntryValue | null) => {
   const text = toText(value);
   return text ? text : null;
-};
-
-const toDateTimeLocal = (value: string | null) => {
-  if (!value) return "";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  const offset = parsed.getTimezoneOffset();
-  const local = new Date(parsed.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
 };
 
 async function createTrainTrip(formData: FormData) {
@@ -39,16 +34,31 @@ async function createTrainTrip(formData: FormData) {
     p_journey_date: journeyDate,
     p_trip_kind: tripKind,
   });
-  if (!error && data) {
-    await supabase
-      .from("yatra_trips")
-      .update({
-        depart_at: departAt,
-        arrive_at: arriveAt,
-        default_class_code: defaultClassCode,
-        quota_code: quotaCode,
-      })
-      .eq("id", data);
+  if (error) return;
+
+  if (data) {
+    const patch: Record<string, string> = {};
+    if (defaultClassCode) patch.default_class_code = defaultClassCode;
+    if (quotaCode) patch.quota_code = quotaCode;
+    if (departAt) patch.depart_at = departAt;
+    if (arriveAt) patch.arrive_at = arriveAt;
+
+    if (tripKind === "return") {
+      const { data: mt } = await supabase
+        .from("master_trains")
+        .select("train_name, source_station_code, destination_station_code")
+        .eq("train_no", trainNo)
+        .maybeSingle();
+      if (mt?.source_station_code && mt.destination_station_code) {
+        patch.from_station_code = mt.destination_station_code;
+        patch.to_station_code = mt.source_station_code;
+        patch.trip_name = `${trainNo} Return · ${mt.destination_station_code} → ${mt.source_station_code}`;
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await supabase.from("yatra_trips").update(patch).eq("id", data);
+    }
   }
   revalidatePath("/masters/trips");
 }
@@ -73,10 +83,7 @@ async function createFlightTrip(formData: FormData) {
     p_to_airport_code: toOptional(formData.get("to_airport_code")),
   });
   if (!error && data) {
-    await supabase
-      .from("yatra_trips")
-      .update({ trip_kind: tripKind })
-      .eq("id", data);
+    await supabase.from("yatra_trips").update({ trip_kind: tripKind }).eq("id", data);
   }
   revalidatePath("/masters/trips");
 }
@@ -87,27 +94,29 @@ async function updateTrip(formData: FormData) {
   if (!id) return;
 
   const supabase = await getActionSupabase();
-  await supabase
-    .from("yatra_trips")
-    .update({
-      trip_name: toOptional(formData.get("trip_name")),
-      trip_kind: toOptional(formData.get("trip_kind")),
-      journey_date: toOptional(formData.get("journey_date")),
-      depart_at: toOptional(formData.get("depart_at")),
-      arrive_at: toOptional(formData.get("arrive_at")),
-      default_class_code: toOptional(formData.get("default_class_code")),
-      quota_code: toOptional(formData.get("quota_code")),
-      train_master_id: toOptional(formData.get("train_master_id")),
-      train_no: toOptional(formData.get("train_no")),
-      train_name: toOptional(formData.get("train_name")),
-      from_station_code: toOptional(formData.get("from_station_code")),
-      to_station_code: toOptional(formData.get("to_station_code")),
-      flight_no: toOptional(formData.get("flight_no")),
-      airline_code: toOptional(formData.get("airline_code")),
-      from_airport_code: toOptional(formData.get("from_airport_code")),
-      to_airport_code: toOptional(formData.get("to_airport_code")),
-    })
-    .eq("id", id);
+  const payload: Record<string, string | null> = {
+    trip_name: toOptional(formData.get("trip_name")),
+    trip_kind: toOptional(formData.get("trip_kind")),
+    journey_date: toOptional(formData.get("journey_date")),
+    default_class_code: toOptional(formData.get("default_class_code")),
+    quota_code: toOptional(formData.get("quota_code")),
+    train_master_id: toOptional(formData.get("train_master_id")),
+    train_no: toOptional(formData.get("train_no")),
+    train_name: toOptional(formData.get("train_name")),
+    from_station_code: toOptional(formData.get("from_station_code")),
+    to_station_code: toOptional(formData.get("to_station_code")),
+    flight_no: toOptional(formData.get("flight_no")),
+    airline_code: toOptional(formData.get("airline_code")),
+    from_airport_code: toOptional(formData.get("from_airport_code")),
+    to_airport_code: toOptional(formData.get("to_airport_code")),
+  };
+
+  const departAt = toOptional(formData.get("depart_at"));
+  const arriveAt = toOptional(formData.get("arrive_at"));
+  if (departAt) payload.depart_at = departAt;
+  if (arriveAt) payload.arrive_at = arriveAt;
+
+  await supabase.from("yatra_trips").update(payload).eq("id", id);
   revalidatePath("/masters/trips");
 }
 
@@ -118,6 +127,54 @@ async function deleteTrip(formData: FormData) {
 
   const supabase = await getActionSupabase();
   await supabase.from("yatra_trips").delete().eq("id", id);
+  revalidatePath("/masters/trips");
+}
+
+async function seedDefaultYatraTrips() {
+  "use server";
+  const supabase = await getActionSupabase();
+  const legs = [
+    { date: YATRA_OUTBOUND_JOURNEY_DATE, kind: "outbound" as const },
+    { date: YATRA_RETURN_JOURNEY_DATE, kind: "return" as const },
+  ];
+
+  for (const leg of legs) {
+    const { data: existing } = await supabase
+      .from("yatra_trips")
+      .select("id")
+      .eq("train_no", YATRA_TRAIN_NO)
+      .eq("journey_date", leg.date)
+      .eq("trip_kind", leg.kind)
+      .maybeSingle();
+
+    if (existing?.id) continue;
+
+    const { data: newId, error } = await supabase.rpc("admin_create_trip_from_master", {
+      p_train_no: YATRA_TRAIN_NO,
+      p_journey_date: leg.date,
+      p_trip_kind: leg.kind,
+    });
+    if (error || !newId) continue;
+
+    if (leg.kind === "return") {
+      const { data: mt } = await supabase
+        .from("master_trains")
+        .select("train_name, source_station_code, destination_station_code")
+        .eq("train_no", YATRA_TRAIN_NO)
+        .maybeSingle();
+      if (mt?.source_station_code && mt.destination_station_code) {
+        await supabase
+          .from("yatra_trips")
+          .update({
+            from_station_code: mt.destination_station_code,
+            to_station_code: mt.source_station_code,
+            trip_name: `${YATRA_TRAIN_NO} Return · ${mt.destination_station_code} → ${mt.source_station_code}`,
+          })
+          .eq("id", newId);
+      }
+    }
+  }
+
   revalidatePath("/masters/trips");
 }
 
@@ -136,136 +193,15 @@ export default async function MasterTripsPage() {
     .order("journey_date", { ascending: false });
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Master Trip Instances"
-        subtitle="Create outbound/return journey legs and manage overrides."
-      />
-
-      <FormSection title="Create train trip from master">
-        <form action={createTrainTrip} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          <FormStatusOverlay message="Creating train trip..." />
-          <Select name="train_no" required>
-            <option value="">Select train</option>
-            {(trains ?? []).map((train) => (
-              <option key={train.id} value={train.train_no}>
-                {train.train_no} · {train.train_name}
-              </option>
-            ))}
-          </Select>
-          <Select name="trip_kind" defaultValue="outbound">
-            <option value="outbound">Outbound</option>
-            <option value="return">Return</option>
-            <option value="other">Other</option>
-          </Select>
-          <TextInput name="journey_date" type="date" required />
-          <TextInput name="depart_at" type="datetime-local" placeholder="Depart override" />
-          <TextInput name="arrive_at" type="datetime-local" placeholder="Arrive override" />
-          <TextInput name="default_class_code" placeholder="Default class" />
-          <TextInput name="quota_code" placeholder="Quota code" />
-          <button type="submit" className="btn-primary sm:col-span-2 lg:col-span-6">
-            Create train trip
-          </button>
-        </form>
-      </FormSection>
-
-      <FormSection title="Create flight trip">
-        <form action={createFlightTrip} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-          <FormStatusOverlay message="Creating flight trip..." />
-          <TextInput name="trip_name" placeholder="Trip name" required />
-          <Select name="trip_kind" defaultValue="other">
-            <option value="outbound">Outbound</option>
-            <option value="return">Return</option>
-            <option value="other">Other</option>
-          </Select>
-          <TextInput name="journey_date" type="date" required />
-          <TextInput name="depart_at" type="datetime-local" placeholder="Depart at" />
-          <TextInput name="arrive_at" type="datetime-local" placeholder="Arrive at" />
-          <TextInput name="airline_code" placeholder="Airline code" />
-          <TextInput name="flight_no" placeholder="Flight number" />
-          <TextInput name="from_airport_code" placeholder="From airport" />
-          <TextInput name="to_airport_code" placeholder="To airport" />
-          <button type="submit" className="btn-primary sm:col-span-2 lg:col-span-6">
-            Create flight trip
-          </button>
-        </form>
-      </FormSection>
-
-      <FormSection title="Existing trips" description="Update overrides or delete trip instances.">
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/40 bg-rose-950/40 p-3 text-sm text-rose-200">
-            {error.message}
-          </div>
-        )}
-        <div className="space-y-4">
-          {(trips ?? []).map((trip) => (
-            <div key={trip.id} className="card p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold text-[color:var(--ink)]">{trip.trip_name}</div>
-                  <div className="text-xs text-[color:var(--muted)]">
-                    {trip.mode.toUpperCase()} · {trip.journey_date}
-                  </div>
-                </div>
-                <form action={deleteTrip}>
-                  <FormStatusOverlay message="Deleting trip..." />
-                  <input type="hidden" name="id" value={trip.id} />
-                  <button type="submit" className="btn-secondary text-rose-300">Delete</button>
-                </form>
-              </div>
-
-              <form action={updateTrip} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <FormStatusOverlay message="Saving trip..." />
-                <input type="hidden" name="id" value={trip.id} />
-                <TextInput name="trip_name" defaultValue={trip.trip_name} />
-                <Select name="trip_kind" defaultValue={trip.trip_kind ?? "other"}>
-                  <option value="outbound">Outbound</option>
-                  <option value="return">Return</option>
-                  <option value="other">Other</option>
-                </Select>
-                <TextInput name="journey_date" type="date" defaultValue={trip.journey_date} />
-                <TextInput name="depart_at" type="datetime-local" defaultValue={toDateTimeLocal(trip.depart_at)} />
-                <TextInput name="arrive_at" type="datetime-local" defaultValue={toDateTimeLocal(trip.arrive_at)} />
-                <TextInput name="default_class_code" defaultValue={trip.default_class_code ?? ""} placeholder="Default class" />
-                <TextInput name="quota_code" defaultValue={trip.quota_code ?? ""} placeholder="Quota" />
-
-                {trip.mode === "train" ? (
-                  <>
-                    <Select name="train_master_id" defaultValue={trip.train_master_id ?? ""}>
-                      <option value="">Train master (optional)</option>
-                      {(trains ?? []).map((train) => (
-                        <option key={train.id} value={train.id}>
-                          {train.train_no} · {train.train_name}
-                        </option>
-                      ))}
-                    </Select>
-                    <TextInput name="train_no" defaultValue={trip.train_no ?? ""} placeholder="Train no" />
-                    <TextInput name="train_name" defaultValue={trip.train_name ?? ""} placeholder="Train name" />
-                    <TextInput name="from_station_code" defaultValue={trip.from_station_code ?? ""} placeholder="From station" />
-                    <TextInput name="to_station_code" defaultValue={trip.to_station_code ?? ""} placeholder="To station" />
-                  </>
-                ) : (
-                  <>
-                    <TextInput name="airline_code" defaultValue={trip.airline_code ?? ""} placeholder="Airline code" />
-                    <TextInput name="flight_no" defaultValue={trip.flight_no ?? ""} placeholder="Flight no" />
-                    <TextInput name="from_airport_code" defaultValue={trip.from_airport_code ?? ""} placeholder="From airport" />
-                    <TextInput name="to_airport_code" defaultValue={trip.to_airport_code ?? ""} placeholder="To airport" />
-                  </>
-                )}
-
-                <button type="submit" className="btn-secondary sm:col-span-2 lg:col-span-4">
-                  Save changes
-                </button>
-              </form>
-            </div>
-          ))}
-          {trips?.length === 0 && (
-            <div className="card p-6 text-center text-sm text-[color:var(--muted)]">
-              No trips configured yet.
-            </div>
-          )}
-        </div>
-      </FormSection>
-    </div>
+    <MasterTripsClient
+      trains={trains ?? []}
+      trips={trips ?? []}
+      errorMessage={error?.message}
+      createTrainTrip={createTrainTrip}
+      createFlightTrip={createFlightTrip}
+      updateTrip={updateTrip}
+      deleteTrip={deleteTrip}
+      seedDefaultYatraTrips={seedDefaultYatraTrips}
+    />
   );
 }

@@ -8,7 +8,7 @@ export default async function RailwayReservationPage() {
   const { data: trips, error } = await supabase
     .from("yatra_trips")
     .select(
-      "id, trip_name, journey_date, mode, train_no, from_station_code, to_station_code"
+      "id, trip_name, trip_kind, journey_date, mode, train_no, from_station_code, to_station_code"
     )
     .order("journey_date", { ascending: false });
 
