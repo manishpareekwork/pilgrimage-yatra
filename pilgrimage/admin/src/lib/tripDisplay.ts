@@ -52,9 +52,9 @@ export function toDateTimeLocalValue(iso: string | null | undefined): string {
 
 /** Compact label for trip dropdowns across admin. */
 export function formatTripSelectLabel(trip: {
-  trip_name: string;
+  trip_name?: string | null;
   trip_kind?: string | null;
-  journey_date: string;
+  journey_date?: string | null;
   mode: string;
   train_no?: string | null;
   flight_no?: string | null;
@@ -77,9 +77,9 @@ export function formatTripSelectLabel(trip: {
 }
 
 export function tripSummaryLine(trip: {
-  trip_name: string;
+  trip_name?: string | null;
   trip_kind?: string | null;
-  journey_date: string;
+  journey_date?: string | null;
   mode: string;
   train_no?: string | null;
   from_station_code?: string | null;
