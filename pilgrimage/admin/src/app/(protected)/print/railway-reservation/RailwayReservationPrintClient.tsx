@@ -9,6 +9,7 @@ import {
   CM257_A4_MM,
   CM257_PLATFORM_MM,
   CM257_PRINT_LAYOUT_LABELS,
+  CM257_PRINT_STORAGE_KEY,
   normalizeCm257PrintLayout,
   type Cm257PrintLayout,
   type Cm257PrintPayload,
@@ -22,12 +23,30 @@ export function RailwayReservationPrintClient() {
   const [payload, setPayload] = useState<Cm257PrintPayload | null>(null);
   const [layout, setLayout] = useState<Cm257PrintLayout>("a4-full");
 
-  useEffect(() => {
+  const hydratePayload = () => {
     const loaded = loadCm257PrintPayload();
     setPayload(loaded);
     if (loaded?.layout) {
       setLayout(normalizeCm257PrintLayout(loaded.layout as string));
     }
+    return loaded;
+  };
+
+  useEffect(() => {
+    hydratePayload();
+    const retry = window.setTimeout(() => {
+      setPayload((prev) => prev ?? loadCm257PrintPayload());
+    }, 150);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === CM257_PRINT_STORAGE_KEY) {
+        hydratePayload();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.clearTimeout(retry);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   const pages = useMemo(() => {
@@ -52,15 +71,15 @@ export function RailwayReservationPrintClient() {
 
   if (!payload || payload.forms.length === 0) {
     return (
-      <div className="p-8 text-center text-sm text-[color:var(--muted)]">
-        <p>No reservation forms loaded.</p>
-        <p className="mt-2">
-          Open{" "}
-          <a href="/bookings/railway-reservation" className="text-sky-400 underline">
-            Railway reservation forms
-          </a>{" "}
-          and generate forms first.
+      <div className="p-10 text-center text-sm text-[color:var(--muted)] max-w-md mx-auto space-y-4">
+        <p className="text-base font-semibold text-[color:var(--ink)]">No CM257 forms in memory</p>
+        <p>
+          Go back to the builder, select passengers, and click <strong>Generate &amp; PDF</strong> again.
+          If a blank tab opened before, deploy the latest fix and retry.
         </p>
+        <a href="/bookings/railway-reservation" className="btn-primary inline-flex">
+          CM257 builder
+        </a>
       </div>
     );
   }

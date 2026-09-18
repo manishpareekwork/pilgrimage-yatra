@@ -1,5 +1,5 @@
 import { getActionSupabase, getServerSupabase } from "@/lib/supabaseServer";
-import { AppShell } from "@/components/AppShell";
+import { PrintLayoutGate } from "@/components/PrintLayoutGate";
 import { FormStatusOverlay } from "@/components/GlobalLoading";
 import { redirect } from "next/navigation";
 import React from "react";
@@ -77,7 +77,7 @@ export default async function ProtectedLayout({
     "yatri";
 
   return (
-    <AppShell
+    <PrintLayoutGate
       email={user.email ?? ""}
       role={role}
       onLogoutAction={
@@ -90,6 +90,6 @@ export default async function ProtectedLayout({
       }
     >
       {children}
-    </AppShell>
+    </PrintLayoutGate>
   );
 }

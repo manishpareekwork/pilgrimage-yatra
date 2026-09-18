@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Cm257ReservationForm } from "@/components/railway/Cm257ReservationForm";
 import { Field, FormSection, PageHeader, Select, TextInput } from "@/components/ui";
@@ -75,6 +75,7 @@ export function RailwayReservationBuilder({
   importBuckets: ImportBucketOption[];
 }) {
   const supabase = useMemo(() => getBrowserSupabase(), []);
+  const router = useRouter();
   const { startLoading } = useGlobalLoading();
   const searchParams = useSearchParams();
   const trainTrips = useMemo(() => trips.filter((t) => t.mode === "train"), [trips]);
@@ -394,12 +395,18 @@ export function RailwayReservationBuilder({
   const loadFullRegistrations = useCallback(
     async (ids: string[]) => {
       if (ids.length === 0) return [] as RegistrationRow[];
-      const { data, error } = await supabase
-        .from("yatra_registrations")
-        .select(REGISTRATION_SELECT)
-        .in("id", ids);
-      if (error) throw new Error(error.message);
-      return (data ?? []) as RegistrationRow[];
+      const chunkSize = 80;
+      const rows: RegistrationRow[] = [];
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const slice = ids.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from("yatra_registrations")
+          .select(REGISTRATION_SELECT)
+          .in("id", slice);
+        if (error) throw new Error(error.message);
+        rows.push(...((data ?? []) as RegistrationRow[]));
+      }
+      return rows;
     },
     [supabase]
   );
@@ -495,12 +502,6 @@ export function RailwayReservationBuilder({
     const missingGender = built.some((f) =>
       f.passengers.some((p) => p.nameOnTicket.trim() && !p.sex)
     );
-    if (missingGender) {
-      const proceed = window.confirm(
-        "Some passengers are missing Sex (M/F). Counters may reject the form. Continue anyway?"
-      );
-      if (!proceed) return;
-    }
     const payload: Cm257PrintPayload = {
       tripId,
       tripName: selectedTrip?.trip_name ?? undefined,
@@ -511,12 +512,19 @@ export function RailwayReservationBuilder({
     saveCm257PrintPayload(payload);
     const printUrl = "/print/railway-reservation?autoprint=1";
     setPrintPageUrl(printUrl);
-    const popup = window.open(printUrl, "_blank", "noopener,noreferrer");
-    if (!popup) {
+    if (missingGender) {
       setMessage(
-        "Pop-up blocked — use “Open print page” below, then choose Save as PDF in the print dialog."
+        "Tip: some passengers are missing Sex (M/F) — set them in Review below before counter print."
       );
     }
+    const popup = window.open(printUrl, "_blank");
+    if (!popup) {
+      router.push(printUrl);
+      return;
+    }
+    setMessage(
+      `Opened print page with ${built.length} form(s). In the print dialog choose Destination → Save as PDF.`
+    );
   };
 
   const assertCanGenerate = (): boolean => {

@@ -15,6 +15,13 @@
     print-color-adjust: exact;
   }
 
+  .app-shell,
+  .app-shell__header,
+  .app-shell__nav-mobile-bar,
+  .print-route-root > :not(.cm257-root) {
+    display: none !important;
+  }
+
   .cm257-toolbar,
   .cm257-layout-hint {
     display: none !important;

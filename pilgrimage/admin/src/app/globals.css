@@ -483,6 +483,11 @@ body {
   padding-bottom: 96px;
 }
 
+.print-route-root {
+  min-height: 100vh;
+  background: var(--surface, #e8eaed);
+}
+
 @media (min-width: 768px) {
   .page-stack {
     gap: 40px;
